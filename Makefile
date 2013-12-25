@@ -3,8 +3,8 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
-C_SRCS := $(wildcard boot/*.c) $(wildcard init/*.c) $(wildcard interrupts/*.c)
-S_SRCS := $(wildcard boot/*.s) $(wildcard init/*.s) $(wildcard interrupts/*.s)
+C_SRCS := $(wildcard boot/*.c) $(wildcard init/*.c) $(wildcard drivers/*.c) $(wildcard kernel/*.c)
+S_SRCS := $(wildcard boot/*.s) $(wildcard init/*.s) $(wildcard drivers/*.s) $(wildcard kernel/*.s)
 
 OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
