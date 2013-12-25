@@ -31,7 +31,7 @@ typedef volatile struct {
 	uint32_t VICINTENCLEAR;
 
 	// R/W - Setting a bit to HIGH generates a software interrupt for the source
-	// if corresponding bit in VICINTENABLE is set to LOW
+	// if corresponding bit in VICINTENABLE is set to HIGH
 	uint32_t VICSOFTINT;
 
 	// W - If bit is set to HIGH, corresponding bit in VICSOFTINT is cleared
@@ -58,8 +58,7 @@ typedef volatile struct {
 vic_pl190_t *vic = (vic_pl190_t*)VICBASEADDRESS;
 uint32_t VICINTENABLE_saved = 0;
 
-// Clears enable/select registers, sets the protection bit and enables
-// important interrupt sources
+// Clears enable/select registers, sets the protection bit
 void vic_init() {
 	// Clear registers first
 	vic->VICINTSELECT = 0;
@@ -70,12 +69,20 @@ void vic_init() {
 	vic->VICPROTECTION = 1;
 }
 
+uint32_t vic_status_irq() {
+	return(vic->VICIRQSTATUS);
+}
+
 void vic_enable_irq_all() {
 	vic->VICINTENABLE = 0xFFFFFFFF;
 }
 
 void vic_enable_irq(uint32_t irq_mask) {
 	vic->VICINTENABLE |= irq_mask;
+}
+
+uint32_t vic_status_fiq() {
+	return(vic->VICFIQSTATUS);
 }
 
 void vic_enable_fiq(uint32_t fiq_mask) {
@@ -85,7 +92,7 @@ void vic_enable_fiq(uint32_t fiq_mask) {
 
 void vic_enable_soft_int(uint32_t soft_int_mask) {
 	vic->VICSOFTINT |= soft_int_mask;
-	vic->VICINTENCLEAR = soft_int_mask;
+	vic->VICINTENABLE |= soft_int_mask;
 }
 
 void vic_disable_irq_all() {
@@ -104,5 +111,6 @@ void vic_disable_fiq(uint32_t fiq_mask) {
 
 void vic_disable_soft_int(uint32_t soft_int_mask) {
 	vic->VICSOFTINTCLEAR = soft_int_mask;
+	vic->VICINTENCLEAR = soft_int_mask;
 }
 
