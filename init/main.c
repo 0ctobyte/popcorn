@@ -14,7 +14,7 @@ void print_uart0(const char *s) {
 
 
 void kmain(void) {
-	enable_interrupts();
+	irq_init();
 	print_uart0("Hello World!\n");
 }
 

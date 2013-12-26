@@ -62,11 +62,25 @@ typedef enum {
 
 typedef uint32_t (*isr_t)(uint32_t);
 
+// Enables interrupts on the processor
 void enable_interrupts();
+
+// Disables interrupts on the processor
 void disable_interrupts();
+
+// Checks if interrupts are enabled on the processor
 bool interrupts_enabled();
 
+// Initialize IRQ systems, VIC, SIC...
+void irq_init();
+
+// This function enables IRQ for the specified source on the VIC and SIC
 void enable_irq(irq_type_t);
+
+// This function disables IRQ for the specified source on the VIC and SIC
+void disable_irq(irq_type_t);
+
+// Register and ISR for the specified IRQ source
 void register_isr(irq_type_t, isr_t);
 
 #endif // __INTERRUPTS_H__
