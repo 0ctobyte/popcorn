@@ -1,5 +1,5 @@
-#ifndef __VIC_PL190__
-#define __VIC_PL190__
+#ifndef __VIC_PL190_H__
+#define __VIC_PL190_H__
 
 #define VIC_WATCHDOG	(1 << 0)	// Watchdog timer
 #define VIC_SOFTINT		(1 << 1)	// Software interrupt
@@ -46,5 +46,5 @@ void vic_disable_irq(uint32_t irq_mask);
 void vic_disable_fiq(uint32_t fiq_mask);
 void vic_disable_soft_int(uint32_t soft_int_mask);
 
-#endif // __VIC_PL190__
+#endif // __VIC_PL190_H__
 

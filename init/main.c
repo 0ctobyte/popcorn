@@ -1,4 +1,7 @@
 #include <stdint.h>
+#include <stdbool.h>
+
+#include "../include/kernel/interrupts.h"
 
 volatile uint32_t * const UART0DR = (uint32_t*) 0x101f1000;
 
@@ -11,7 +14,7 @@ void print_uart0(const char *s) {
 
 
 void kmain(void) {
-	
+	enable_interrupts();
 	print_uart0("Hello World!\n");
 }
 

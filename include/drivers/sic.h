@@ -1,5 +1,5 @@
-#ifndef __SIC__
-#define __SIC__
+#ifndef __SIC_H__
+#define __SIC_H__
 
 #define SIC_SOFTINT		(1 << 0)	// Software interrupt from SIC
 #define SIC_MMCI0B		(1 << 1)	// Multimedia card 0B
@@ -31,5 +31,5 @@ void sic_disable_all();
 void sic_disable(uint32_t int_mask);
 void sic_disable_soft_int(uint32_t soft_int_mask);
 
-#endif // __SIC__
+#endif // __SIC_H__
 

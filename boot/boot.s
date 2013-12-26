@@ -4,31 +4,29 @@
 .global _start
 
 _start:
-
 	LDR SP, =supervisor_stack_top
 	BL _copy_vectors
 	
+	/* Get program status register */
 	MRS R0, CPSR
 	
-	/* Get program status register */
+	/* Clear mode bits */
 	BIC R1, R0, #0x1F
 	
-	/* Clear mode bits */
+	/* Go into IRQ mode */
 	ORR R1, R1, #0x12
 	
-	/* Go into IRQ mode */
 	MSR CPSR, R1
 	
-	/* Set IRQ mode stack, SP is banked in IRQ mode */
+	/* Set IRQ mode stack, SP (and LR) is banked in IRQ mode */
 	LDR SP, =irq_stack_top
-
-	/* Enable IRQ's */
-	BIC R0, R0, #0x80
 
 	/* Go back to supervisor mode */
 	MSR CPSR, R0
 	
 	/* Jump to kernel main */
 	BL kmain
+
+	/* In case kmain returns */
 	B .
 
