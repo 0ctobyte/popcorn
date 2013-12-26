@@ -60,7 +60,7 @@ typedef enum {
 	IRQ_PCI3		= 62
 } irq_type_t;
 
-typedef uint32_t (*isr_t)(uint32_t);
+typedef void (*isr_t)(void);
 
 // Enables interrupts on the processor
 void enable_interrupts();
