@@ -15,6 +15,10 @@ void print_uart0(const char *s) {
 
 void kmain(void) {
 	irq_init();
-	print_uart0("Hello World!\n");
+	bool i = interrupts_enabled();
+	if(i)
+		print_uart0("true\n");
+	else
+		print_uart0("false\n");
 }
 
