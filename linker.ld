@@ -2,6 +2,7 @@ ENTRY(_vectors_start)
 SECTIONS
 {
 	. = 0x10000;
+	__kernel_start = .;
 	__text_start = .;
 	.text : {
 		*(.text*)
@@ -39,5 +40,6 @@ SECTIONS
 	irq_stack_top = .;
 	. = ALIGN(4096); /* Align to 4kB page */
 	__kernel_stacks_end = .;
+	__kernel_end = .;
 }
 
