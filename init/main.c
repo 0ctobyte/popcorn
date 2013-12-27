@@ -12,6 +12,8 @@ void print_uart0(const char *s) {
 	}
 }
 
+void keyboard_isr(void) {
+}
 
 void kmain(void) {
 	irq_init();
@@ -20,5 +22,10 @@ void kmain(void) {
 		print_uart0("true\n");
 	else
 		print_uart0("false\n");
+
+	
+
+	enable_irq(IRQ_KMI0);
+	register_isr(IRQ_KMI0, keyboard_isr);
 }
 

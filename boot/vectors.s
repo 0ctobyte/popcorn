@@ -38,6 +38,7 @@ _copy_vectors:
 
 _copy_vectors_loop:
 	LDRB R3, [R0], #1 /* Get byte from source vector table */
+	MOV R2, R2
 	STRB R3, [R2], #1 /* Store byte into destination vector table */
 	CMP R0, R1
 	BEQ _copy_vectors_loop

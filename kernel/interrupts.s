@@ -1,3 +1,11 @@
+.data
+
+/* 
+ * This symbol will point to the ISR table with a total of 64 entries
+ */
+isr_table:
+	.skip 64*4, 0
+
 .text
 .code 32
 
@@ -22,8 +30,16 @@
 .global disable_irq
 .type disable_irq, %function
 
-.global sic_isr
+.type vic_init, %function		/* Initializes VIC */
+.type vic_enable, %function		/* Enables an IRQ source on the VIC */
+.type vic_disable, %function	/* Disables an IRQ source on the VIC */
+.type vic_status, %function		/* Gets the VICSTATUS register */
+
 .type sic_isr, %function
+.type sic_init, %function		/* Initializes the SIC */
+.type sic_enable, %function		/* Enables an IRQ source on the SIC */
+.type sic_disable, %function	/* Disables an IRQ source on the SIC */
+.type sic_status, %function		/* Gets the SICSTATUS register */
 
 .global irq_handler
 .global swi_handler
@@ -32,11 +48,131 @@
 .global data_abort_handler
 .global fiq_handler
 
-/* 
- * This symbol will point to the ISR table with a total of 64 entries
- */
-isr_table:
-	.skip 64*4, 0
+/* Important VIC registers */
+VICIRQSTATUS: .word 0x10140000 /* VICBASEADDRESS */
+VICFIQSTATUS: .word 0x10140004
+VICRAWINTR: .word 0x10140008
+VICINTSELECT: .word 0x1014000C
+VICINTENABLE: .word 0x10140010
+VICINTENCLEAR: .word 0x10140014
+VICSOFTINT: .word 0x10140018
+VICSOFTINTCLEAR: .word 0x1014001C
+VICPROTECTION: .word 0x10140020
+
+/* Important SIC registers */
+SICSTATUS: .word 0x10003000 /* SICBASEADDRESS */
+SICRAWSTAT: .word 0x10003004
+SICENABLE: .word 0x10003008
+SICENCLR: .word 0x1000300C
+SICSOFTINTSET: .word 0x10003010
+SICSOFTINTCLR: .word 0x10003014
+SICPICENABLE: .word 0x10003020
+SICPECENCLR: .word 0x10003024
+
+vic_init:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Clear registers first */
+	LDR R1, VICINTSELECT
+	MOV R0, #0
+	STR R0, [R1]
+	LDR R1, VICINTENABLE
+	MOV R0, #0
+	STR R0, [R1]
+	LDR R1, VICSOFTINT
+	MOV R0, #0
+	STR R0, [R1]
+
+	/* Enable protection */
+	LDR R1, VICPROTECTION
+	MOV R0, #1
+	STR R0, [R1]
+
+	LDMFD SP!, {R0, R1, PC}
+
+vic_enable:
+	STMFD SP!, {R0, R1, R2, LR}
+
+	/* Set the bit in the VICINTENABLE register */
+	LDR R1, VICINTENABLE /* LDR takes 2 cycles for R1 to be ready */
+	MOV R0, R0 /* Gotta avoid those pipeline stalls */
+	LDR R2, [R1]
+	LDR R2, [R1]
+	ORR R0, R2, R0
+	STR R0, [R1]
+
+	LDMFD SP!, {R0, R1, R2, PC}
+
+vic_disable:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Write the bit to VICINTENCLEAR register which will then clear the bit */
+	/* in the VICINTENABLE register */
+	LDR R1, VICINTENCLEAR
+	MOV R0, R0
+	STR R0, [R1]
+	
+	LDMFD SP!, {R0, R1, PC}
+
+vic_status:
+	STMFD SP!, {R1, LR}
+
+	/* Get the contents of the VICIRQSTATUS register */
+	LDR R1, VICIRQSTATUS
+	MOV R0, #0
+	LDR R0, [R1]
+
+	LDMFD SP!, {R1, PC}
+
+sic_init:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Clear registers */
+	LDR R1, SICENABLE
+	MOV R0, #0
+	STR R0, [R1]
+	LDR R1,  SICSOFTINTSET
+	MOV R0, #0
+	STR R0, [R1]
+	LDR R1, SICPICENABLE
+	MOV R0, #0
+	STR R0, [R1]
+
+	LDMFD SP!, {R0, R1, PC}
+
+sic_enable:
+	STMFD SP!, {R0, R1, R2, LR}
+
+	/* Set the bit in the SICENABLE register */
+	LDR R1, SICENABLE
+	MOV R0, R0
+	LDR R2, [R1]
+	LDR R2, [R1]
+	ORR R0, R2, R0
+	STR R0, [R1]
+
+	LDMFD SP!, {R0, R1, R2, PC}
+
+sic_disable:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Write the bit to the SICENCLR register which will then clear the bit */
+	/* in the SICENABLE register */
+	LDR R1, SICENCLR
+	MOV R0, R0
+	STR R0, [R1]
+
+	LDMFD SP!, {R0, R1, PC}
+
+sic_status:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Get the contents of the SICSTATUS register */
+	LDR R1, SICSTATUS
+	MOV R0, #0
+	LDR R0, [R1]
+
+	LDMFD SP!, {R0, R1, PC}
 
 /*
  * Enable interrupts on the processor
@@ -132,7 +268,7 @@ enable_irq:
 	LDMFD SP!, {R0, R1, R2, PC}
 B0:
 	LSL R0, R2, R0
-	BL vic_enable_irq		
+	BL vic_enable
 	LDMFD SP!, {R0, R1, R2, PC}
 
 /*
@@ -153,7 +289,7 @@ disable_irq:
 	LDMFD SP!, {R0, R1, R2, PC}
 C0:
 	LSL R0, R2, R0
-	BL vic_disable_irq
+	BL vic_disable
 	LDMFD SP!, {R0, R1, R2, PC}
 
 /*
@@ -180,6 +316,7 @@ D0:
 D1:
 	LSL R5, R2, #2
 	LDR R6, [R4, R5]
+	LDR R6, [R4, R5]
 	TEQ R6, #0 /* Check if address is valid, i.e. not NULL */
 	BEQ D0
 	BLX R6
@@ -201,7 +338,7 @@ irq_handler:
 	
 	/* Check the VIC status register for raised interrupts */
 	/* In this scheme, devices with lower IRQ #'s get higher priority */
-	BL vic_status_irq
+	BL vic_status
 E0:
 	CMP R1, #32
 	BEQ E2
@@ -211,6 +348,7 @@ E0:
 	B E0
 E1:
 	LSL R4, R1, #2
+	LDR R5, [R3, R4]
 	LDR R5, [R3, R4]
 	TEQ R5, #0 /* Check if address is valid, i.e. not NULL */
 	BEQ E0
