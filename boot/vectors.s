@@ -37,11 +37,11 @@ _copy_vectors:
 	MOV R2, #0x0 /* Vector table destination. ARM expects table to start at address 0x0 in memory */
 
 _copy_vectors_loop:
-	LDRB R3, [R0], #1 /* Get byte from source vector table */
+	LDR R3, [R0], #1 /* Get word from source vector table */
 	MOV R2, R2
-	STRB R3, [R2], #1 /* Store byte into destination vector table */
+	STR R3, [R2], #1 /* Store word into destination vector table */
 	CMP R0, R1
-	BEQ _copy_vectors_loop
+	BNE _copy_vectors_loop
 
 	LDMFD SP!, {R0, R1, R2, R3, R15}
 

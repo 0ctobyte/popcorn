@@ -84,9 +84,10 @@ vic_init:
 	STR R0, [R1]
 
 	/* Enable protection */
-	LDR R1, VICPROTECTION
-	MOV R0, #1
-	STR R0, [R1]
+	/*LDR R1, VICPROTECTION
+	*MOV R0, #1
+	*STR R0, [R1]
+	*/
 
 	LDMFD SP!, {R0, R1, PC}
 
@@ -165,14 +166,14 @@ sic_disable:
 	LDMFD SP!, {R0, R1, PC}
 
 sic_status:
-	STMFD SP!, {R0, R1, LR}
+	STMFD SP!, {R1, LR}
 
 	/* Get the contents of the SICSTATUS register */
 	LDR R1, SICSTATUS
 	MOV R0, #0
 	LDR R0, [R1]
 
-	LDMFD SP!, {R0, R1, PC}
+	LDMFD SP!, {R1, PC}
 
 /*
  * Enable interrupts on the processor
@@ -316,12 +317,11 @@ D0:
 D1:
 	LSL R5, R2, #2
 	LDR R6, [R4, R5]
-	LDR R6, [R4, R5]
+	ADD R1, R1, #1
+	ADD R2, R2, #1
 	TEQ R6, #0 /* Check if address is valid, i.e. not NULL */
 	BEQ D0
 	BLX R6
-	ADD R1, R1, #1
-	ADD R2, R2, #1
 	B D0
 D2:
 	LDMFD SP!, {R0-R6, PC}
@@ -349,11 +349,10 @@ E0:
 E1:
 	LSL R4, R1, #2
 	LDR R5, [R3, R4]
-	LDR R5, [R3, R4]
+	ADD R1, R1, #1
 	TEQ R5, #0 /* Check if address is valid, i.e. not NULL */
 	BEQ E0
 	BLX R5
-	ADD R1, R1, #1
 	B E0
 E2:
 	LDMFD SP!, {R0-R5, LR}

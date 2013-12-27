@@ -31,7 +31,7 @@ WARNFLAGS   += -Werror
 
 CFLAGS := -std=c99 $(BASEFLAGS) $(WARNFLAGS)
 LDFLAGS := $(BASEFLAGS)
-ASFLAGS :=
+ASFLAGS := -g -gstabs
 
 LIBS := -lgcc
 
