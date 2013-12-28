@@ -38,7 +38,7 @@ LIBS := -lgcc
 all : kernel.img
 
 kernel.elf: $(OBJS) linker.ld
-	$(LD) $(BASEFLAGS) $(OBJS) -T $(LSCRIPT) -o $@
+	$(LD) $(LDFLAGS) $(OBJS) -T $(LSCRIPT) -o $@
 
 kernel.img: kernel.elf
 	$(OBJCOPY) kernel.elf -O binary kernel.img

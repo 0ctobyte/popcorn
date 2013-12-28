@@ -1,3 +1,14 @@
+.section .stacks
+.align 2
+__svc_stack_start:
+	.skip 4096, 0
+__svc_stack_top:
+
+.align 2
+__irq_stack_start:
+	.skip 4096, 0
+__irq_stack_top:
+
 .text
 .code 32 /* Using the ARM instruction set rather than Thumb */
 
@@ -8,7 +19,7 @@
  */
 .align 2 
 _start:
-	LDR SP, =supervisor_stack_top
+	LDR SP, =__svc_stack_top
 	BL _copy_vectors
 	
 	/* Get program status register */
@@ -23,7 +34,7 @@ _start:
 	MSR CPSR, R1
 	
 	/* Set IRQ mode stack, SP (and LR) is banked in IRQ mode */
-	LDR SP, =irq_stack_top
+	LDR SP, =__irq_stack_top
 
 	/* Go back to supervisor mode */
 	MSR CPSR, R0

@@ -2,44 +2,53 @@ ENTRY(_vectors_start)
 SECTIONS
 {
 	. = 0x10000;
-	__kernel_start = .;
-	__text_start = .;
-	.text : {
+	.text : ALIGN(0x1000) { /* Align to 4 kb boundary */
+		__kernel_start = .;
+		
+		__text_start = .;
 		*(.text*)
-	}
-	. = ALIGN(4096); /* Align to 4kB page */
-	__text_end = .;
+		__text_end = .;
+		
+		. = ALIGN(0x1000);
+		__rodata_start = .;
+		*(.rodata*)
+		__rodata_end = .;
 
-	__rodata_start = .;
-	.rodata : {
+		. = ALIGN(0x1000);
+		__data_start = .;
+		*(.data*)
+		__data_end = .;
+
+		. = ALIGN(0x1000);
+		__bss_start = .;
+		*(.bss*)
+		. = ALIGN(4);
+		*(.COMMON*)
+		__bss_end = .;
+
+		. = ALIGN(0x1000);
+		__kernel_stacks_start = .;
+		*(.stacks*)
+		__kernel_stacks_end = .;
+
+		__kernel_end = .;
+	}
+	/* So apparently these sections don't get loaded in qemu... */
+	/* We will find out why another day, for now, everything */
+	/* goes in the text section */
+	/*
+	.rodata : ALIGN(0x1000) {
 		*(.rodata*)
 	}
-	. = ALIGN(4096); /* Align to 4kB page */
-	__rodata_end = .;
-
-	__data_start = .;
-	.data : {
+	.data : ALIGN(0x1000) {
 		*(.data*)
 	}
-	. = ALIGN(4096); /* Align to 4kB page */
-	__data_end = .;
-
-	__bss_start = .;
-	.bss : { 
+	.bss : ALIGN(0x1000) { 
 		*(.bss*)
 		*(COMMON*)
 	}
-	. = ALIGN(4096); /* Align to 4kB page */
-	__bss_end = .;
-
-	__kernel_stacks_start = .;
-	. = . + 0x1000; /* 4kB of supervisor stack */
-	supervisor_stack_top = .;
-	. = ALIGN(4096); /* Align to 4kB page */
-	. = . + 0x1000; /* 4kB of IRQ stack */
-	irq_stack_top = .;
-	. = ALIGN(4096); /* Align to 4kB page */
-	__kernel_stacks_end = .;
-	__kernel_end = .;
+	.stacks : ALIGN(0x1000) {
+		*(.stacks*)
+	}*/
 }
 

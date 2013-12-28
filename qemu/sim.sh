@@ -1,1 +1,1 @@
-qemu-system-arm -M versatilepb -m 2M -serial stdio -hda disk1.img -kernel ../kernel.img
+qemu-system-arm -M versatilepb -m 128M -serial stdio -hda disk1.img -kernel ../kernel.img
