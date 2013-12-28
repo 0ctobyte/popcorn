@@ -3,6 +3,7 @@
 /* 
  * This symbol will point to the ISR table with a total of 64 entries
  */
+.align 2
 isr_table:
 	.skip 64*4, 0
 
@@ -49,6 +50,7 @@ isr_table:
 .global fiq_handler
 
 /* Important VIC registers */
+.align 2
 VICIRQSTATUS: .word 0x10140000 /* VICBASEADDRESS */
 VICFIQSTATUS: .word 0x10140004
 VICRAWINTR: .word 0x10140008
@@ -60,6 +62,7 @@ VICSOFTINTCLEAR: .word 0x1014001C
 VICPROTECTION: .word 0x10140020
 
 /* Important SIC registers */
+.align 2
 SICSTATUS: .word 0x10003000 /* SICBASEADDRESS */
 SICRAWSTAT: .word 0x10003004
 SICENABLE: .word 0x10003008
@@ -69,6 +72,7 @@ SICSOFTINTCLR: .word 0x10003014
 SICPICENABLE: .word 0x10003020
 SICPECENCLR: .word 0x10003024
 
+.align 2
 vic_init:
 	STMFD SP!, {R0, R1, LR}
 
@@ -91,6 +95,7 @@ vic_init:
 
 	LDMFD SP!, {R0, R1, PC}
 
+.align 2
 vic_enable:
 	STMFD SP!, {R0, R1, R2, LR}
 
@@ -104,6 +109,7 @@ vic_enable:
 
 	LDMFD SP!, {R0, R1, R2, PC}
 
+.align 2
 vic_disable:
 	STMFD SP!, {R0, R1, LR}
 
@@ -115,6 +121,7 @@ vic_disable:
 	
 	LDMFD SP!, {R0, R1, PC}
 
+.align 2
 vic_status:
 	STMFD SP!, {R1, LR}
 
@@ -125,6 +132,7 @@ vic_status:
 
 	LDMFD SP!, {R1, PC}
 
+.align 2
 sic_init:
 	STMFD SP!, {R0, R1, LR}
 
@@ -141,6 +149,7 @@ sic_init:
 
 	LDMFD SP!, {R0, R1, PC}
 
+.align 2
 sic_enable:
 	STMFD SP!, {R0, R1, R2, LR}
 
@@ -154,6 +163,7 @@ sic_enable:
 
 	LDMFD SP!, {R0, R1, R2, PC}
 
+.align 2
 sic_disable:
 	STMFD SP!, {R0, R1, LR}
 
@@ -165,6 +175,7 @@ sic_disable:
 
 	LDMFD SP!, {R0, R1, PC}
 
+.align 2
 sic_status:
 	STMFD SP!, {R1, LR}
 
@@ -179,6 +190,7 @@ sic_status:
  * Enable interrupts on the processor
  * Both IRQ and FIQ interrupts are enabled
  */
+.align 2
 enable_interrupts:
 	STMFD SP!, {R0, LR}
 
@@ -191,6 +203,7 @@ enable_interrupts:
 /*
  * Disable interrupts on the processor
  */
+.align 2
 disable_interrupts:
 	STMFD SP!, {R0, LR}
 	
@@ -204,6 +217,7 @@ disable_interrupts:
  * Returns 1 if either FIQ or IRQ or both are enabled
  * Returns 0 if both FIQ and IRQ are disabled
  */
+.align 2
 interrupts_enabled:
 	STMFD SP!, {R1, LR}
 
@@ -219,6 +233,7 @@ A1:
 /*
  * Register a ISR in the isr table
  */
+.align 2
 register_isr:
 	STMFD SP!, {R0, R4, LR}
 	
@@ -231,6 +246,7 @@ register_isr:
 /*
  * Initializes the IRQ systems, including the VIC and SIC
  */
+.align 2
 irq_init:
 	STMFD SP!, {R0, R1, LR}
 
@@ -252,6 +268,7 @@ irq_init:
 /*
  * Enables IRQ for the specified source on the VIC and SIC
  */
+.align 2
 enable_irq:
 	STMFD SP!, {R0, R1, R2, LR}
 
@@ -275,6 +292,7 @@ B0:
 /*
  * Disables IRQ for the specified source on the VIC and SIC
  */
+.align 2
 disable_irq:
 	STMFD SP!, {R0, R1, R2, LR}
 
@@ -296,6 +314,7 @@ C0:
 /*
  * This function is the ISR for the SIC
  */
+.align 2
 sic_isr:
 	STMFD SP!, {R0-R6, LR}
 
@@ -329,6 +348,7 @@ D2:
 /*
  * This function is called whenever an IRQ arrives from the VIC
  */
+.align 2
 irq_handler:
 	STMFD SP!, {R0-R5, LR}
 
@@ -358,30 +378,35 @@ E2:
 	LDMFD SP!, {R0-R5, LR}
 	SUBS PC, LR, #4	
 
+.align 2
 swi_handler:
 	STMFD SP!, {R0-R11}
 	LDMFD SP!, {R0-R11}
 	B .
 	SUBS PC, LR, #4	
 
+.align 2
 undef_handler:
 	STMFD SP!, {R0-R11}
 	LDMFD SP!, {R0-R11}
 	B .
 	SUBS PC, LR, #4	
 
+.align 2
 prefetch_abort_handler:
 	STMFD SP!, {R0-R11}
 	LDMFD SP!, {R0-R11}
 	B .
 	SUBS PC, LR, #4	
 
+.align 2
 data_abort_handler:
 	STMFD SP!, {R0-R11}
 	LDMFD SP!, {R0-R11}
 	B .
 	SUBS PC, LR, #4	
 
+.align 2
 fiq_handler:
 	STMFD SP!, {R0-R11}
 	LDMFD SP!, {R0-R11}

@@ -3,6 +3,10 @@
 
 .global _start
 
+/* Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
+ * order bits
+ */
+.align 2 
 _start:
 	LDR SP, =supervisor_stack_top
 	BL _copy_vectors

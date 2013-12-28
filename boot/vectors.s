@@ -8,6 +8,7 @@
 .global _vectors_end
 .global _copy_vectors
 
+.align 2
 _vectors_start:
 
 	LDR PC, reset_handler_addr
@@ -19,6 +20,7 @@ _vectors_start:
 	LDR PC, irq_handler_addr
 	LDR PC, fiq_handler_addr
 
+.align 2
 reset_handler_addr: .word _start
 undef_handler_addr: .word undef_handler
 swi_handler_addr: .word swi_handler
@@ -29,19 +31,20 @@ fiq_handler_addr: .word fiq_handler
 
 _vectors_end:
 
+.align 2
 _copy_vectors:
-	STMFD SP!, {R0, R1, R2, R3, R14}
+	STMFD SP!, {R0, R1, R2, R3, LR}
 	
 	LDR R0, =_vectors_start /* Vector table source */
 	LDR R1, =_vectors_end /* End of vector table source */
 	MOV R2, #0x0 /* Vector table destination. ARM expects table to start at address 0x0 in memory */
 
-_copy_vectors_loop:
+A0:
 	LDR R3, [R0], #1 /* Get word from source vector table */
 	MOV R2, R2
 	STR R3, [R2], #1 /* Store word into destination vector table */
 	CMP R0, R1
-	BNE _copy_vectors_loop
+	BNE A0
 
-	LDMFD SP!, {R0, R1, R2, R3, R15}
+	LDMFD SP!, {R0, R1, R2, R3, PC}
 
