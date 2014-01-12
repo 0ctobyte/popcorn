@@ -42,6 +42,9 @@ isr_table:
 .type sic_disable, %function	/* Disables an IRQ source on the SIC */
 .type sic_status, %function		/* Gets the SICSTATUS register */
 
+.global vectors_install
+.type vectors_install, %function
+
 .global irq_handler
 .global swi_handler
 .global undef_handler
@@ -71,6 +74,48 @@ SICSOFTINTSET: .word 0x10003010
 SICSOFTINTCLR: .word 0x10003014
 SICPICENABLE: .word 0x10003020
 SICPECENCLR: .word 0x10003024
+
+
+.align 2
+_vectors_start:
+
+	LDR PC, reset_handler_addr
+	LDR PC, undef_handler_addr
+	LDR PC, swi_handler_addr
+	LDR PC, prefetch_abort_handler_addr
+	LDR PC, data_abort_handler_addr
+	B . /* Reserved */
+	LDR PC, irq_handler_addr
+	LDR PC, fiq_handler_addr
+
+
+.align 2
+reset_handler_addr: .word _start
+undef_handler_addr: .word undef_handler
+swi_handler_addr: .word swi_handler
+prefetch_abort_handler_addr: .word prefetch_abort_handler
+data_abort_handler_addr: .word data_abort_handler
+irq_handler_addr: .word irq_handler
+fiq_handler_addr: .word fiq_handler
+
+_vectors_end:
+
+.align 2
+vectors_install:
+	STMFD SP!, {R0, R1, R2, R3, LR}
+	
+	LDR R0, =_vectors_start /* Vector table source */
+	LDR R1, =_vectors_end /* End of vector table source */
+	MOV R2, #0x0 /* Vector table destination. ARM expects table to start at address 0x0 in memory */
+
+F0:
+	LDR R3, [R0], #1 /* Get word from source vector table */
+	MOV R2, R2
+	STR R3, [R2], #1 /* Store word into destination vector table */
+	CMP R0, R1
+	BNE F0
+
+	LDMFD SP!, {R0, R1, R2, R3, PC}
 
 .align 2
 vic_init:

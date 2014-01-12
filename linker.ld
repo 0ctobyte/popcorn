@@ -1,32 +1,33 @@
-ENTRY(_vectors_start)
+ENTRY(_start)
 SECTIONS
 {
 	. = 0x10000;
-	.text : ALIGN(0x1000) { /* Align to 4 kb boundary */
+	.text : ALIGN(0x4) { /* Align to 4 byte boundary */
 		__kernel_start = .;
 		
 		__text_start = .;
+		kernel/boot/boot.o(.text*)
 		*(.text*)
 		__text_end = .;
 		
-		. = ALIGN(0x1000);
+		. = ALIGN(0x4);
 		__rodata_start = .;
 		*(.rodata*)
 		__rodata_end = .;
 
-		. = ALIGN(0x1000);
+		. = ALIGN(0x4);
 		__data_start = .;
 		*(.data*)
 		__data_end = .;
 
-		. = ALIGN(0x1000);
+		. = ALIGN(0x4);
 		__bss_start = .;
 		*(.bss*)
 		. = ALIGN(4);
 		*(.COMMON*)
 		__bss_end = .;
 
-		. = ALIGN(0x1000);
+		. = ALIGN(0x4);
 		__kernel_stacks_start = .;
 		*(.stacks*)
 		__kernel_stacks_end = .;

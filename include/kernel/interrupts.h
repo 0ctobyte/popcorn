@@ -1,6 +1,8 @@
 #ifndef __INTERRUPTS_H__
 #define __INTERRUPTS_H__
 
+#include <stdbool.h>
+
 #define INTERRUPT_LOCK bool reenable_interrupts = interrupts_enabled(); \
 												  disable_interrupts();
 #define INTERRUPT_UNLOCK if(reenable_interrupts) enable_interrupts();
@@ -61,6 +63,9 @@ typedef enum {
 } irq_type_t;
 
 typedef void (*isr_t)(void);
+
+// Installs the ARM interrupt handler branch instructions at address 0x0
+void vectors_install();
 
 // Enables interrupts on the processor
 void enable_interrupts();

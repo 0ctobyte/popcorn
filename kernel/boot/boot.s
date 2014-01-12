@@ -1,12 +1,12 @@
 .section .stacks
 .align 2
 __svc_stack_start:
-	.skip 4096, 0
+	.skip 1024, 0
 __svc_stack_top:
 
 .align 2
 __irq_stack_start:
-	.skip 4096, 0
+	.skip 1024, 0
 __irq_stack_top:
 
 .text
@@ -19,8 +19,9 @@ __irq_stack_top:
  */
 .align 2 
 _start:
+
+	/* Set the svc stack */
 	LDR SP, =__svc_stack_top
-	BL _copy_vectors
 	
 	/* Get program status register */
 	MRS R0, CPSR

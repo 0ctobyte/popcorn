@@ -3,17 +3,19 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
-C_SRCS := $(wildcard boot/*.c) $(wildcard init/*.c) $(wildcard drivers/*.c) $(wildcard kernel/*.c)
-S_SRCS := $(wildcard boot/*.s) $(wildcard init/*.s) $(wildcard drivers/*.s) $(wildcard kernel/*.s)
+C_SRCS := $(wildcard lib/*.c) $(wildcard kernel/*.c) $(wildcard kernel/**/*.c)
+S_SRCS := $(wildcard lib/*.s) $(wildcard kernel/*.s) $(wildcard kernel/**/*.s)
 
 OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
 
+INCLUDE := -Iinclude
+
 LSCRIPT := linker.ld
 
-BASEFLAGS := -O2 -g -fpic -pedantic -pedantic-errors -nostdlib
+BASEFLAGS := -g -fpic -pedantic -pedantic-errors -nostdlib
 BASEFLAGS += -nostartfiles -ffreestanding -nodefaultlibs
-BASEFLAGS += -fno-builtin -fomit-frame-pointer -mcpu=arm926ej-s
+BASEFLAGS += -fno-builtin -mcpu=arm926ej-s
 
 WARNFLAGS   := -Wall -Wextra -Wshadow -Wcast-align -Wwrite-strings
 WARNFLAGS   += -Wredundant-decls -Winline
@@ -29,7 +31,7 @@ WARNFLAGS   += -Wno-unused-but-set-variable -Wno-unused-result
 WARNFLAGS   += -Wwrite-strings -Wdisabled-optimization -Wpointer-arith
 WARNFLAGS   += -Werror
 
-CFLAGS := -std=c99 $(BASEFLAGS) $(WARNFLAGS)
+CFLAGS := -std=c99 $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := $(BASEFLAGS)
 ASFLAGS := -g -gstabs
 
