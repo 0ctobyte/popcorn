@@ -13,7 +13,7 @@ INCLUDE := -Iinclude
 
 LSCRIPT := linker.ld
 
-BASEFLAGS := -g -fpic -pedantic -pedantic-errors -nostdlib
+BASEFLAGS := -g -pedantic -pedantic-errors -nostdlib
 BASEFLAGS += -nostartfiles -ffreestanding -nodefaultlibs
 BASEFLAGS += -fno-builtin -mcpu=arm926ej-s
 
