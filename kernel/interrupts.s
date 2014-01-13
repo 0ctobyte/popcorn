@@ -1,12 +1,3 @@
-.data
-
-/* 
- * This symbol will point to the ISR table with a total of 64 entries
- */
-.align 2
-isr_table:
-	.skip 64*4, 0
-
 .text
 .code 32
 
@@ -51,6 +42,7 @@ isr_table:
 .global prefetch_abort_handler
 .global data_abort_handler
 .global fiq_handler
+
 
 /* Important VIC registers */
 .align 2
@@ -116,6 +108,13 @@ F0:
 	BNE F0
 
 	LDMFD SP!, {R0, R1, R2, R3, PC}
+
+/* 
+ * This symbol will point to the ISR table with a total of 64 entries
+ */
+.align 2
+isr_table:
+	.skip 64*4, 0
 
 .align 2
 vic_init:
