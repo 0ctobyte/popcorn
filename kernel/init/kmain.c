@@ -19,9 +19,13 @@ void print_uart0(const char *s) {
 	print_uart0(s);
 }*/
 
+extern void __kernel_end();
+
 void kmain(void) {
 	vectors_install(); // Copy the vector table to address 0x0
 	irq_init(); // Setup the IRQ system
+
+	kprintf("__kernel_end: %p\n", &__kernel_end);
 
 	/*bool i = interrupts_enabled();
 	if(i)

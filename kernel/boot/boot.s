@@ -1,18 +1,11 @@
-.section .stacks
-.align 2
-__svc_stack_start:
-	.skip 1024, 0
-__svc_stack_top:
-
-.align 2
-__irq_stack_start:
-	.skip 1024, 0
-__irq_stack_top:
-
 .text
 .code 32 /* Using the ARM instruction set rather than Thumb */
 
 .global _start
+
+/* Setup the stacks in the BSS */
+.comm __svc_stack_bottom, 4096, 4
+.comm __irq_stack_bottom, 4096, 4
 
 /* Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
  * order bits
@@ -21,7 +14,7 @@ __irq_stack_top:
 _start:
 
 	/* Set the svc stack */
-	LDR SP, =__svc_stack_top
+	LDR SP, =__svc_stack_bottom+4096
 	
 	/* Get program status register */
 	MRS R0, CPSR
@@ -35,7 +28,7 @@ _start:
 	MSR CPSR, R1
 	
 	/* Set IRQ mode stack, SP (and LR) is banked in IRQ mode */
-	LDR SP, =__irq_stack_top
+	LDR SP, =__irq_stack_bottom+4096
 
 	/* Go back to supervisor mode */
 	MSR CPSR, R0

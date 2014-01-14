@@ -3,8 +3,8 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
-C_SRCS := $(wildcard lib/*.c) $(wildcard kernel/*.c) $(wildcard kernel/**/*.c)
-S_SRCS := $(wildcard lib/*.s) $(wildcard kernel/*.s) $(wildcard kernel/**/*.s)
+C_SRCS := $(wildcard kernel/**/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
+S_SRCS := $(wildcard kernel/**/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
 
 OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
@@ -51,10 +51,10 @@ clean:
 dist-clean: clean
 	$(RM) -f *.d
 
-%.o: %.c Makefile
-	$(CC) $(CFLAGS) -c $< -o $@
-
 %.o: %.s Makefile
 	$(AS) $(ASFLAGS) -c $< -o $@
+
+%.o: %.c Makefile
+	$(CC) $(CFLAGS) -c $< -o $@
 
 
