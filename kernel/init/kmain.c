@@ -1,6 +1,5 @@
 #include <kernel/interrupts.h>
 #include <kernel/kernutil.h>
-#include <stddef.h>
 
 /*#include <stdint.h>
 volatile uint32_t * const UART0_DR = (uint32_t*) 0x101f1000;

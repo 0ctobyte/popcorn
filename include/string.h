@@ -1,7 +1,7 @@
 #ifndef __STRING_H__
 #define __STRING_H__
 
-#include <stddef.h>
+#include <sys/types.h>
 
 size_t strlen(const char *str);
 

@@ -1,7 +1,7 @@
 #ifndef __INTERRUPTS_H__
 #define __INTERRUPTS_H__
 
-#include <stdbool.h>
+#include <sys/types.h>
 
 #define INTERRUPT_LOCK bool reenable_interrupts = interrupts_enabled(); \
 												  disable_interrupts();

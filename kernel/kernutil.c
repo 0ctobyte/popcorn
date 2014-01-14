@@ -4,9 +4,9 @@
 #include <stdarg.h>
 #include <string.h>
 
-volatile uint32_t * const UART0DR = (uint32_t*)0x101F1000;
 
 int32_t uart0_putchar(const uint32_t c) {
+	volatile uint32_t * const UART0DR = (uint32_t*)0x101F1000;
 	*UART0DR = c;
 	return(0);
 }
