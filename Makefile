@@ -15,7 +15,7 @@ LSCRIPT := linker.ld
 
 BASEFLAGS := -g -pedantic -pedantic-errors -nostdlib
 BASEFLAGS += -nostartfiles -ffreestanding -nodefaultlibs
-BASEFLAGS += -fno-builtin -mcpu=arm926ej-s
+BASEFLAGS += -fno-builtin -mcpu=cortex-a8
 
 WARNFLAGS   := -Wall -Wextra -Wshadow -Wcast-align -Wwrite-strings
 WARNFLAGS   += -Wredundant-decls -Winline

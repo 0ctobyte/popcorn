@@ -1,26 +1,31 @@
-ENTRY(_start)
+ENTRY(_loader)
 SECTIONS
 {
-	. = 0x10000;
-	__kernel_start = .;
+	. = 0xF0010000;
+	__kernel_virtual_start = .;
+	__kernel_physical_start = . - 0xF0000000;
 	
-	.text ALIGN(0x4) : { /* Align to 4 byte boundary */
+	/* Align to page (4 kb) boundary */
+	.text ALIGN(0x1000) : AT(ADDR(.text) - 0xF0000000) {
 		*(.text)
 	}
 
-	.data ALIGN(0x4) : {
-		*(.data)
-	}
-
-	.rodata ALIGN(0x4) : {
+	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - 0xF0000000) {
 		*(.rodata)
 	}
-
-	.bss ALIGN(0x4) : {
+		
+	.bss ALIGN(0x1000) : AT(ADDR(.bss) - 0xF0000000) {
 		*(.bss)
 		*(.COMMON)
 	}
 	
-	__kernel_end = .;
+	.data ALIGN(0x1000) : AT(ADDR(.data) - 0xF0000000) {
+		*(.data)
+	}
+
+	/* Align to 16 kb boundary */
+	. = ALIGN(0x4000);
+	__kernel_virtual_end = .;
+	__kernel_physical_end = . - 0xF0000000;
 }
 

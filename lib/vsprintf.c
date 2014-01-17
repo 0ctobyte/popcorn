@@ -104,7 +104,7 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
 	*hex = '\0';
 	if(flags & SPECIAL) {
 		if(specifier == 'o') octal = '0';
-		else if(specifier == 'x') {
+		else if(specifier == 'x' || specifier == 'p') {
 			hex[0] = '0';
 			hex[1] = 'x';
 		} else if(specifier == 'X') {

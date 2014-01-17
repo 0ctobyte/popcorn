@@ -24,6 +24,7 @@ fiq_handler_addr: .word fiq_handler
 
 _vectors_end:
 
+
 .text
 .code 32
 
@@ -107,9 +108,9 @@ vectors_install:
 	MOV R2, #0x0 /* Vector table destination. ARM expects table to start at address 0x0 in memory */
 
 F0:
-	LDR R3, [R0], #1 /* Get word from source vector table */
+	LDR R3, [R0], #4 /* Get word from source vector table */
 	MOV R2, R2
-	STR R3, [R2], #1 /* Store word into destination vector table */
+	STR R3, [R2], #4 /* Store word into destination vector table */
 	CMP R0, R1
 	BNE F0
 

@@ -1,4 +1,4 @@
-#include <kernel/kernutil.h>
+#include <kernel/kstdio.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -15,29 +15,12 @@ int32_t putchar(uint32_t c) {
 	return(uart0_putchar(c));
 }
 
-int32_t puts(const char *s) {
+int32_t kputs(const char *s) {
 	size_t len = strlen(s);
 	for(int i = 0; i < len; i++) {
 		putchar(s[i]);
 	}
 	return(0);
-}
-
-// Do we need separate buffers?
-char __panic_buffer[1024];
-void panic(const char *fmt, ...) {
-	va_list args;
-	int32_t r = 0;
-
-	puts("\nPANIC: ");
-
-	va_start(args, fmt);
-	r = vsprintf(__panic_buffer, fmt, args);
-	va_end(args);
-
-	puts(__panic_buffer);
-
-	for(;;);
 }
 
 // This will be allocated on the data segment (BSS) rather than the stack!
@@ -50,7 +33,7 @@ int32_t kprintf(const char *fmt, ...) {
 	r = vsprintf(__kprintf_buffer, fmt, args);
 	va_end(args);
 
-	puts(__kprintf_buffer);
+	kputs(__kprintf_buffer);
 
 	return(r);
 }
