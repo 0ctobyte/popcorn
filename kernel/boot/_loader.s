@@ -3,7 +3,7 @@
  * page tables, maps the kernel (starting at physical address 0x10000) to
  * 0xF0010000, maps the page directory and page tables to 0xF1000000, and maps
  * the memory-mapped I/O somewhere in the kernel's address space (I haven't
- * decided where yet), and identity maps the first 16 kb. 
+ * decided where yet), and identity maps the first 1 Mb. 
  * The code then sets up control registers appropriately
  * and enables paging. Then a branch is made kernel/boot/boot.s:_start
  * The kernel is mapped in the top 256 MB of the virtual address space.
@@ -40,7 +40,7 @@ _loader:
 
 	/* __kernel_physical_end is 16 kb aligned, so this is perfect place to */
 	/* put the page directory. Page size is 4 kb */
-	MOV pgt_num, #512
+	MOV pgt_num, #256
 	LDR placement_addr, =__kernel_physical_end
 
 	/* This works because ARM uses PC relative addressing */
@@ -225,7 +225,7 @@ _map_page:
 	BIC R3, R1, #0xFFF00FFF
 	MOVW R2, #0x3FF
 	BIC R4, R4, R2
-	ORR R3, R4, R3, LSR #12
+	ORR R3, R4, R3, LSR #10
 	
 	/* Place the mapping into the entry in the page table overwriting the */
 	/* entry if one is already present */
