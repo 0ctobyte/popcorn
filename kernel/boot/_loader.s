@@ -20,7 +20,7 @@
  * R10 holds placement address
  * R9 holds page directory address
  * R8 holds address to first page table
- * R7 holds number of page tables (512)
+ * R7 holds number of page tables
  */
 PAGE_SIZE .req R11
 placement_addr .req R10
@@ -126,8 +126,8 @@ A0:
 	LDMFD SP!, {R0, R1, PC}
 
 /*
- * Maps the kernel to 0xF0010000, identity maps the first 16 kb + 4 kb
- * (4 kb for the loader) and maps the device memory addresses
+ * Maps the kernel to 0xF0010000, identity maps the first 1 Mb
+ * (for the loader) and maps the device memory addresses
  */
 .align 2
 _do_mapping:
