@@ -54,21 +54,74 @@ _loader:
 
 	BL _do_mapping
 
-	BL _prep_mmu_for_paging
+	BL _prep_for_paging
 
-	B _start
+	/* Now we enable the MMU */
+	LDR R5, =_start
+	MRC P15, 0, R4, C1, C0, 0
+	ORR R4, R4, #1
+	MCR P15, 0, R4, C1, C0, 0
+
+	BX R5
 
 /*
  * This routine sets up registers which will be used when paging is enabled
  */
 .align 2
-_prep_mmu_for_paging:
+_prep_for_paging:
 	STMFD SP!, {R0, R1, LR}
 
 	/* Setup the domain access control register */
 	MOVW R0, #0x500D
 	MOVT R0, #0xFF55
 	MCR P15, 0, R0, C3, C0, 0
+
+	/* System control register. Enable access flag, Tex remap */
+	MOV R1, #3
+	MRC P15, 0, R0, C1, C0, 0
+	ORR R0, R0, R1, LSL #28
+	MCR P15, 0, R0, C1, C0, 0
+
+	/* Set N to zero in Translation Table Base Control Register */
+	MRC P15, 0, R0, C2, C0, 2
+	BIC R0, R0, #7
+	MCR P15, 0, R0, C2, C0, 2
+
+	/* Set the address of the page directory in the translation table base */
+	/* register 0 */
+	MOV R0, #0
+	ORR R0, pgd_addr, #0x2B
+	MCR P15, 0, R0, C2, C0, 0
+
+	/* Setup the secure configuration register */
+	MRC P15, 0, R0, C1, C1, 0
+	BIC R0, R0, #1
+	MCR P15, 0, R0, C1, C1, 0
+
+	/* Setup the primary region remap register */
+	MOVW R0, #0x8AA4
+	MOVT R0, #0xF009
+	/* First check if multiple shareability domains are implemented */
+	MRC P15, 0, R1, C0, C1, 4
+	LSR R1, R1, #12
+	AND R1, R1, #0xF
+	CMP R1, #1
+	BEQ A0
+	/* Only one level, don't need NOSn bits */
+	BIC R0, R0, #0xFF000000
+A0:
+	MCR P15, 0, R0, C10, C2, 0
+
+	/* Setup the normal memory remap register */
+	MOVW R0, #0x48E0
+	MOVT R0, #0x44E0
+	MCR P15, 0, R0, C10, C2, 1
+
+	/* Setup the vector base address register */
+	LDR R0, =_vectors_start
+	MRC P15, 0, R1, C12, C0, 0
+	ORR R1, R1, R0
+	MCR P15, 0, R1, C12, C0, 0
 
 	LDMFD SP!, {R0, R1, PC}
 
@@ -106,12 +159,13 @@ _do_mapping:
 
 	BL _map_page_range
 
-	/* Identity map the first 16 kb and the next 4 kb for the loader */
+	/* Identity map the first 1 Mb */
+	MOVW R0, #0x102E
+	MOVT R0, #0x1
 	MOV R1, #0
 	MOV R2, #0
-	MOV R3, #0x4000
 
-	BL _map_page_range
+	BL _map_section
 
 	MOVW R0, #0x45E
 	MOV R1, #0x4000
@@ -121,6 +175,29 @@ _do_mapping:
 	BL _map_page_range
 
 	LDMFD SP!, {R0, R1, R2, PC}
+
+/* Maps a single section appropriately
+ * R0 [in] - The section descriptor
+ * R1 [in] - A section-aligned virtual address
+ * R2 [in] - A section-aligned physical address
+ */
+.align 2
+_map_section:
+	STMFD SP!, {LR}
+
+	/* Construct the section descriptor */
+	ORR R0, R0, R2
+
+	/* Get the address into the page dir where the section descriptor will be */
+	/* stored */
+	LSR R1, R1, #18
+	BIC R1, R1, #3
+	ORR R2, R1, pgd_addr
+
+	/* Write the section descriptor to the page directory */
+	STR R0, [R2]
+
+	LDMFD SP!, {PC}
 
 /*
  * Maps a single page in the appropriate page table in the page directory

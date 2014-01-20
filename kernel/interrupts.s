@@ -74,6 +74,7 @@ SICPECENCLR: .word 0x10003024
 
 /* The vector base register requires that the base address is 32 bit aligned */
 .align 5
+.global _vectors_start
 _vectors_start:
 
 	LDR PC, reset_handler_addr
