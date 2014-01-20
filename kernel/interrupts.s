@@ -1,30 +1,3 @@
-.section .rodata
-
-.align 2
-_vectors_start:
-
-	LDR PC, reset_handler_addr
-	LDR PC, undef_handler_addr
-	LDR PC, swi_handler_addr
-	LDR PC, prefetch_abort_handler_addr
-	LDR PC, data_abort_handler_addr
-	B . /* Reserved */
-	LDR PC, irq_handler_addr
-	LDR PC, fiq_handler_addr
-
-
-.align 2
-reset_handler_addr: .word _start
-undef_handler_addr: .word undef_handler
-swi_handler_addr: .word swi_handler
-prefetch_abort_handler_addr: .word prefetch_abort_handler
-data_abort_handler_addr: .word data_abort_handler
-irq_handler_addr: .word irq_handler
-fiq_handler_addr: .word fiq_handler
-
-_vectors_end:
-
-
 .text
 .code 32
 
@@ -98,6 +71,31 @@ SICPECENCLR: .word 0x10003024
  * This symbol will point to the ISR table with a total of 64 entries
  */
 .comm isr_table, 64, 4
+
+/* The vector base register requires that the base address is 32 bit aligned */
+.align 5
+_vectors_start:
+
+	LDR PC, reset_handler_addr
+	LDR PC, undef_handler_addr
+	LDR PC, swi_handler_addr
+	LDR PC, prefetch_abort_handler_addr
+	LDR PC, data_abort_handler_addr
+	B . /* Reserved */
+	LDR PC, irq_handler_addr
+	LDR PC, fiq_handler_addr
+
+
+.align 2
+reset_handler_addr: .word _start
+undef_handler_addr: .word undef_handler
+swi_handler_addr: .word swi_handler
+prefetch_abort_handler_addr: .word prefetch_abort_handler
+data_abort_handler_addr: .word data_abort_handler
+irq_handler_addr: .word irq_handler
+fiq_handler_addr: .word fiq_handler
+
+_vectors_end:
 
 .align 2
 vectors_install:

@@ -1,3 +1,14 @@
+/*
+ * This code is the first to run on boot. It sets up the page directory and
+ * page tables, maps the kernel (starting at physical address 0x10000) to
+ * 0xF0010000, maps the page directory and page tables to 0xF1000000, and maps
+ * the memory-mapped I/O somewhere in the kernel's address space (I haven't
+ * decided where yet), and identity maps the first 16 kb. 
+ * The code then sets up control registers appropriately
+ * and enables paging. Then a branch is made kernel/boot/boot.s:_start
+ * The kernel is mapped in the top 256 MB of the virtual address space.
+ */
+
 .text
 .code 32
 
@@ -5,11 +16,13 @@
 
 /* 
  * Special use registers
+ * R11 holds the page size in bytes
  * R10 holds placement address
  * R9 holds page directory address
  * R8 holds address to first page table
  * R7 holds number of page tables (512)
  */
+PAGE_SIZE .req R11
 placement_addr .req R10
 pgd_addr .req R9
 pgt_start_addr .req R8
@@ -22,8 +35,11 @@ _loader:
 	/* Not the virtual address */
 	LDR SP, =__svc_stack_bottom+4096-0xF0000000
 
+	/* 4 kb page size */
+	MOV PAGE_SIZE, #0x1000
+
 	/* __kernel_physical_end is 16 kb aligned, so this is perfect place to */
-	/* put the page directory */
+	/* put the page directory. Page size is 4 kb */
 	MOV pgt_num, #512
 	LDR placement_addr, =__kernel_physical_end
 
@@ -31,13 +47,189 @@ _loader:
 	/* Create page dir at end of kernel */
 	BL _create_page_dir
 
-	/* Create page tables */
 	MOV R0, pgt_num
 	BL _create_page_tables
 
+	BL _setup_page_dir
+
+	BL _do_mapping
+
+	BL _prep_mmu_for_paging
+
 	B _start
 
-	B .
+/*
+ * This routine sets up registers which will be used when paging is enabled
+ */
+.align 2
+_prep_mmu_for_paging:
+	STMFD SP!, {R0, R1, LR}
+
+	/* Setup the domain access control register */
+	MOVW R0, #0x500D
+	MOVT R0, #0xFF55
+	MCR P15, 0, R0, C3, C0, 0
+
+	LDMFD SP!, {R0, R1, PC}
+
+/*
+ * Maps the kernel to 0xF0010000, identity maps the first 16 kb + 4 kb
+ * (4 kb for the loader) and maps the device memory addresses
+ */
+.align 2
+_do_mapping:
+	STMFD SP!, {R0, R1, R2, LR}
+
+	/* First we need to setup the page table entry descriptor */
+	MOVW R0, #0x45E
+
+	/* Now map the .text section of the kernel */
+	LDR R1, =__text_virtual_start
+	LDR R2, =__text_physical_start
+	LDR R3, =__text_virtual_end
+
+	BL _map_page_range
+
+	/* Now map the rest of the kernel with the execute never bit set */
+	MOVW R0, #0x45F
+	LDR R1, =__text_virtual_end
+	LDR R2, =__text_physical_end
+	LDR R3, =__kernel_virtual_end
+
+	BL _map_page_range
+
+	/* Now map the page directory and page tables to 0xF1000000 */
+	MOV R1, #0xF1000000
+	LDR R2, =__kernel_physical_end
+	SUB R3, placement_addr, R2
+	ADD R3, R3, R1
+
+	BL _map_page_range
+
+	/* Identity map the first 16 kb and the next 4 kb for the loader */
+	MOV R1, #0
+	MOV R2, #0
+	MOV R3, #0x4000
+
+	BL _map_page_range
+
+	MOVW R0, #0x45E
+	MOV R1, #0x4000
+	MOV R2, #0x4000
+	MOV R3, #0x5000
+
+	BL _map_page_range
+
+	LDMFD SP!, {R0, R1, R2, PC}
+
+/*
+ * Maps a single page in the appropriate page table in the page directory
+ * Takes as input a page table entry descriptor in R0, a virtual page-aligned
+ * address in R1, and the physical page-aligned address in R2.
+ * Note that all addresses are expected to be page aligned and the top 20 bits
+ * of the page table entry descriptor are expected to be zero, otherwise the
+ * results of this routine are undefined.
+ */
+.align 2
+_map_page:
+	STMFD SP!, {R0, R1, R2, R3, R4, LR}
+
+	/* Concatenate the physical page-aligned address with the page table */
+	/* entry descriptor. This value will be placed in the page table */
+	ORR R0, R0, R2
+
+	/* Get the entry in the page directory */
+	ORR R3, pgd_addr, R1, LSR #18
+	BIC R3, R3, #3
+	LDR R4, [R3]
+
+	/* Get the address into the page table; this is where the page table */
+	/* entry will be placed */
+	BIC R3, R1, #0xFFF00FFF
+	MOVW R2, #0x3FF
+	BIC R4, R4, R2
+	ORR R3, R4, R3, LSR #12
+	
+	/* Place the mapping into the entry in the page table overwriting the */
+	/* entry if one is already present */
+	STR R0, [R3]
+
+	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
+
+/*
+ * Maps a range of continuous physical pages to a range of continuous virtual
+ * R0 [in] - Page table entry descriptor 
+ * R1 [in] - Starting virtual address of range
+ * R2 [in] - Starting physical address of range
+ * R3 [in] - Ending virtual address of range (This address is NOT mapped)
+ * Note that all addresses are expected to be page-aligned and the top 20 bits
+ * of the page table entry descriptor are expected to be zero. Also, the size
+ * of the virtual address range is expected to be the same as the size of the
+ * physical address range. If the above conditions are not met, the results of
+ * this routine are undefined
+ */
+.align 2
+_map_page_range:
+	STMFD SP!, {R0, R1, R2, R3, LR}
+
+_map_page_range_loop:
+	CMP R1, R3
+	BEQ _map_page_range_end
+
+	BL _map_page
+
+	/* Increment by page size */
+	ADD R1, R1, PAGE_SIZE
+	ADD R2, R2, PAGE_SIZE
+
+	B _map_page_range_loop
+
+_map_page_range_end:
+	LDMFD SP!, {R0, R1, R2, R3, PC}
+
+/*
+ * Sets up the page directory entries
+ */
+.align 2
+_setup_page_dir:
+	STMFD SP!, {R0, R1, R2, R3, R4, LR}
+
+	MOV R0, pgt_start_addr
+	
+	/* Number of entries in the page dir is 4096 */
+	MOV R1, #4096
+	MOV R2, pgt_num
+
+	/* The last pgt_num megabytes are mapped to the kernel */
+	/* One entry is 4 bytes long */
+	/* R1 holds the address in the page directory where the page table */
+	/* entries will begin */
+	SUB R1, R1, R2
+	LSL R1, R1, #4
+	ADD R1, R1, pgd_addr
+
+	/* Set domain field to #1 and 1st bit is #1 to indicate page table entry */
+	MOV R3, #0x21
+
+_setup_page_dir_loop:
+	/* Decrement the counter */
+	/* Exit loop if counter is < 0 */
+	SUBS R2, R2, #1
+	BMI _setup_page_dir_exit
+
+	/* Construct page directory entry */
+	ORR R4, R0, R3
+
+	/* Insert entry into page directory and increment R1 by 4 */
+	STR R4, [R1], #4
+
+	/* Get address of next page table */
+	ADD R0, #1024
+	
+	B _setup_page_dir_loop
+
+_setup_page_dir_exit:
+	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
 
 /* 
  * Create a page directory (1st level page table)
