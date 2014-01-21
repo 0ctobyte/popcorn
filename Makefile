@@ -3,8 +3,8 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
-C_SRCS := $(wildcard kernel/**/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
-S_SRCS := $(wildcard kernel/**/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
+C_SRCS := $(wildcard arch/**/*.c) $(wildcard arch/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
+S_SRCS := $(wildcard arch/**/*.s) $(wildcard arch/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
 
 OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))

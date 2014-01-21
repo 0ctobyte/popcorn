@@ -1,29 +1,20 @@
-#include <kernel/interrupts.h>
 #include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
 
-volatile uint32_t * const UART0_DR = (uint32_t*) 0x101f1000;
-
-void print_uart0(const char *s) {
-	while(*s != '\0') {
-		*UART0_DR = (uint32_t)(*s);
-		s++;
-	}
-}
-
-void keyboard_isr(void) {
-	volatile uint32_t *KMIBASE = (uint32_t*) 0x10006000;
-	char s[2];
-	s[0] = (char)*(KMIBASE+2);
-	s[1] = '\n';
-	print_uart0(s);
-}
+#include <sys/interrupts.h>
 
 extern void __kernel_virtual_start();
 extern void __kernel_physical_start();
 extern void __kernel_virtual_end();
 extern void __kernel_physical_end();
+
+void keyboard_isr(void) {
+	volatile uint32_t *KMIBASE = (uint32_t*) 0x10006000;
+	char c;
+	c = (char)*(KMIBASE+2);
+	kputc(c);
+}
 
 void kmain(void) {
 	vectors_install(); // Copy the vector table to address 0x0
@@ -35,9 +26,9 @@ void kmain(void) {
 
 	bool i = interrupts_enabled();
 	if(i)
-		print_uart0("true\n");
+		kputs("true\n");
 	else
-		print_uart0("false\n");
+		kputs("false\n");
 
 	volatile uint32_t *KMIBASE = (uint32_t*) 0x10006000;
 	*KMIBASE |= ((1 << 4) | (1 << 2)); // Enable RX interrupt

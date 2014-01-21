@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+int32_t kputc(const char c);
 int32_t kputs(const char *s);
 int32_t kprintf(const char *fmt, ...);
 

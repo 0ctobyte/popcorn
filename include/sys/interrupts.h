@@ -64,7 +64,7 @@ typedef enum {
 
 typedef void (*isr_t)(void);
 
-// Installs the ARM interrupt handler branch instructions at address 0x0
+// Sets up the interrupt vector table
 void vectors_install();
 
 // Enables interrupts on the processor

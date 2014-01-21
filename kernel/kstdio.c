@@ -4,21 +4,17 @@
 #include <stdarg.h>
 #include <string.h>
 
+extern int32_t putchar(char c);
 
-int32_t uart0_putchar(const uint32_t c) {
-	volatile uint32_t * const UART0DR = (uint32_t*)0x101F1000;
-	*UART0DR = c;
-	return(0);
-}
-
-int32_t putchar(uint32_t c) {
-	return(uart0_putchar(c));
+int32_t kputc(const char c) {
+	putchar(c);
+	return(c);
 }
 
 int32_t kputs(const char *s) {
 	size_t len = strlen(s);
 	for(int i = 0; i < len; i++) {
-		putchar(s[i]);
+		kputc(s[i]);
 	}
 	return(0);
 }
