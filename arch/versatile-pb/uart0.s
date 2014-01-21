@@ -1,7 +1,8 @@
 .text
 .code 32
 
-UART0BASEADDRESS: .word 0x101F1000
+/* 0x101F1000 */
+UART0BASEADDRESS: .word 0xFFFF1000
 UART0DATA: .word 0x0
 
 /*

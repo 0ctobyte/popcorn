@@ -2,8 +2,9 @@
 .code 32
 
 /* Important VIC registers */
+/* 0x10140000 */
 .align 2
-VICBASEADDRESS: .word 0x10140000
+VICBASEADDRESS: .word 0xFFFF0000
 VICIRQSTATUS: .word 0x0 
 VICFIQSTATUS: .word 0x4
 VICRAWINTR: .word 0x8

@@ -2,8 +2,9 @@
 .code 32
 
 /* Important SIC registers */
+/* 0x10003000 */
 .align 2
-SICBASEADDRESS: .word 0x10003000
+SICBASEADDRESS: .word 0xFFFF3000
 SICSTATUS: .word 0x0
 SICRAWSTAT: .word 0x4
 SICENABLE: .word 0x8
@@ -18,66 +19,70 @@ SICPECENCLR: .word 0x24
 .type sic_init, %function
 .align 2
 sic_init:
-	STMFD SP!, {R0, R1, LR}
+	STMFD SP!, {R0, R1, R2, LR}
 
 	/* Clear registers */
+	LDR R2, SICBASEADDRESS
 	LDR R1, SICENABLE
 	MOV R0, #0
-	STR R0, [R1]
+	STR R0, [R2, R1]
 	LDR R1,  SICSOFTINTSET
 	MOV R0, #0
-	STR R0, [R1]
+	STR R0, [R2, R1]
 	LDR R1, SICPICENABLE
 	MOV R0, #0
-	STR R0, [R1]
+	STR R0, [R2, R1]
 
-	LDMFD SP!, {R0, R1, PC}
+	LDMFD SP!, {R0, R1, R2, PC}
 
 /* Enables an IRQ source on the SIC */
 .global sic_enable
 .type sic_enable, %function	
 .align 2
 sic_enable:
-	STMFD SP!, {R0, R1, R2, LR}
+	STMFD SP!, {R0, R1, R2, R3, LR}
 
 	/* Set the bit in the SICENABLE register */
+	LDR R3, SICBASEADDRESS
 	LDR R1, SICENABLE
 	MOV R0, R0
-	LDR R2, [R1]
-	LDR R2, [R1]
+	LDR R2, [R3, R1]
+	LDR R2, [R3, R1]
 	ORR R0, R2, R0
-	STR R0, [R1]
+	STR R0, [R3, R1]
 
-	LDMFD SP!, {R0, R1, R2, PC}
+	LDMFD SP!, {R0, R1, R2, R3, PC}
 
 /* Disables an IRQ source on the SIC */
 .global sic_disable
 .type sic_disable, %function
 .align 2
 sic_disable:
-	STMFD SP!, {R0, R1, LR}
+	STMFD SP!, {R0, R1, R2, LR}
 
 	/* Write the bit to the SICENCLR register which will then clear the bit */
 	/* in the SICENABLE register */
+	LDR R2, SICBASEADDRESS
 	LDR R1, SICENCLR
 	MOV R0, R0
-	STR R0, [R1]
+	STR R0, [R2, R1]
 
-	LDMFD SP!, {R0, R1, PC}
+	LDMFD SP!, {R0, R1, R2, PC}
 
 /* Gets the SICSTATUS register */
 .global sic_status
 .type sic_status, %function
 .align 2
 sic_status:
-	STMFD SP!, {R1, LR}
+	STMFD SP!, {R1, R2, LR}
 
 	/* Get the contents of the SICSTATUS register */
+	LDR R2, SICBASEADDRESS
 	LDR R1, SICSTATUS
 	MOV R0, #0
-	LDR R0, [R1]
+	LDR R0, [R2, R1]
 
-	LDMFD SP!, {R1, PC}
+	LDMFD SP!, {R1, R2, PC}
 
 /* This function is the ISR for the SIC */
 .global sic_isr

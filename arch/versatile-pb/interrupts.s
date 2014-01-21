@@ -14,7 +14,7 @@ fiq_handler_addr: .word fiq_handler
 /* 
  * This symbol will point to the ISR table with a total of 64 entries
  */
-.comm isr_table, 64, 4
+.comm isr_table, 64*4, 4
 
 /* The vector base register requires that the base address is 32 bit aligned */
 .align 5
