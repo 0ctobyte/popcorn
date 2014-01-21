@@ -54,21 +54,17 @@ _loader:
 
 	BL _do_mapping
 
-	BL _prep_for_paging
+	BL _enable_mmu
 
-	/* Now we enable the MMU */
 	LDR R5, =_start
-	MRC P15, 0, R4, C1, C0, 0
-	ORR R4, R4, #1
-	MCR P15, 0, R4, C1, C0, 0
-
+	
 	BX R5
 
 /*
  * This routine sets up registers which will be used when paging is enabled
  */
 .align 2
-_prep_for_paging:
+_enable_mmu:
 	STMFD SP!, {R0, R1, LR}
 
 	/* Setup the domain access control register */
@@ -117,11 +113,10 @@ A0:
 	MOVT R0, #0x44E0
 	MCR P15, 0, R0, C10, C2, 1
 
-	/* Setup the vector base address register */
-	LDR R0, =_vectors_start
-	MRC P15, 0, R1, C12, C0, 0
-	ORR R1, R1, R0
-	MCR P15, 0, R1, C12, C0, 0
+	/* Now we enable the MMU */
+	MRC P15, 0, R0, C1, C0, 0
+	ORR R0, R0, #1
+	MCR P15, 0, R0, C1, C0, 0
 
 	LDMFD SP!, {R0, R1, PC}
 
@@ -166,13 +161,6 @@ _do_mapping:
 	MOV R2, #0
 
 	BL _map_section
-
-	MOVW R0, #0x45E
-	MOV R1, #0x4000
-	MOV R2, #0x4000
-	MOV R3, #0x5000
-
-	BL _map_page_range
 
 	LDMFD SP!, {R0, R1, R2, PC}
 
@@ -282,7 +270,7 @@ _setup_page_dir:
 	/* R1 holds the address in the page directory where the page table */
 	/* entries will begin */
 	SUB R1, R1, R2
-	LSL R1, R1, #4
+	LSL R1, R1, #2
 	ADD R1, R1, pgd_addr
 
 	/* Set domain field to #1 and 1st bit is #1 to indicate page table entry */

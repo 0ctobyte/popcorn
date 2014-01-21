@@ -67,26 +67,7 @@ SICSOFTINTCLR: .word 0x10003014
 SICPICENABLE: .word 0x10003020
 SICPECENCLR: .word 0x10003024
 
-/* 
- * This symbol will point to the ISR table with a total of 64 entries
- */
-.comm isr_table, 64, 4
-
-/* The vector base register requires that the base address is 32 bit aligned */
-.align 5
-.global _vectors_start
-_vectors_start:
-
-	LDR PC, reset_handler_addr
-	LDR PC, undef_handler_addr
-	LDR PC, swi_handler_addr
-	LDR PC, prefetch_abort_handler_addr
-	LDR PC, data_abort_handler_addr
-	B . /* Reserved */
-	LDR PC, irq_handler_addr
-	LDR PC, fiq_handler_addr
-
-
+/* Addresses for the exception handlers */
 .align 2
 reset_handler_addr: .word _start
 undef_handler_addr: .word undef_handler
@@ -96,24 +77,34 @@ data_abort_handler_addr: .word data_abort_handler
 irq_handler_addr: .word irq_handler
 fiq_handler_addr: .word fiq_handler
 
-_vectors_end:
+/* 
+ * This symbol will point to the ISR table with a total of 64 entries
+ */
+.comm isr_table, 64, 4
+
+/* The vector base register requires that the base address is 32 bit aligned */
+.align 5
+_vectors_start:
+	LDR PC, reset_handler_addr
+	LDR PC, undef_handler_addr
+	LDR PC, swi_handler_addr
+	LDR PC, prefetch_abort_handler_addr
+	LDR PC, data_abort_handler_addr
+	B . /* Reserved */
+	LDR PC, irq_handler_addr
+	LDR PC, fiq_handler_addr
 
 .align 2
 vectors_install:
-	STMFD SP!, {R0, R1, R2, R3, LR}
+	STMFD SP!, {R0, R1, LR}
 	
-	LDR R0, =_vectors_start /* Vector table source */
-	LDR R1, =_vectors_end /* End of vector table source */
-	MOV R2, #0x0 /* Vector table destination. ARM expects table to start at address 0x0 in memory */
+	/* Setup the vector base address register */
+	LDR R0, =_vectors_start
+	MRC P15, 0, R1, C12, C0, 0
+	ORR R1, R1, R0
+	MCR P15, 0, R1, C12, C0, 0
 
-F0:
-	LDR R3, [R0], #4 /* Get word from source vector table */
-	MOV R2, R2
-	STR R3, [R2], #4 /* Store word into destination vector table */
-	CMP R0, R1
-	BNE F0
-
-	LDMFD SP!, {R0, R1, R2, R3, PC}
+	LDMFD SP!, {R0, R1, PC}
 
 .align 2
 vic_init:
