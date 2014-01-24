@@ -30,9 +30,6 @@
 // the pagemaps array
 #define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) << (5))
 
-// Number of pagemap_t stacks in the pagestack_t struct
-#define NUMSTACKS (6)
-
 typedef struct pagemap_t {
 	uint32_t bitmap; // Each bit represents one page
 	struct pagemap_t *next;  // Pointer to next pagemap in the stack
@@ -40,33 +37,16 @@ typedef struct pagemap_t {
 
 typedef struct {
 	pagemap_t *pagemaps; // Array of pagemap_t
-	// Top of stacks
-	// top[0] - pagemaps with a single free contiguous frame
-	// top[1] - pagemaps with 2 free contiguous frames
-	// top[2] - pagemaps with 4 free contiguous frames
-	// top[3] - pagemaps with 8 free contiguous frames
-	// top[4] - pagemaps with 16 free contiguous frames
-	// top[5] - pagemaps with 32 free contiguous frames
-	pagemap_t *top[6];
+	pagemap_t *top;	     // Top of stack
 	size_t size;         // # of pagemap_t in the pagemap_t array
 } pagestack_t;
 
-pagestack_t pagestack = {0, {0, 0, 0, 0, 0, 0}, 0};
-
-// Gets the top of the first stack that is not empty starting from
-// top[0]
-pagemap_t** _pmm_get_stack_top(pagestack_t *pstack) {
-	kassert(!interrupts_enabled());
-	uint32_t i;
-	for(i = 0; pstack->top[i] == NULL && i < NUMSTACKS; i++);
-	if(i < NUMSTACKS) return(&pstack->top[i]);
-	else return(NULL);
-}
+pagestack_t pagestack = {0, 0, 0};
 
 // Returns the frame number, relative to the given bitmap, of the first free
 // frame in the bitmap
 uint32_t _pmm_first_free_frame(pagemap_t *pagemap) {
-	kassert(!interrupts_enabled());
+	kassert(pagemap != NULL && pagemap->bitmap != UINT32_MAX && !interrupts_enabled());
 	uint32_t bitmap = pagemap->bitmap;
 	uint32_t frame = 0;
 	for(frame = 0; frame < BITS; ++frame, bitmap >>= 1) {
@@ -76,38 +56,39 @@ uint32_t _pmm_first_free_frame(pagemap_t *pagemap) {
 }
 
 // Pushes the given pagemap on the stack
-void _pmm_push(pagemap_t **top, pagemap_t *pagemap) {
-	kassert(!interrupts_enabled());
-	pagemap->next = (*top);
-	*top = pagemap;
+void _pmm_push(pagestack_t *pstack, pagemap_t *pagemap) {
+	kassert(pstack != NULL && pagemap != NULL && !interrupts_enabled());
+	pagemap->next = pstack->top;
+	pstack->top = pagemap;
 }
 
 // Pops the pagemap off the stack
-pagemap_t* _pmm_pop(pagemap_t **top) {
-	kassert(!interrupts_enabled());
-	pagemap_t *next = (*top)->next;
-	pagemap_t *this = (*top);
-	(*top)->next = NULL;
-	*top = next;
-	return(this);
+pagemap_t* _pmm_pop(pagestack_t *pstack) {
+	kassert(pstack != NULL && !interrupts_enabled());
+	if(pstack->top == NULL) return(NULL);
+	pagemap_t *next = pstack->top->next;
+	pagemap_t *popped = pstack->top;
+	pstack->top->next = NULL;
+	pstack->top = next;
+	return(popped);
 }
 
 address_t pmm_alloc() {
 	INTERRUPT_LOCK();
 	// Default value of addr, this indicates that no free frame was found
 	address_t addr = UINTPTR_MAX;
-	pagemap_t **top = _pmm_get_stack_top(&pagestack);
+	pagemap_t *top = _pmm_pop(&pagestack);
 	if(top == NULL) return(addr);
 
 	// Find first free frame in pagemap and set the bit in the bitmap
 	// Calculate address using location of pagemap in the pagestacks.pagemaps
 	// array and the bit number in the pagemap's bitmap
-	uint32_t frame = _pmm_first_free_frame(*top);
-	SET_FRAME((*top)->bitmap, frame);
-	addr = (((*top) - pagestack.pagemaps) * BITS  + frame) * PAGESIZE;
+	uint32_t frame = _pmm_first_free_frame(top);
+	SET_FRAME(top->bitmap, frame);
+	addr = ((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE;
 
-	// If pagemap is fully allocated, pop it off the stack
-	if((*top)->bitmap == UINT32_MAX) _pmm_pop(top);
+	// If pagemap is not fully allocated, push it back on the stack
+	if(top->bitmap != UINT32_MAX) _pmm_push(&pagestack, top);
 	INTERRUPT_UNLOCK();
 	return(addr);
 }
@@ -128,7 +109,7 @@ void pmm_free(address_t addr) {
 
 	// Unset the bit and if need be, push the pagemap back onto the stack
 	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
-	if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack.top[0], pagemap);
+	if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack, pagemap);
 	CLEAR_FRAME(pagemap->bitmap, rel_frame_num);
 	INTERRUPT_UNLOCK();
 }
