@@ -29,9 +29,7 @@ address_t pmm_alloc();
 address_t pmm_alloc_contiguous(size_t num_frames, uint32_t alignment);
 
 /*
- * Frees the allocated page frame. Does nothing if the the page frame is
- * already free or the specified address is not valid (i.e. not page-aligned or
- * out of range)
+ * Frees the allocated page frame.
  */
 void pmm_free(address_t);
 
