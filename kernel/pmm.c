@@ -77,7 +77,7 @@ address_t pmm_alloc() {
 	INTERRUPT_LOCK();
 	// Default value of addr, this indicates that no free frame was found
 	address_t addr = UINTPTR_MAX;
-	pagemap_t *top = _pmm_pop(&pagestack);
+	pagemap_t *top = pagestack.top;
 	if(top == NULL) return(addr);
 
 	// Find first free frame in pagemap and set the bit in the bitmap
@@ -87,8 +87,8 @@ address_t pmm_alloc() {
 	SET_FRAME(top->bitmap, frame);
 	addr = ((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE;
 
-	// If pagemap is not fully allocated, push it back on the stack
-	if(top->bitmap != UINT32_MAX) _pmm_push(&pagestack, top);
+	// If pagemap is fully allocated, pop it off the stack
+	if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
 	INTERRUPT_UNLOCK();
 	return(addr);
 }
@@ -99,12 +99,10 @@ void pmm_free(address_t addr) {
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
 	// Calculate the absolute frame number
+	// Get the index into the pagemaps array
+	// Get the frame number relative to the bitmap in the pagemap
 	uint32_t frame_num = GET_FRAME_NUM(addr);
-
-	// This gets the index into the pagemaps array
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
-
-	// This gets the frame number relative to the bitmap in the pagemap
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
 	// Unset the bit and if need be, push the pagemap back onto the stack
@@ -127,4 +125,3 @@ address_t pmm_alloc_contiguous(size_t num_frames, uint32_t alignment) {
 	INTERRUPT_UNLOCK();
 	return(num_frames*alignment*addr);
 }
-
