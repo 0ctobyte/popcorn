@@ -16,22 +16,16 @@ void pmm_init();
 address_t pmm_alloc();
 
 /*
- * Finds a contiguous range of free page frames and returns the physical
- * address to first page frame in the range
- * num_frames [in] - # of page frames to allocate
- * alignment [in] - # of low order bits that should be zero in the physical
- * address of the first page frame in the range. In other words, the first 
- * page frame in the contiguous range will be aligned to 2^(alignment) bytes.
- * If it still doesn't make sense; the physical address of the first page frame
- * in the contiguous range will be a multiple of 2^(alignment).
- * Returns UINTPTR_MAX if no such contiguous range can be found
- */
-address_t pmm_alloc_contiguous(size_t num_frames, uint32_t alignment);
-
-/*
  * Frees the allocated page frame.
  */
 void pmm_free(address_t);
+
+/*
+ * Finds a contiguous range of free page frames and returns the physical
+ * address to first page frame in the range
+ * frames [in] - # of page frames to allocate, cannot be greater than 32
+ */
+address_t pmm_alloc_contiguous(size_t frames);
 
 #endif // __PMM_H__
 
