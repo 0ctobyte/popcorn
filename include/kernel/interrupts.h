@@ -3,9 +3,8 @@
 
 #include <sys/types.h>
 
-#define INTERRUPT_LOCK() bool reenable_interrupts = interrupts_enabled(); \
-												  disable_interrupts();
-#define INTERRUPT_UNLOCK() if(reenable_interrupts) enable_interrupts();
+#define INTERRUPT_LOCK bool __en = interrupts_enabled(); disable_interrupts();
+#define INTERRUPT_UNLOCK if(__en) enable_interrupts();
 
 typedef enum {
 	IRQ_WATCHDOG	= 0,

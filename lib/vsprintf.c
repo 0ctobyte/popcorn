@@ -25,9 +25,6 @@
 #define is_number(c) ((c) >= '0' && (c) <= '9')
 #define get_number(c) (uint8_t)((c) - '0')
 
-// Unsigned integer division funciton
-extern uint32_t uidivmod(uint32_t, uint32_t, uint32_t*, uint32_t*);
-
 // Holds the formatted number
 char fmt_num[256];
 
@@ -64,25 +61,24 @@ int32_t atoi(const char *s) {
 }
 
 // Converts an int into a string
-char* itoa2(uint32_t num, char *str, uint8_t base, bool upcase) {
+const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
 	char *buf = str;
-	const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
-	const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	char tmp[36];
 
-	uint32_t divider = 0;
-	uint32_t Q = 0, R = 0;
-	for(divider = 1, Q = 100; Q >= base; divider *= base) {
-		uidivmod(num, divider, &Q, &R);
+	if(base > 36) return(0);
+	if(num == 0) *buf++ = '0';
+
+	uint32_t i = 0;
+	while(num != 0) {
+		uint32_t R = num % base;
+		num /= base;
+		tmp[i++] = (upcase) ? upper[R] : lower[R];
 	}
 
-	while(divider > 1) {
-		uidivmod(divider, base, &Q, &R);
-		divider = Q;
-		uidivmod(num, divider, &Q, &R);
-		*buf++ = (upcase) ? upper[Q] : lower[Q];
-		num -= (Q * divider);
-	}
-
+	while(i-- > 0) *buf++ = tmp[i];	
+	
 	*buf = '\0';
 
 	return(str);

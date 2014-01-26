@@ -2,12 +2,10 @@
 #include <kernel/kassert.h>
 #include <kernel/interrupts.h>
 
-#include <limits.h>
-
 #define PAGESIZE (0x1000) // TODO: TEMPORARY
 #define MEMSIZE (0x8000000) // TODO: TEMPORARY
 
-// TODO: We need to make this not depended on a 4 kb page size
+// TODO: Need to make this not dependent on a 4 kb page size
 #define IS_PAGE_ALIGNED(B) (((B) & 0xFFF) == 0)
 #define IS_WITHIN_BOUNDS(B) (((B) < MEMSIZE))
 
@@ -17,7 +15,7 @@
 
 // Shift by the # of low order bits that must be zero in order to be 
 // page aligned. This gives the absolute frame number.
-// Multiple pagemap array index by BITS and subtract value from absolute
+// Multiply pagemap array index by BITS and subtract value from absolute
 // frame number to get relative frame number within a bitmap.
 #define GET_FRAME_NUM(addr) ((addr) << (12))
 #define GET_REL_FRAME_NUM(abs_frame_num, elem_num) \
@@ -74,7 +72,7 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
 }
 
 address_t pmm_alloc() {
-	INTERRUPT_LOCK();
+	INTERRUPT_LOCK;
 	// Default value of addr, this indicates that no free frame was found
 	address_t addr = UINTPTR_MAX;
 	pagemap_t *top = pagestack.top;
@@ -89,12 +87,12 @@ address_t pmm_alloc() {
 
 	// If pagemap is fully allocated, pop it off the stack
 	if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
-	INTERRUPT_UNLOCK();
+	INTERRUPT_UNLOCK;
 	return(addr);
 }
 
 void pmm_free(address_t addr) {
-	INTERRUPT_LOCK();
+	INTERRUPT_LOCK;
 	// Check to make sure addr is page_aligned and within bounds
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
@@ -109,19 +107,17 @@ void pmm_free(address_t addr) {
 	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
 	if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack, pagemap);
 	CLEAR_FRAME(pagemap->bitmap, rel_frame_num);
-	INTERRUPT_UNLOCK();
+	INTERRUPT_UNLOCK;
 }
 
-address_t pmm_alloc_contiguous(size_t num_frames, uint32_t alignment) {
-	INTERRUPT_LOCK();
+address_t pmm_alloc_contiguous(size_t frames) {
+	INTERRUPT_LOCK;
 	// Unfortunately we can't allocate more than 32 frames contiguously :(
-	// Nor can the alignment value be greater than the number of bits in a
-	// address_t
-	kassert(num_frames < BITS && alignment < (sizeof(address_t)*CHAR_BIT));
+	kassert(frames < BITS);
 
 	address_t addr = UINTPTR_MAX;
-	
 
-	INTERRUPT_UNLOCK();
-	return(num_frames*alignment*addr);
+
+	INTERRUPT_UNLOCK;
+	return(frames*addr);
 }
