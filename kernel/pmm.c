@@ -2,6 +2,8 @@
 #include <kernel/kassert.h>
 #include <kernel/interrupts.h>
 
+#include <lib/bithacks.h>
+
 #define PAGESIZE (0x1000) // TODO: TEMPORARY
 #define MEMSIZE (0x8000000) // TODO: TEMPORARY
 
@@ -117,7 +119,30 @@ address_t pmm_alloc_contiguous(size_t frames) {
 
 	address_t addr = UINTPTR_MAX;
 
+	pagemap_t *curr, *prev;
+	int32_t frame = 0;
+
+	// Loop through the stack until we find a bitmap that has enough 
+	// contiguous frames
+	for(curr = pagestack.top; curr != NULL; prev = curr, curr = curr->next) {
+		// Find the index of the first frame in the contiguous set
+		frame = bit_find_contiguous_zeros(curr->bitmap, frames);
+		// If such a contiguous region of frames exists in the bitmap...
+		if(frame >= 0) {
+			// Then set the bits in the bitmap
+			curr->bitmap = bit_field_set(curr->bitmap, frame, frames);
+			// Calculate the page's physical address
+			addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
+			// Now, if the bitmap is fully allocated...
+			if(curr->bitmap == UINTPTR_MAX) {
+				// Remove the pagemap from the stack
+				prev->next = curr->next;
+				curr->next = NULL;
+			}
+			break;
+		}
+	}
 
 	INTERRUPT_UNLOCK;
-	return(frames*addr);
+	return(addr);
 }
