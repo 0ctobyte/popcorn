@@ -30,6 +30,91 @@
 // the pagemaps array
 #define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) << (5))
 
+/*
+ * So how does this physical memory allocator work?
+ * The basic idea is that main memory is split into fixed sized partitions 
+ * called 'page frames' (or just 'frames'...or 'pages'). This allocator then
+ * simply hands out such frames and frees them when asked to do so. Also, the
+ * allocator should be able to allocate a contiguous range of free frames.
+ * 
+ * One of the popular ways to do this is to use a bitmap, an array of bits, 
+ * where each bit represents a frame in memory. In terms of speed, this method
+ * is not very efficient since operations such as allocating a frame, freeing 
+ * a frame and allocating a contiguous range of frames would all take O(n) time
+ * (n is the number of frames in memory). 
+ *
+ * Another popular method is to use a stack of free frames. The stack will hold
+ * the physical addresses to each free frame. Thus, when allocating a frame,
+ * the first frame on the stack is simply popped off. Similarly, when freeing a
+ * frame, the address of that frame is pushed on to the stack. With a stack,
+ * allocating and freeing a frame takes constant time. This is great! However,
+ * there are some problems.
+ *
+ * Specifically, memory use and allocating a contiguous range of free frames.
+ * Assuming we are on a 32-bit system with the maximum 4 Gb of RAM and a
+ * page size of 4 kb, a bitmap would take about 128 kb of memory. A stack on the
+ * other hand, where a memory address takes about 4 bytes, would take 4 Mb of 
+ * memory. Not only that but trying to allocate a continuous range of free
+ * frames using the stack method is non-trivial. 
+ *
+ * So what now? Well, why not combine the best of stacks and bitmaps!!one!1!?
+ * So here's the idea on how this physical memory allocator works. We will have
+ * a struct which I call a 'pagemap'. This pagemap will have a bitmap with 32
+ * bits and a pointer to the next (in the stack) pagemap. This pagemap will be
+ * 8 bytes in size. There will be an array of these pagemaps, the size of the
+ * array depending on the size of the memory and the page size. For example, on
+ * a 4 Gb system with a page size of 4 kb, there will be 32768 of these 
+ * pagemaps which means 256 kb will be used for this array. Now, each bit in
+ * the bitmaps of each pagemap represents one page. Okay, so initially each of
+ * these pagemaps will be linked via the next pointer (the last pagemap in the
+ * array of course will have a NULL next pointer). This linked array is our
+ * stack, the top of the stack is the first element in the array INITIALLY. 
+ * This will change as frames are allocated and freed. Now, when we want to
+ * allocate a frame we simple look at the first pagemap in the stack, find
+ * a free bit in the 32-bit bitmap and calculate the address using the position
+ * of the pagemap in the array (element number) and the position of the free
+ * bit in the bitmap. For example, the 133rd frame would be represented by the
+ * 5th bit (133-32*floor(133/32))in the 4th pagemap (floor(133/32)) in the
+ * array. If the bitmap has been fully set after allocating the page then we
+ * simply pop it off the stack. When freeing a frame, we use the frame address
+ * to calculate the position of the pagemap in the array and position of the
+ * bit in the bitmap of that pagemap and then unset it. If that bitmap was
+ * previously fully allocated then we simply push it on the pagemap stack.
+ * 
+ * Thus, using this method, which I call the 'bitstack' method :), 
+ * allocating and freeing a single frame takes O(1) time. So what about 
+ * contiguous frame allocation and memory use? Well I mentioned above that
+ * this method takes 256 kb of memory max on a 32 bit system with a page size
+ * of 4 kb (standard). That's just double the memory use of a bitmap (128 kb)
+ * and compared to the stack method (4 Mb), 256 kb looks great! Now for 
+ * contiguous frame allocation. Contiguous frame allocation is still not
+ * very efficient using this method as it will take O(n) time where n is 
+ * the number of PAGEMAPS in the array. The pmm_alloc_contiguous function
+ * below uses a function, bit_find_contiguous_zeros, which employs a for loop.
+ * However, this for loop NEVER loops more than 32 times MAX. And it would
+ * rarely ever loop 32 times (in most cases it will loop less than half that
+ * number). Thus, O(n) is a valid estimate of pmm_alloc_contiguous (in case
+ * anyone was wondering).
+ *
+ * However, using the bitmap method, contiguous frame allocation takes O(m) time
+ * where m is the number of FRAMES. The number of pagemaps in the array will
+ * always be less than the number of frames in memory. Thus, the bitstack
+ * method is able to allocate contiguous frames faster than using the bitmap
+ * method. Contiguous frame allocation using the stack method, disregarding the
+ * complexity of code and logic required to implement such a function, would
+ * take O(m) time as well.
+ *
+ * Thus, with the bitstack method, we get similar performance for allocating
+ * and freeing a frame as we do with the stack method, memory efficiency
+ * comparable to the bitmap method and faster contiguous frame allocation
+ * than both the bitmap and stack method! However, the only downside of the
+ * bitstack method is that only 32 contiguous frames can be allocated at once
+ * (since the pagemaps are in a contiguous array, there could be ways to 
+ * circumvent this limit).
+ * For the purposes of this kernel, this limit on the contiguous frames
+ * shouldn't be much of a problem.
+ */
+
 typedef struct pagemap_t {
 	uint32_t bitmap; // Each bit represents one page
 	struct pagemap_t *next;  // Pointer to next pagemap in the stack
@@ -42,18 +127,6 @@ typedef struct {
 } pagestack_t;
 
 pagestack_t pagestack = {0, 0, 0};
-
-// Returns the frame number, relative to the given bitmap, of the first free
-// frame in the bitmap
-uint32_t _pmm_first_free_frame(pagemap_t *pagemap) {
-	kassert(pagemap != NULL && pagemap->bitmap != UINT32_MAX && !interrupts_enabled());
-	uint32_t bitmap = pagemap->bitmap;
-	uint32_t frame = 0;
-	for(frame = 0; frame < BITS; ++frame, bitmap >>= 1) {
-		if(0x1 & (~bitmap)) break;
-	}
-	return(frame);
-}
 
 // Pushes the given pagemap on the stack
 void _pmm_push(pagestack_t *pstack, pagemap_t *pagemap) {
@@ -83,7 +156,7 @@ address_t pmm_alloc() {
 	// Find first free frame in pagemap and set the bit in the bitmap
 	// Calculate address using location of pagemap in the pagestacks.pagemaps
 	// array and the bit number in the pagemap's bitmap
-	uint32_t frame = _pmm_first_free_frame(top);
+	uint32_t frame = bit_find_contiguous_zeros(top->bitmap, 1);
 	SET_FRAME(top->bitmap, frame);
 	addr = ((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE;
 
