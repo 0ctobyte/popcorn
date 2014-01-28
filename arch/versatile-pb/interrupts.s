@@ -1,46 +1,10 @@
 .text
 .code 32
 
-/* Addresses for the exception handlers */
-.align 2
-reset_handler_addr: .word _start
-undef_handler_addr: .word undef_handler
-swi_handler_addr: .word swi_handler
-prefetch_abort_handler_addr: .word prefetch_abort_handler
-data_abort_handler_addr: .word data_abort_handler
-irq_handler_addr: .word irq_handler
-fiq_handler_addr: .word fiq_handler
-
 /* 
  * This symbol will point to the ISR table with a total of 64 entries
  */
 .comm isr_table, 64*4, 4
-
-/* The vector base register requires that the base address is 32 bit aligned */
-.align 5
-_vectors_start:
-	LDR PC, reset_handler_addr
-	LDR PC, undef_handler_addr
-	LDR PC, swi_handler_addr
-	LDR PC, prefetch_abort_handler_addr
-	LDR PC, data_abort_handler_addr
-	B . /* Reserved */
-	LDR PC, irq_handler_addr
-	LDR PC, fiq_handler_addr
-
-.global vectors_install
-.type vectors_install, %function
-.align 2
-vectors_install:
-	STMFD SP!, {R0, R1, LR}
-	
-	/* Setup the vector base address register */
-	LDR R0, =_vectors_start
-	MRC P15, 0, R1, C12, C0, 0
-	ORR R1, R1, R0
-	MCR P15, 0, R1, C12, C0, 0
-
-	LDMFD SP!, {R0, R1, PC}
 
 /*
  * Enable interrupts on the processor
@@ -186,6 +150,7 @@ C0:
  * This function is called whenever an IRQ arrives from the VIC
  */
 .global irq_handler
+.type irq_handler, %function
 .align 2
 irq_handler:
 	STMFD SP!, {R0-R5, LR}
@@ -214,46 +179,5 @@ E1:
 	B E0
 E2:
 	LDMFD SP!, {R0-R5, LR}
-	SUBS PC, LR, #4	
-
-.global swi_handler
-.align 2
-swi_handler:
-	STMFD SP!, {R0-R11}
-	LDMFD SP!, {R0-R11}
-	B .
-	SUBS PC, LR, #4	
-
-.global undef_handler
-.align 2
-undef_handler:
-	STMFD SP!, {R0-R11}
-	LDMFD SP!, {R0-R11}
-	B .
-	SUBS PC, LR, #4	
-
-.global prefetch_abort_handler
-.align 2
-prefetch_abort_handler:
-	STMFD SP!, {R0-R11}
-	LDMFD SP!, {R0-R11}
-	B .
-	SUBS PC, LR, #4	
-
-.global data_abort_handler
-.align 2
-data_abort_handler:
-	STMFD SP!, {R0-R11}
-	LDMFD SP!, {R0-R11}
-	B .
-	SUBS PC, LR, #4	
-
-
-.global fiq_handler
-.align 2
-fiq_handler:
-	STMFD SP!, {R0-R11}
-	LDMFD SP!, {R0-R11}
-	B .
 	SUBS PC, LR, #4	
 

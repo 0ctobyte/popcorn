@@ -63,9 +63,6 @@ typedef enum {
 
 typedef void (*isr_t)(void);
 
-// Sets up the interrupt vector table
-void vectors_install();
-
 // Enables interrupts on the processor
 void enable_interrupts();
 
@@ -83,6 +80,10 @@ void enable_irq(irq_type_t);
 
 // This function disables IRQ for the specified source on the VIC and SIC
 void disable_irq(irq_type_t);
+
+// This function should be called whenever an IRQ exception occurs
+// It will return the irq type that caused the exception
+irq_type_t irq_get();
 
 // Register and ISR for the specified IRQ source
 void register_isr(irq_type_t, isr_t);
