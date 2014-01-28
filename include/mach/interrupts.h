@@ -3,10 +3,11 @@
 
 #include <sys/types.h>
 
-#define INTERRUPT_LOCK bool __en = interrupts_enabled(); disable_interrupts();
-#define INTERRUPT_UNLOCK if(__en) enable_interrupts();
+#define INTERRUPT_LOCK bool __en = interrupts_enabled(); interrupts_disable();
+#define INTERRUPT_UNLOCK if(__en) interrupts_enable();
 
 typedef enum {
+	IRQ_NONE		= -1,
 	IRQ_WATCHDOG	= 0,
 	IRQ_VICSOFTINT	= 1,
 	IRQ_COMMSRX		= 2,
@@ -64,10 +65,10 @@ typedef enum {
 typedef void (*isr_t)(void);
 
 // Enables interrupts on the processor
-void enable_interrupts();
+void interrupts_enable();
 
 // Disables interrupts on the processor
-void disable_interrupts();
+void interrupts_disable();
 
 // Checks if interrupts are enabled on the processor
 bool interrupts_enabled();
@@ -76,17 +77,20 @@ bool interrupts_enabled();
 void irq_init();
 
 // This function enables IRQ for the specified source on the VIC and SIC
-void enable_irq(irq_type_t);
+void irq_enable(irq_type_t);
 
 // This function disables IRQ for the specified source on the VIC and SIC
-void disable_irq(irq_type_t);
+void irq_disable(irq_type_t);
 
 // This function should be called whenever an IRQ exception occurs
 // It will return the irq type that caused the exception
 irq_type_t irq_get();
 
+// Returns the ISR function associated with the IRQ type
+isr_t irq_get_isr(irq_type_t);
+
 // Register and ISR for the specified IRQ source
-void register_isr(irq_type_t, isr_t);
+void isr_register_handler(irq_type_t, isr_t);
 
 #endif // __INTERRUPTS_H__
 

@@ -1,6 +1,7 @@
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
-#include <kernel/interrupts.h>
+
+#include <mach/interrupts.h>
 
 #include <lib/bithacks.h>
 

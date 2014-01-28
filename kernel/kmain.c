@@ -1,8 +1,9 @@
 #include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
-#include <kernel/interrupts.h>
 #include <kernel/evt.h>
+
+#include <mach/interrupts.h>
 
 extern void __kernel_virtual_start();
 extern void __kernel_physical_start();
