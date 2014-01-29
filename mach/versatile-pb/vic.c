@@ -1,15 +1,15 @@
 #include "vic.h"
 
 // Register offsets
-#define VICIRQSTATUS (0x0)
-#define VICFIQSTATUS (0x4)
-#define VICRAWINTR (0x8)
-#define VICINTSELECT (0xC)
-#define VICINTENABLE (0x10)
-#define VICINTENCLEAR (0x14)
-#define VICSOFTINT (0x18)
-#define VICSOFTINTCLEAR (0x1C)
-#define VICPROTECTION (0x20)
+#define VICIRQSTATUS (0)
+#define VICFIQSTATUS (1)
+#define VICRAWINTR (2)
+#define VICINTSELECT (3)
+#define VICINTENABLE (4)
+#define VICINTENCLEAR (5)
+#define VICSOFTINT (6)
+#define VICSOFTINTCLEAR (7)
+#define VICPROTECTION (8)
 
 volatile uint32_t *VICBASEADDRESS = (uint32_t*)0xFFFF0000;
 

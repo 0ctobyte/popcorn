@@ -90,7 +90,7 @@ irq_type_t irq_get();
 isr_t irq_get_isr(irq_type_t);
 
 // Register and ISR for the specified IRQ source
-void isr_register_handler(irq_type_t, isr_t);
+void irq_register_isr(irq_type_t, isr_t);
 
 #endif // __INTERRUPTS_H__
 

@@ -44,8 +44,8 @@ irq_type_t irq_get() {
 		if(status & (1 << count)) break;
 	}
 
-	if(count > 31) return(count);
-	if(count < 31) return(IRQ_NONE);
+	if(count < 31) return(count);
+	if(count > 31) return(IRQ_NONE);
 
 	status = sic_status();
 	++count;
@@ -62,7 +62,7 @@ isr_t irq_get_isr(irq_type_t type) {
 	return(isr_table[type]);
 }
 
-void isr_register_handler(irq_type_t type, isr_t func) {
+void irq_register_isr(irq_type_t type, isr_t func) {
 	isr_table[type] = func;
 }
 
