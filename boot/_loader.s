@@ -1,7 +1,8 @@
 # This code is the first to run on boot. It sets up the page directory and
 # page tables, maps the kernel (starting at physical address 0x10000) to
-# 0xF0010000, maps the page directory and page tables to 0xF1000000, and maps
-# the memory-mapped I/O somewhere in the kernel's address space (I haven't
+# 0xF0010000, maps the page directory and page tables to the first 16 kb 
+# aligned address after the kernel.
+# Maps the memory-mapped I/O somewhere in the kernel's address space (I haven't
 # decided where yet), and identity maps the first 1 Mb. 
 # The code then sets up control registers appropriately
 # and enables paging. Then a branch is made kernel/boot/boot.s:_start
@@ -34,15 +35,16 @@ _loader:
 	# 4 kb page size
 	MOV PAGE_SIZE, #0x1000
 
-	# __kernel_physical_end is 16 kb aligned, so this is perfect place to
+	# __pgd_physical_start is 16 kb aligned, so this is perfect place to
 	# put the page directory. Page size is 4 kb
-	MOV pgt_num, #256
-	LDR placement_addr, =__kernel_physical_end
+	LDR pgt_num, =__pgt_num
+	LDR placement_addr, =__pgd_physical_start
 
 	# This works because ARM uses PC relative addressing
 	# Create page dir at end of kernel
 	BL _create_page_dir
 
+	# Page tables will be created right after the page directory
 	MOV R0, pgt_num
 	BL _create_page_tables
 
@@ -132,15 +134,15 @@ _do_mapping:
 
 	# Now map the rest of the kernel with the execute never bit set
 	MOVW R0, #0x45F
-	LDR R1, =__text_virtual_end
-	LDR R2, =__text_physical_end
-	LDR R3, =__kernel_virtual_end
+	LDR R1, =__data_virtual_start
+	LDR R2, =__data_physical_start
+	LDR R3, =__data_virtual_end
 
 	BL _map_page_range
 
-	# Now map the page directory and page tables to 0xF1000000
-	MOV R1, #0xF1000000
-	LDR R2, =__kernel_physical_end
+	# Now map the page directory and page tables
+	LDR R1, =__pgd_virtual_start
+	LDR R2, =__pgd_physical_start
 	SUB R3, placement_addr, R2
 	ADD R3, R3, R1
 
@@ -257,7 +259,7 @@ _map_page_range:
 
 _map_page_range_loop:
 	CMP R1, R3
-	BEQ _map_page_range_end
+	BPL _map_page_range_end
 
 	BL _map_page
 

@@ -2,6 +2,7 @@
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
 #include <kernel/evt.h>
+#include <kernel/pmap.h>
 
 #include <mach/interrupts.h>
 

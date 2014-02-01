@@ -5,11 +5,8 @@
 
 #include <lib/bithacks.h>
 
-#define PAGESIZE (0x1000) // TODO: TEMPORARY
 #define MEMSIZE (0x8000000) // TODO: TEMPORARY
 
-// TODO: Need to make this not dependent on a 4 kb page size
-#define IS_PAGE_ALIGNED(B) (((B) & 0xFFF) == 0)
 #define IS_WITHIN_BOUNDS(B) (((B) < MEMSIZE))
 
 // Set a bit and clear a bit in the bitmap
@@ -147,10 +144,10 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
 	return(popped);
 }
 
-address_t pmm_alloc() {
+paddr_t pmm_alloc() {
 	INTERRUPT_LOCK;
 	// Default value of addr, this indicates that no free frame was found
-	address_t addr = UINTPTR_MAX;
+	paddr_t addr = UINTPTR_MAX;
 	pagemap_t *top = pagestack.top;
 	if(top == NULL) return(addr);
 
@@ -167,7 +164,7 @@ address_t pmm_alloc() {
 	return(addr);
 }
 
-void pmm_free(address_t addr) {
+void pmm_free(paddr_t addr) {
 	INTERRUPT_LOCK;
 	// Check to make sure addr is page_aligned and within bounds
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
@@ -186,12 +183,12 @@ void pmm_free(address_t addr) {
 	INTERRUPT_UNLOCK;
 }
 
-address_t pmm_alloc_contiguous(size_t frames) {
+paddr_t pmm_alloc_contiguous(size_t frames) {
 	INTERRUPT_LOCK;
 	// Unfortunately we can't allocate more than 32 frames contiguously :(
 	kassert(frames < BITS);
 
-	address_t addr = UINTPTR_MAX;
+	paddr_t addr = UINTPTR_MAX;
 
 	pagemap_t *curr, *prev;
 	int32_t frame = 0;

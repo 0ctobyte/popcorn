@@ -3,7 +3,13 @@
 
 #include <sys/types.h>
 
-typedef uintptr_t address_t;
+#define PAGESIZE (0x1000) // TODO: TEMPORARY
+#define IS_PAGE_ALIGNED(B) (((B) & (PAGESIZE - 1)) == 0)
+
+#ifndef __paddr_t
+#define __paddr_t
+typedef uintptr_t paddr_t;
+#endif // __paddr_t
 
 /* pmm_init needs to be FIXED */
 void pmm_init();
@@ -13,19 +19,19 @@ void pmm_init();
  * the frame
  * Returns UINTPTR_MAX if no free page frame is found
  */
-address_t pmm_alloc();
+paddr_t pmm_alloc();
 
 /*
  * Frees the allocated page frame.
  */
-void pmm_free(address_t);
+void pmm_free(paddr_t);
 
 /*
  * Finds a contiguous range of free page frames and returns the physical
  * address to first page frame in the range
  * frames [in] - # of page frames to allocate, cannot be greater than 32
  */
-address_t pmm_alloc_contiguous(size_t frames);
+paddr_t pmm_alloc_contiguous(size_t frames);
 
 #endif // __PMM_H__
 
