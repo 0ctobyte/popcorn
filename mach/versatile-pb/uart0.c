@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#define UART0DR (0x0)
-#define UART0FR (0x18)
+#define UART0DR (0)
+#define UART0FR (6)
 
 volatile uint32_t *UART0BASEADDRESS = (uint32_t*)0xFFFF1000;
 
