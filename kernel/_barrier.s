@@ -5,6 +5,7 @@
 # Data Memory Barrier
 .global barrier_dmb
 .type barrier_dmb, %function
+.align 2
 barrier_dmb:
 	STMFD SP!, {LR}
 	DMB
@@ -16,6 +17,7 @@ barrier_dmb:
 # execution of the code resumes
 .global barrier_dsb
 .type barrier_dsb, %function
+.align 2
 barrier_dsb:
 	STMFD SP!, {LR}
 	DSB
@@ -26,6 +28,7 @@ barrier_dsb:
 # Use this whenever instructions after the ISB are invalid/changed
 .global barrier_isb
 .type barrier_isb, %function
+.align 2
 barrier_isb:
 	STMFD SP!, {LR}
 	ISB

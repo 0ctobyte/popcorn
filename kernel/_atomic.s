@@ -7,6 +7,7 @@
 # R0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set
 .type atomic_test_and_set, %function
+.align 2
 atomic_test_and_set:
 	STMFD SP!, {R1, R2, LR}	
 
@@ -24,6 +25,7 @@ atomic_test_and_set:
 # R0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set_bit
 .type atomic_test_and_set_bit, %function
+.align 2
 atomic_test_and_set_bit:
 	STMFD SP!, {R1, R2, R3, LR}
 
