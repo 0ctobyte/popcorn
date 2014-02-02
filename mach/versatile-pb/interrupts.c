@@ -3,9 +3,6 @@
 #include "vic.h"
 #include "sic.h"
 
-// Declared in interrupts.s
-extern bool __interrupts_enabled;
-
 isr_t isr_table[64];
 
 void irq_init() {
@@ -18,10 +15,6 @@ void irq_init() {
 
 	// Enable interrupts on the CPU
 	interrupts_enable();
-}
-
-bool interrupts_enabled() {
-	return(__interrupts_enabled);
 }
 
 void irq_enable(irq_type_t type) {

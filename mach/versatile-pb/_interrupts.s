@@ -1,9 +1,6 @@
 .text
 .code 32
 
-# Set to 0 if interrupts are not enabled
-.comm __interrupts_enabled, 4, 4
-
 # Enable interrupts on the processor
 .global interrupts_enable
 .type interrupts_enable, %function
@@ -15,11 +12,6 @@ interrupts_enable:
 	# Enable IRQ only
 	BIC R0, R0, #0x80
 	MSR CPSR, R0
-
-	# Set flag to true
-	LDR R0, =__interrupts_enabled
-	MOV R1, #1
-	STR R1, [R0]
 
 	LDMFD SP!, {R0-R1, PC}
 
@@ -35,10 +27,19 @@ interrupts_disable:
 	ORR R0, R0, #0xC0
 	MSR CPSR, R0
 
-	# Set flag to false
-	LDR R0, =__interrupts_enabled
-	MOV R1, #0
-	STR R1, [R0]
-
 	LDMFD SP!, {R0-R1, PC}
+
+# True if interrupts enabled, false otherwise
+.global interrupts_enabled
+.type interrupts_enabled, %function
+interrupts_enabled:
+	STMFD SP!, {LR}
+
+	MRS R0, CPSR
+	# Check if IRQ's are enabled
+	ANDS R0, R0, #0x80
+	MOVEQ R0, #1
+	MOVNE R0, #0
+
+	LDMFD SP!, {PC}
  

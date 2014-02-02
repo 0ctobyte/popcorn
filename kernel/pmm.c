@@ -1,5 +1,6 @@
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
+#include <kernel/spinlock.h>
 
 #include <mach/interrupts.h>
 
@@ -119,23 +120,22 @@ typedef struct pagemap_t {
 } pagemap_t;
 
 typedef struct {
+	spinlock_t lock;
 	pagemap_t *pagemaps; // Array of pagemap_t
 	pagemap_t *top;	     // Top of stack
 	size_t size;         // # of pagemap_t in the pagemap_t array
 } pagestack_t;
 
-pagestack_t pagestack = {0, 0, 0};
+pagestack_t pagestack = {SPINLOCK_INIT, 0, 0, 0};
 
 // Pushes the given pagemap on the stack
 void _pmm_push(pagestack_t *pstack, pagemap_t *pagemap) {
-	kassert(pstack != NULL && pagemap != NULL && !interrupts_enabled());
 	pagemap->next = pstack->top;
 	pstack->top = pagemap;
 }
 
 // Pops the pagemap off the stack
 pagemap_t* _pmm_pop(pagestack_t *pstack) {
-	kassert(pstack != NULL && !interrupts_enabled());
 	if(pstack->top == NULL) return(NULL);
 	pagemap_t *next = pstack->top->next;
 	pagemap_t *popped = pstack->top;
@@ -145,9 +145,11 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
 }
 
 paddr_t pmm_alloc() {
-	INTERRUPT_LOCK;
 	// Default value of addr, this indicates that no free frame was found
 	paddr_t addr = UINTPTR_MAX;
+	
+	spin_irqlock(&pagestack.lock);
+
 	pagemap_t *top = pagestack.top;
 	if(top == NULL) return(addr);
 
@@ -160,12 +162,11 @@ paddr_t pmm_alloc() {
 
 	// If pagemap is fully allocated, pop it off the stack
 	if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
-	INTERRUPT_UNLOCK;
+	spin_irqunlock(&pagestack.lock);
 	return(addr);
 }
 
 void pmm_free(paddr_t addr) {
-	INTERRUPT_LOCK;
 	// Check to make sure addr is page_aligned and within bounds
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
@@ -176,15 +177,16 @@ void pmm_free(paddr_t addr) {
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
+	spin_irqlock(&pagestack.lock);
+
 	// Unset the bit and if need be, push the pagemap back onto the stack
 	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
 	if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack, pagemap);
 	CLEAR_FRAME(pagemap->bitmap, rel_frame_num);
-	INTERRUPT_UNLOCK;
+	spin_irqunlock(&pagestack.lock);
 }
 
 paddr_t pmm_alloc_contiguous(size_t frames) {
-	INTERRUPT_LOCK;
 	// Unfortunately we can't allocate more than 32 frames contiguously :(
 	kassert(frames < BITS);
 
@@ -192,6 +194,8 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 
 	pagemap_t *curr, *prev;
 	int32_t frame = 0;
+
+	spin_irqlock(&pagestack.lock);
 
 	// Loop through the stack until we find a bitmap that has enough 
 	// contiguous frames
@@ -214,6 +218,7 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 		}
 	}
 
-	INTERRUPT_UNLOCK;
+	spin_irqunlock(&pagestack.lock);
 	return(addr);
 }
+

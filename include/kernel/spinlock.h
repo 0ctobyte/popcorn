@@ -3,10 +3,9 @@
 
 #include <sys/types.h>
 
+#define SPINLOCK_INIT {0}
+
 typedef struct {
-	// Bit 0 is the lock value: 0 for unlocked, 1 for locked
-	// Bit 1 stores the status of the interrupt: 1 for enabled, 0 for disabled
-	// Bit 2 stores the R/W value for a readers/writers spinlock
 	uint32_t lock;
 } spinlock_t;
 

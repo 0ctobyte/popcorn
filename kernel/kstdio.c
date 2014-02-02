@@ -1,4 +1,5 @@
 #include <kernel/kstdio.h>
+#include <kernel/spinlock.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -21,15 +22,20 @@ int32_t kputs(const char *s) {
 
 // This will be allocated on the data segment (BSS) rather than the stack!
 char __kprintf_buffer[1024];
+spinlock_t buf_lock = SPINLOCK_INIT;
 int32_t kprintf(const char *fmt, ...) {
 	va_list args;
 	int32_t r = 0;
 
+	spin_lock(&buf_lock);
+	
 	va_start(args, fmt);
 	r = vsprintf(__kprintf_buffer, fmt, args);
 	va_end(args);
 
 	kputs(__kprintf_buffer);
+
+	spin_unlock(&buf_lock);
 
 	return(r);
 }
