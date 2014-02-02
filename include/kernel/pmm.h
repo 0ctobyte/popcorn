@@ -2,14 +2,7 @@
 #define __PMM_H__
 
 #include <sys/types.h>
-
-#define PAGESIZE (0x1000) // TODO: TEMPORARY
-#define IS_PAGE_ALIGNED(B) (((B) & (PAGESIZE - 1)) == 0)
-
-#ifndef __paddr_t
-#define __paddr_t
-typedef uintptr_t paddr_t;
-#endif // __paddr_t
+#include <kernel/mm_types.h>
 
 /* pmm_init needs to be FIXED */
 void pmm_init();

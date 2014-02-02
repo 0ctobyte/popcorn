@@ -2,25 +2,7 @@
 #define __PMAP_H__
 
 #include <sys/types.h>
-
-// Virtual address
-typedef uintptr_t vaddr_t;
-
-// Physical address
-#ifndef __paddr_t
-#define __paddr_t
-typedef uintptr_t paddr_t;
-#endif // __paddr_t
-
-// Protection bits
-typedef uint32_t vm_prot_t;
-
-#define VM_PROT_NONE (0x0)
-#define VM_PROT_READ (0x1)
-#define VM_PROT_WRITE (0x2)
-#define VM_PROT_EXECUTE (0x4)
-#define VM_PROT_DEFAULT (VM_PROT_READ|VM_PROT_WRITE)
-#define VM_PROT_ALL (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
+#include <kernel/mm_types.h>
 
 // Flag bits
 typedef uint32_t pmap_flags_t;
@@ -33,9 +15,11 @@ typedef uint32_t pmap_flags_t;
 #define PMAP_NOCACHE_OVR (0x100)
 #define PMAP_DEVICE_MEM (0x200)
 
-typedef struct pgd pgd_t;
+// Opaque types used in pmap_t
+typedef struct pgd_struct pgd_t;
 typedef struct pgt_entry pgt_entry_t;
 
+// These should be updated during any pmap function calls if necessary
 typedef struct {
 	size_t wired_count;
 	size_t resident_count;
@@ -75,12 +59,10 @@ void pmap_destroy(pmap_t*);
 void pmap_reference(pmap_t*);
 
 // Returns the # of pages resident in the pmap
-// TODO: macro?
-size_t pmap_resident_count(pmap_t*);
+#define pmap_resident_count(pmap) ((pmap)->pmap_stats.resident_count)
 
 // Returns the # of pages wired in the pmap
-// TODO: macro?
-size_t pmap_wired_count(pmap_t*);
+#define pmap_wired_count(pmap) ((pmap)->pmap_stats.wired_count)
 
 // Adds a virtual to physical page mapping to the specified pmap using the 
 // specified protection
@@ -123,11 +105,9 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 // Pmap kernel functions
 
 // Returns the kernel's pmap; must return a reference to kernel_pmap_ptr
-// TODO: macro?
-pmap_t* pmap_kernel();
+#define pmap_kernel() (&(kernel_pmap))
 
 // Used to determine the kernel's virtual address space start and end
-// TODO: Use linker symbols?
 void pmap_virtual_space(vaddr_t *start, vaddr_t *end);
 
 // Enter an unmanaged mapping for the kernel pmap
