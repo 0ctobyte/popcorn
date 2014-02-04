@@ -2,7 +2,7 @@
 #define __PMAP_H__
 
 #include <sys/types.h>
-#include <kernel/mm_types.h>
+#include <kernel/mm.h>
 
 // Flag bits
 typedef uint32_t pmap_flags_t;
@@ -32,11 +32,7 @@ typedef struct {
 	// Page tables are the 2nd level translation tables on ARMv7
 	// Page tables will be allocated on demand and when a new table is created
 	// it will be added to this list.
-	// To find which page table to a vaddr_t translate too, we will need to 
-	// use the physical address of the page table from the page directory and
-	// iterate through the list comparing the physical address with that of
-	// pmap_extract.
-	pgt_entry_t *head;
+	pgt_entry_t *pgt_entry_head;
 
 	pmap_statistics_t pmap_stats;
 } pmap_t;
@@ -118,6 +114,11 @@ void pmap_kenter_pa(vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
 // (in bytes) specified from the kernel pmap. All mappings must have been
 // entered with pmap_kenter_pa
 void pmap_kremove(vaddr_t, size_t);
+
+// This function should only be used as a bootstrap memory allocator before
+// the memory management systems have been setup. It will allocate the required
+// memory if available and map it into the kernel's address space
+vaddr_t pmap_steal_memory(size_t);
 
 // Clears the modified attribute of a page
 //pmap_clear_modify
