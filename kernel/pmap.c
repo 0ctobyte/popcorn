@@ -3,10 +3,81 @@
 
 #include <mach/interrupts.h>
 
+#include <string.h>
+
 // A page directory has 4096 page directory entries
 #define PGDNENTRIES 4096
 // A page table has 256 page table entries
 #define PGTNENTRIES 256
+
+// Get the index offsets into the pgd and pgt from the virtual address
+#define PGD_GET_INDEX(B) (((B) & 0xFFF00000) >> 20)
+#define PGT_GET_INDEX(B) (((B) & 0x000FF000) >> 12)
+
+// Macros to set and clear bits from the pte
+#define PTE_SET_BIT(entry, bit) (entry) |= (bit)
+#define PTE_CLEAR_BIT(entry, bit) (entry) &= ~((bit))
+
+// Construct a pte
+// addr is the physical address of the page to be mapped and must be page
+// aligned. Bits are the control bits to set in the pte
+#define PTE_CREATE(addr, bits) (PTE_PAGE_BIT | (addr) | (bits))
+
+// This bit indicates that the pte represents a small page
+#define PTE_PAGE_BIT (0x2)
+
+// Not global bit - This bit indicates whether the pte should be treated as
+// global in the TLB. Global pte's are not flushed when flushing entries
+// corresponding to a certain ASID from the TLB
+#define PTE_NG_BIT (0x800)
+// Shareability bit - This bit indicates whether the page is 'shareable'
+// meaning whether the caches between multiple CPUs should be synchronized
+// whenever data from this page has been modified
+#define PTE_S_BIT (0x400)
+
+// This bit can be used as a 'used' or 'accessed' flag
+#define PTE_AP0_BIT (0x10)
+// Enable PL0 (user mode) access
+#define PTE_AP1_BIT (0x20)
+// Disable write access (all modes)
+#define PTE_AP2_BIT (0x200)
+
+// Execute never bit - This bit indicates that the data in the page should not
+// be executed
+#define PTE_XN_BIT (0x1)
+
+// Shareability domain - If set, indicates inner shareability (which is the 
+// usual case)
+#define PTE_TEX0_BIT (0x40)
+
+// Strongly ordered memory when TEX0=0
+// 	outer non-cacheable
+// 	inner non-cacheable
+// Normal memory when TEX0=1
+// 	outer non-cacheable
+// 	inner non-cacheable
+#define PTE_CB0 (0x0)
+// Device memory when TEX0=0
+// 	outer non-cacheable
+// 	inner non-cacheable
+// Normal memory when TEX0=1
+// 	outer write-back, write-allocate
+// 	inner write-through, no write-allocate
+#define PTE_CB1 (0x4)
+// Normal memory when TEX0=0
+// 	outer write-through, no write-allocate
+// 	inner write-through, no write-allocate
+// Strongly ordered memory when TEX0=1
+// 	outer non-cacheable
+// 	inner non-cacheable
+#define PTE_CB2 (0x8)
+// Normal memory when TEX0=0
+// 	outer write-back, no write-allocate
+// 	inner write-back, no write-allocate
+// Normal memory when TEX0=1
+// 	outer write-back, write-allocate
+// 	inner write-back, write-allocate
+#define PTE_CB3 (0xC)
 
 // Page directory entries and page table entries are both 32 bits
 typedef uint32_t pde_t;
@@ -65,8 +136,6 @@ extern uintptr_t __pgt_num;
 paddr_t kernel_pend;
 vaddr_t kernel_vend;
 
-#include <kernel/kstdio.h>
-
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
@@ -114,22 +183,36 @@ void pmap_init() {
 }
 
 vaddr_t pmap_steal_memory(size_t size) {
+	// pmap_init must be called before this function can be used, otherwise
+	// kernel_vend will be an incorrect value
 	// kernel_vend and kernel_pend should be page aligned
-	vaddr_t start = kernel_vend;
-	vaddr_t end = start + ROUND_UP(size);
+	static uint32_t placement_addr = 0;
+	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
 
-	// Start of page table array
-	pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
+	vaddr_t start = placement_addr;
+	vaddr_t end = placement_addr + size;
 
-	// Kernel page tables start at this entry number in the page directory
-	uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+	// Allocate a new page if there is not enough memory
+	if(end >= kernel_vend) {
+		// Start of page table array
+		pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
 
-	for(vaddr_t i = start, j = kernel_pend; i < end; i+=PAGESIZE, j+=PAGESIZE) {
-		pte_t entry = PTE_SET_PAGE_ADDR(j);
-		pgts[PGD_GET_INDEX(i)-pgt_n].pte[PGT_GET_INDEX(i)] = entry;
+		// Kernel page tables start at this entry number in the page directory
+		uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+
+		// Loop through and map the pages while incrementing kernel_pend and 
+		// kernel_vend 
+		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
+			pte_t entry = PTE_CREATE(entry, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);;
+			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[
+				PGT_GET_INDEX(kernel_vend)] = entry;
+			// Zero the memory
+			memset((void*)kernel_vend, 0x0, PAGESIZE >> 2);
+		}
 	}
 
+	placement_addr = end;
 
-	return(size);
+	return(start);
 }
 
