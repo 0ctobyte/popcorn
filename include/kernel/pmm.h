@@ -4,7 +4,8 @@
 #include <sys/types.h>
 #include <kernel/mm.h>
 
-// pmm_init needs to be FIXED
+// Initializes the pmm
+// NOTE: pmap_init should be called before this function
 void pmm_init();
 
 // Finds a free page frame and returns the physical address to the beginning of

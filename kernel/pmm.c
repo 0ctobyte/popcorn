@@ -1,6 +1,7 @@
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
+#include <kernel/pmap.h>
 
 #include <mach/interrupts.h>
 
@@ -142,6 +143,23 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
 	pstack->top->next = NULL;
 	pstack->top = next;
 	return(popped);
+}
+
+void pmm_init() {
+	// Allocate memory for the pagemaps
+	// pmap_steal_memory will only work if pmap_init has been called before
+	// Ideally, pmap_init will pmm_init
+	pagestack.size = ((MEMSIZE/PAGESIZE)/BITS);
+	pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
+
+	// Link the pagemaps together
+	pagestack.top = pagestack.pagemaps;
+	pagemap_t *p = pagestack.pagemaps;
+	for(uint32_t i = 0; i < pagestack.size; ++i) {
+		// Make sure to clear the bitmaps
+		p[i].bitmap = 0;
+		p[i].next = ((i+1) < pagestack.size) ? &p[i+1] : NULL;
+	}
 }
 
 paddr_t pmm_alloc() {
