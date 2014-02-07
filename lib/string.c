@@ -7,8 +7,9 @@ size_t strlen(const char *str) {
 }
 
 
-void* memset(void *ptr, uint32_t value, size_t num) {
-	for(uint32_t i = 0, *buf = ptr; i < num; ++i) *buf++ = value;
+void* memset(void *ptr, uint8_t value, size_t num) {
+	uint8_t *buf = ptr;
+	for(uint32_t i = 0; i < num; ++i) *buf++ = value;
 	return(ptr);
 }
 

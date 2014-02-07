@@ -139,10 +139,10 @@ vaddr_t kernel_vend;
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
-	kernel_pend  = ROUND_UP((paddr_t)(&__pgd_physical_start) + sizeof(pgd_t) +
-		sizeof(pgt_t) * (paddr_t)(&__pgt_num));
-	kernel_vend = ROUND_UP((vaddr_t)(&__pgd_virtual_start) + sizeof(pgd_t) +
-		sizeof(pgt_t) * (vaddr_t)(&__pgt_num));
+	kernel_vend = ROUND_UP((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * 
+		(vaddr_t)(&__pgt_num));
+	kernel_pend = ROUND_UP((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * 
+		(paddr_t)(&__pgt_num));
 
 	// The kernel's pgd has already been set up and we know where it is via the
 	// linker script symbol
@@ -179,14 +179,17 @@ void _pmap_kernel_init() {
 
 void pmap_init() {
 	// Initialize the kernel pmap
-	_pmap_kernel_init();	
+	_pmap_kernel_init();
+
+	// Initialize the physical page allocator
+	pmm_init();
 }
 
 vaddr_t pmap_steal_memory(size_t size) {
 	// pmap_init must be called before this function can be used, otherwise
 	// kernel_vend will be an incorrect value
 	// kernel_vend and kernel_pend should be page aligned
-	static uint32_t placement_addr = 0;
+	static vaddr_t placement_addr = 0;
 	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
 
 	vaddr_t start = placement_addr;
@@ -203,13 +206,14 @@ vaddr_t pmap_steal_memory(size_t size) {
 		// Loop through and map the pages while incrementing kernel_pend and 
 		// kernel_vend 
 		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
-			pte_t entry = PTE_CREATE(entry, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);;
+			pte_t entry = PTE_CREATE(kernel_pend, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
 			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[
 				PGT_GET_INDEX(kernel_vend)] = entry;
-			// Zero the memory
-			memset((void*)kernel_vend, 0x0, PAGESIZE >> 2);
 		}
 	}
+
+	// Zero the memory
+	memset((void*)placement_addr, 0x0, size);
 
 	placement_addr = end;
 

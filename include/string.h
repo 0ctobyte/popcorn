@@ -8,7 +8,7 @@
 size_t strlen(const char *str);
 
 // Sets the first num bytes of a block of memory to the specified value
-void* memset(void *ptr, uint32_t value, size_t num);
+void* memset(void *ptr, uint8_t value, size_t num);
 
 // Copies num bytes from src to dst. Don't use this function if src and dst
 // overlap
