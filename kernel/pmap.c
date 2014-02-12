@@ -139,9 +139,9 @@ vaddr_t kernel_vend;
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
-	kernel_vend = ROUND_UP((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * 
+	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * 
 		(vaddr_t)(&__pgt_num));
-	kernel_pend = ROUND_UP((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * 
+	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * 
 		(paddr_t)(&__pgt_num));
 
 	// The kernel's pgd has already been set up and we know where it is via the

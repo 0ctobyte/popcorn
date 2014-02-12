@@ -19,7 +19,6 @@
 // page aligned. This gives the absolute frame number.
 // Multiply pagemap array index by BITS and subtract value from absolute
 // frame number to get relative frame number within a bitmap.
-#define GET_FRAME_NUM(addr) ((addr) << (12))
 #define GET_REL_FRAME_NUM(abs_frame_num, elem_num) \
 	((abs_frame_num) - ((elem_num) * BITS))
 
@@ -191,7 +190,7 @@ void pmm_free(paddr_t addr) {
 	// Calculate the absolute frame number
 	// Get the index into the pagemaps array
 	// Get the frame number relative to the bitmap in the pagemap
-	uint32_t frame_num = GET_FRAME_NUM(addr);
+	uint32_t frame_num = ATOP(addr);
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
@@ -247,7 +246,7 @@ void pmm_reserve(paddr_t addr) {
 	// Check if the address is page aligned and within bounds
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
-	uint32_t frame_num = GET_FRAME_NUM(addr);
+	uint32_t frame_num = ATOP(addr);
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 

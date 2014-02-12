@@ -20,8 +20,10 @@ typedef uint32_t vm_prot_t;
 // Should these even be here?
 #define PAGESIZE (0x1000) // TODO: TEMPORARY
 #define IS_PAGE_ALIGNED(B) (((B) & (PAGESIZE - 1)) == 0)
-#define ROUND_DOWN(B) ((B) & ~(PAGESIZE - 1))
-#define ROUND_UP(B) (IS_PAGE_ALIGNED((B))) ? (B) : (ROUND_DOWN((B)) + PAGESIZE)
+#define TRUNC_PAGE(B) ((B) & ~(PAGESIZE - 1))
+#define ROUND_PAGE(B) (IS_PAGE_ALIGNED((B))) ? (B) : (TRUNC_PAGE((B)) + PAGESIZE)
+#define ATOP(B) (TRUNC_PAGE((B)) << (12)) 
+#define PTOA(B) ((B) << 12)
 
 #endif // __MM_H__
 
