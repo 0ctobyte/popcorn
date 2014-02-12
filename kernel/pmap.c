@@ -1,5 +1,4 @@
 #include <kernel/pmap.h>
-#include <kernel/pmm.h>
 
 #include <mach/interrupts.h>
 
@@ -136,6 +135,41 @@ extern uintptr_t __pgt_num;
 paddr_t kernel_pend;
 vaddr_t kernel_vend;
 
+vaddr_t _pmap_bootstrap_memory(size_t size) {
+	// pmap_init must be called before this function can be used, otherwise
+	// kernel_vend will be an incorrect value
+	// kernel_vend and kernel_pend should be page aligned
+	static vaddr_t placement_addr = 0;
+	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
+
+	vaddr_t start = placement_addr;
+	vaddr_t end = placement_addr + size;
+
+	// Allocate a new page if there is not enough memory
+	if(end >= kernel_vend) {
+		// Start of page table array
+		pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
+
+		// Kernel page tables start at this entry number in the page directory
+		uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+
+		// Loop through and map the pages while incrementing kernel_pend and 
+		// kernel_vend 
+		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
+			pte_t entry = PTE_CREATE(kernel_pend, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
+			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[
+				PGT_GET_INDEX(kernel_vend)] = entry;
+		}
+	}
+
+	// Zero the memory
+	memset((void*)placement_addr, 0x0, size);
+
+	placement_addr = end;
+
+	return(start);
+}
+
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
@@ -152,7 +186,7 @@ void _pmap_kernel_init() {
 	// We are too early in the bootstrap process to be able to use the heap
 	// so we need to use pmap_steal_memory
 	uint32_t n_pgt = (uint32_t)(&__pgt_num);
-	pgt_entry_t *pentries = (pgt_entry_t*)pmap_steal_memory(sizeof(pgt_entry_t)
+	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t)
 			* n_pgt);
 
 	kernel_pmap.pgt_entry_head = pentries;
@@ -161,8 +195,7 @@ void _pmap_kernel_init() {
 	// are located via the linker script symbols
 	pgt_t *pg_tables = (pgt_t*)(&__pgt_virtual_start);
 
-	uint32_t i;
-	for(i = 0; i < n_pgt; i++) {
+	for(uint32_t i = 0; i < n_pgt; i++) {
 		// Get the location of the page table
 		pentries[i].pgt = &pg_tables[i];
 
@@ -174,17 +207,27 @@ void _pmap_kernel_init() {
 		// page directories. Where n == n_pgt
 		pentries[i].offset = PGDNENTRIES-n_pgt+i;
 	}
-		
+
+	// Count the resident and wired pages for the kernel (will be the same)
+	uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
+	uint32_t *pte = (uint32_t*)pg_tables;
+	for(uint32_t i = 0; i < n_tot_entries; i++) {
+		if(pte[i] != 0) {
+			kernel_pmap.pmap_stats.wired_count++;
+			kernel_pmap.pmap_stats.resident_count++;
+		}
+	}
+
+	// Now remove the identity mapped bottom 1 MB section in the pgd
+	kernel_pmap.pgd->pde[0] = 0x0;
 }
 
 void pmap_init() {
 	// Initialize the kernel pmap
 	_pmap_kernel_init();
-
-	// Initialize the physical page allocator
-	pmm_init();
 }
 
+// TODO: fix this to use pmap_enter
 vaddr_t pmap_steal_memory(size_t size) {
 	// pmap_init must be called before this function can be used, otherwise
 	// kernel_vend will be an incorrect value
