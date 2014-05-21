@@ -1,4 +1,4 @@
-# OSOS
+# 32-Bit ARM Operating System
 
 This is (or will be) a 32-bit kernel for the ARMv7-A architecture
 
