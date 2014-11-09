@@ -4,7 +4,7 @@
 #include <kernel/evt.h>
 #include <kernel/pmap.h>
 
-#include <mach/interrupts.h>
+#include <platform/interrupts.h>
 
 void kmain(void) {
 	kprintf("Initializing kernel...\n");

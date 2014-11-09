@@ -1,7 +1,7 @@
 #include <kernel/panic.h>
 #include <kernel/kstdio.h>
 
-#include <mach/interrupts.h>
+#include <platform/interrupts.h>
 
 #include <stdarg.h>
 #include <stdio.h>

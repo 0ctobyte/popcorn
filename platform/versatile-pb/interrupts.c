@@ -1,4 +1,4 @@
-#include <mach/interrupts.h>
+#include <platform/interrupts.h>
 
 #include "vic.h"
 #include "sic.h"

@@ -1,6 +1,6 @@
 #include <kernel/pmap.h>
 
-#include <mach/interrupts.h>
+#include <platform/interrupts.h>
 
 #include <string.h>
 

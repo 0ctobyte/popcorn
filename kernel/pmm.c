@@ -3,7 +3,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/pmap.h>
 
-#include <mach/interrupts.h>
+#include <platform/interrupts.h>
 
 #include <lib/bithacks.h>
 
