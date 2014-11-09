@@ -59,6 +59,8 @@ A2:
 .align 2
 data_abort_exception:
 	STMFD SP!, {R0-R12, LR}
+	MRC P15, 0, R0, C6, C0, 0
+	MRC P15, 0, R1, C5, C0, 0
 	LDR R0, =evt_table
 	LDR R0, [R0, #12]
 	TEQ R0, #0

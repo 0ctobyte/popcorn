@@ -1,6 +1,7 @@
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
+#include <kernel/pmap.h>
 
 #include <mach/interrupts.h>
 
@@ -18,7 +19,6 @@
 // page aligned. This gives the absolute frame number.
 // Multiply pagemap array index by BITS and subtract value from absolute
 // frame number to get relative frame number within a bitmap.
-#define GET_FRAME_NUM(addr) ((addr) << (12))
 #define GET_REL_FRAME_NUM(abs_frame_num, elem_num) \
 	((abs_frame_num) - ((elem_num) * BITS))
 
@@ -144,6 +144,23 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
 	return(popped);
 }
 
+void pmm_init() {
+	// Allocate memory for the pagemaps
+	// pmap_steal_memory will only work if pmap_init has been called before
+	// Ideally, pmap_init will pmm_init
+	pagestack.size = ((MEMSIZE/PAGESIZE)/BITS);
+	pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
+
+	// Link the pagemaps together
+	pagestack.top = pagestack.pagemaps;
+	pagemap_t *p = pagestack.pagemaps;
+	for(uint32_t i = 0; i < pagestack.size; ++i) {
+		// Make sure to clear the bitmaps
+		p[i].bitmap = 0;
+		p[i].next = ((i+1) < pagestack.size) ? &p[i+1] : NULL;
+	}
+}
+
 paddr_t pmm_alloc() {
 	// Default value of addr, this indicates that no free frame was found
 	paddr_t addr = UINTPTR_MAX;
@@ -173,7 +190,7 @@ void pmm_free(paddr_t addr) {
 	// Calculate the absolute frame number
 	// Get the index into the pagemaps array
 	// Get the frame number relative to the bitmap in the pagemap
-	uint32_t frame_num = GET_FRAME_NUM(addr);
+	uint32_t frame_num = ATOP(addr);
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
@@ -202,12 +219,15 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 	for(curr = pagestack.top; curr != NULL; prev = curr, curr = curr->next) {
 		// Find the index of the first frame in the contiguous set
 		frame = bit_find_contiguous_zeros(curr->bitmap, frames);
+		
 		// If such a contiguous region of frames exists in the bitmap...
 		if(frame >= 0) {
 			// Then set the bits in the bitmap
 			curr->bitmap = bit_field_set(curr->bitmap, frame, frames);
+			
 			// Calculate the page's physical address
 			addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
+			
 			// Now, if the bitmap is fully allocated...
 			if(curr->bitmap == UINTPTR_MAX) {
 				// Remove the pagemap from the stack
@@ -221,4 +241,40 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 	spin_irqunlock(&pagestack.lock);
 	return(addr);
 }
+
+void pmm_reserve(paddr_t addr) {
+	// Check if the address is page aligned and within bounds
+	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
+
+	uint32_t frame_num = ATOP(addr);
+	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
+	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
+
+	spin_irqlock(&pagestack.lock);
+
+	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
+	
+	// The bitmap must not already be full
+	kassert(pagemap->bitmap == UINT32_MAX);
+
+	// Set the bit and if need be, remove the pagemap
+	SET_FRAME(pagemap->bitmap, rel_frame_num);
+	
+	// Removing the pagemap from the stack is a little more involved...In most
+	// cases we won't need to do this
+	if(pagemap->bitmap == UINT32_MAX) {
+		// If the pagemap isn't the top of the stack then...
+		// Loop through the stack until we find the previous pagemap
+		pagemap_t *curr = pagestack.top;
+		if(curr == pagemap) {
+			_pmm_pop(&pagestack);
+		} else {
+			for(; curr->next != pagemap; curr = curr->next);
+			curr->next = pagemap->next;
+			pagemap->next = NULL;
+		}
+	}
+
+	spin_irqunlock(&pagestack.lock);
+}	
 

@@ -1,4 +1,5 @@
 #include <lib/bithacks.h>
+#include <lib/asm.h>
 
 // Counts the number of bits set in bitmap which must be a 32-bit value
 // This algorithm was acquired from here:
@@ -16,17 +17,18 @@ int32_t bit_find_contiguous_zeros(uint32_t bitmap, uint32_t width) {
 	if(bitmap == 0) return(0);
 	if(width > 32) return(-1);
 
-	register uint32_t v = bitmap;
+	// Reverse the bit order of the bitmap, so _clz (count leading zeros) will
+	// in fact count the trailing zeros
+	register uint32_t v = _rbit(bitmap);
 	register int32_t index;
 
-	for(index = 31; index >= 0;) {
+	for(index = 0; index < 32;) {
 		// Count the leading zeros in the bitmap
-		// On ARMv7 __builtin_clz SHOULD resolve to the clz instruction
-		uint32_t num = __builtin_clz(v);
+		uint32_t num = _clz(v);
 		if(num == 0) {
 			// If there are none, count the leading 1's
 			// we will need to shift these 1's out of the bitmap
-			num = __builtin_clz(~v);
+			num = _clz(~v);
 		} else if(num >= width) {
 			// If there are enough zeros, break out of the loop
 			break;
@@ -37,11 +39,11 @@ int32_t bit_find_contiguous_zeros(uint32_t bitmap, uint32_t width) {
 		// Set the right-padded zeros, due to the shift, to 1 so that
 		// they are not counted when calling clz
 		v |= ((1 << num) - 1);
-		// Decrement the index by the shifted amount
-		index -= num;
+		// Increment the index by the shifted amount
+		index += num;
 	}
 
-	return(index - width + 1);
+	return(index);
 }
 
 // Sets the bits starting at position index to position index+width-1
