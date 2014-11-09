@@ -1,6 +1,8 @@
 #ifndef __MM_H__
 #define __MM_H__
 
+#include <sys/types.h>
+
 // Virtual address
 typedef uintptr_t vaddr_t;
 

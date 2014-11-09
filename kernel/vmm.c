@@ -6,7 +6,7 @@ typedef struct vregion {
 	struct vregion *next;
 } vregion_t;
 
-typedef struct {
+/*typedef struct {
 
-} vmap_t;
+} vmap_t;*/
 
