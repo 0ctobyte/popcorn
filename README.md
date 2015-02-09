@@ -35,13 +35,12 @@ Here is the directory structure to help with navigation of the code.
 - lib           (Miscellaneous functions & parts of the C standard library)
 - platform      (Board/platform dependent code)
  - versatile-pb (code for the ARM versatile platform board)
-- tools        (Scripts to run on emulator & debugger)
+- tools         (Scripts to run on emulator & debugger)
 
 Here is a short description of what each code file does:
 
 ##### boot
-- _loader.s: Sets up the kernel page tables & enables the MMU
-
+- `_loader.s` Sets up the page tables & enables the MMU
 
 
 
