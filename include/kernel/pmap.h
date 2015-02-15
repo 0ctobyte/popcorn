@@ -62,7 +62,7 @@ void pmap_reference(pmap_t*);
 
 // Adds a virtual to physical page mapping to the specified pmap using the 
 // specified protection
-uint32_t pmap_enter(pmap_t*, vaddr_t, vm_prot_t, pmap_flags_t);
+uint32_t pmap_enter(pmap_t*, vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
 
 // Removes a range of virtual to physical page mappings from the specified pmap
 void pmap_remove(pmap_t*, vaddr_t, vaddr_t);
@@ -100,7 +100,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 
 // Pmap kernel functions
 
-// Returns the kernel's pmap; must return a reference to kernel_pmap_ptr
+// Returns the kernel's pmap; must return a reference to kernel_pmap
 #define pmap_kernel() (&(kernel_pmap))
 
 // Used to determine the kernel's virtual address space start and end

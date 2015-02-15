@@ -156,9 +156,8 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 		// Loop through and map the pages while incrementing kernel_pend and 
 		// kernel_vend 
 		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
-			pte_t entry = PTE_CREATE(kernel_pend, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
-			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[
-				PGT_GET_INDEX(kernel_vend)] = entry;
+			pte_t entry = PTE_CREATE(kernel_pend, PTE_XN_BIT|PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
+			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[PGT_GET_INDEX(kernel_vend)] = entry;
 		}
 	}
 
@@ -170,6 +169,7 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 	return(start);
 }
 
+// TODO: Should a lock be used to access kernel_pmap?
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
@@ -184,7 +184,7 @@ void _pmap_kernel_init() {
 
 	// Need to allocate memory for the pgt_entry structs
 	// We are too early in the bootstrap process to be able to use the heap
-	// so we need to use pmap_steal_memory
+	// so we need to use _pmap_bootstrap_memory
 	uint32_t n_pgt = (uint32_t)(&__pgt_num);
 	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t)
 			* n_pgt);
@@ -227,11 +227,48 @@ void pmap_init() {
 	_pmap_kernel_init();
 }
 
-// TODO: fix this to use pmap_enter
+// TODO: Should a lock be used to access kernel_pmap?
+// TODO: Assert valid vaddr (must be in kernel high memory)
+// TODO: Assert memory available (what if no more high memory left?)
+void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
+  // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
+	// Encode the protection and pmap flags in the page table entry 
+	uint32_t pte_flags = 0;
+  pte_flags |= (vm_prot & VM_PROT_EXECUTE) ? pte_flags : PTE_XN_BIT;
+	pte_flags |= (vm_prot & VM_PROT_WRITE) ? pte_flags : PTE_AP2_BIT;
+	
+  pte_flags |= (pmap_flags & PMAP_WRITE_BACK) ? pte_flags : (PTE_TEX0_BIT | PTE_CB3);
+	pte_flags |= (pmap_flags & PMAP_WRITE_COMBINE) ? pte_flags : (PTE_TEX0_BIT | PTE_CB0);
+	pte_flags |= (pmap_flags & PMAP_NOCACHE_OVR) ? pte_flags : (PTE_CB1 | PTE_XN_BIT);
+	pte_flags |= (pmap_flags & PMAP_NOCACHE) ? pte_flags : (PTE_CB1 | PTE_XN_BIT);
+	
+  pte_t entry = PTE_CREATE(paddr, PTE_S_BIT | pte_flags);
+
+  // Now we must place the page table entry in the correct kernel page table
+  // Since we know that the pgts are laid out contiguously in memory we can cheat by
+  // accessing the correct pgt directly without having to loop over the pmap_kernel's pgt_entries
+  // to search for the pgt_entry with the correct offset in the pgd.
+
+  // Start of the page table array
+  pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
+
+  // Kernel page tables start at this entry number in the page directory
+  uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+
+  // Place the entry in the page table
+  pgts[PGD_GET_INDEX(vaddr)-pgt_n].pte[PGT_GET_INDEX(vaddr)] = entry;
+
+  // Update the stats
+  pmap_kernel()->pmap_stats.wired_count++;
+  pmap_kernel()->pmap_stats.resident_count++;
+}
+
+// TODO: fix this to use pmap_kenter_pa
 vaddr_t pmap_steal_memory(size_t size) {
 	// pmap_init must be called before this function can be used, otherwise
 	// kernel_vend will be an incorrect value
 	// kernel_vend and kernel_pend should be page aligned
+  // This function should only be used before pmm_init is called
 	static vaddr_t placement_addr = 0;
 	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
 
@@ -240,19 +277,10 @@ vaddr_t pmap_steal_memory(size_t size) {
 
 	// Allocate a new page if there is not enough memory
 	if(end >= kernel_vend) {
-		// Start of page table array
-		pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
-
-		// Kernel page tables start at this entry number in the page directory
-		uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
-
-		// Loop through and map the pages while incrementing kernel_pend and 
-		// kernel_vend 
-		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
-			pte_t entry = PTE_CREATE(kernel_pend, PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
-			pgts[PGD_GET_INDEX(kernel_vend)-pgt_n].pte[
-				PGT_GET_INDEX(kernel_vend)] = entry;
-		}
+    // Loop through and map the pages using pmap_kenter_pa while incrementing kernel_pend and kernel_vend
+    for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
+      pmap_kenter_pa(kernel_vend, kernel_pend,  VM_PROT_DEFAULT, PMAP_WRITE_BACK);
+    }
 	}
 
 	// Zero the memory
