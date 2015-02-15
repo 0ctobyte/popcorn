@@ -6,8 +6,8 @@ typedef enum {
 	EVT_SWI             = 1, // Software interrupt exception
 	EVT_PREFETCH_ABORT  = 2, // Prefetch abort exception
 	EVT_DATA_ABORT      = 3, // Data abort exception
-	EVT_IRQ				= 4, // IRQ exception
-	EVT_FIQ				= 5, // FIQ exception
+	EVT_IRQ				      = 4, // IRQ exception
+	EVT_FIQ				      = 5, // FIQ exception
 } evt_type_t;
 
 typedef void (*evt_handler_t)(void);

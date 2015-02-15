@@ -229,7 +229,7 @@ void pmap_init() {
 
 // TODO: Should a lock be used to access kernel_pmap?
 // TODO: Assert valid vaddr (must be in kernel high memory)
-// TODO: Assert memory available (what if no more high memory left?)
+// TODO: Assert memory available (what if no more high memory left?), panic 
 void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
   // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
 	// Encode the protection and pmap flags in the page table entry 
