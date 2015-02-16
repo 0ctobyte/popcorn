@@ -207,6 +207,9 @@ void _pmap_kernel_init() {
 		pentries[i].offset = PGDNENTRIES-n_pgt+i;
 	}
 
+  // Remove the identity mapped section
+  kernel_pmap.pgd->pde[PGD_GET_INDEX(MEMBASEADDR)] = 0x0;
+
 	// Count the resident and wired pages for the kernel (will be the same)
 	uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
 	uint32_t *pte = (uint32_t*)pg_tables;

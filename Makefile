@@ -4,8 +4,8 @@ LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
 # TODO: Need a more flexible build system
-PLATFORM=versatile-pb
-DEFINES := -DVERSATILE_PB
+PLATFORM=realview-pb
+DEFINES := -DREALVIEW_PB
 
 C_SRCS := $(wildcard boot/*.c) $(wildcard platform/$(PLATFORM)/*.c) $(wildcard platform/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
 S_SRCS := $(wildcard boot/*.s) $(wildcard platform/$(PLATFORM)/*.s) $(wildcard platform/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)

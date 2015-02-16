@@ -13,14 +13,14 @@
 .global _loader
 
 # Special use registers
-# R12 MEMBASEADDR
-# R11 holds the page size in bytes
+# R12 holds the page size in bytes
+# R11 MEMBASEADDR
 # R10 holds placement address
 # R9 holds page directory address
 # R8 holds address to first page table
 # R7 holds number of page tables
-MEMBASEADDR .req R12
-PAGE_SIZE .req R11
+PAGE_SIZE .req R12
+MEMBASEADDR .req R11
 placement_addr .req R10
 pgd_addr .req R9
 pgt_start_addr .req R8
@@ -70,31 +70,6 @@ _loader:
 	BL _do_mapping
 
 	BL _enable_mmu
-
-	LDR R5, =_goto_virtual
-	
-	BX R5
-
-_goto_virtual:
-  # We are now in the virtual memory space, we can remove the identity maps in the page tables
-  # We can't use the stack once the identity maps have been removed (needs to be set to virtual memory location)!
-  
-  MOV R0, #0
-
-  # Get the address into the page dir where the section descriptor for the identity map is located
-  MOV R1, MEMBASEADDR
-	LSR R1, R1, #18
-	BIC R1, R1, #3
-	ORR R2, R1, pgd_addr
-
-  # Clear the section descriptor (thus removing the mapping)
-  STR R0, [R2]
-
-  # Do this again for the other mapping
-  MOV R1, #0
-  ORR R2, R1, pgd_addr
-
-  STR R0, [R2]
 
   # Now we start the kernel proper
   LDR R5, =_start
@@ -198,15 +173,6 @@ _do_mapping:
 	MOVT R0, #0x1
   MOV R1, MEMBASEADDR
 	MOV R2, R1
-
-	BL _map_section
-
-  # Map the 1 Mb section starting at address 0x0 to the DRAM starting address
-  # I don't know why, but this is needed on QEMU systems where DRAM does not start at address 0x0
-  MOVW R0, #0x102E
-	MOVT R0, #0x1
-	MOV R1, #0
-	MOV R2, MEMBASEADDR
 
 	BL _map_section
 
