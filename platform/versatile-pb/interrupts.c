@@ -1,9 +1,43 @@
 #include <platform/interrupts.h>
-
-#include "vic.h"
-#include "sic.h"
+#include <platform/regs.h>
 
 isr_t isr_table[64];
+
+void vic_init() {
+  REG_WR32(R_VIC_INTSELECT, 0);
+  REG_WR32(R_VIC_INTENABLE, 0);
+  REG_WR32(R_VIC_SOFTINT, 0);
+}
+
+void vic_enable(uint32_t bit) {
+  REG_WR32(R_VIC_INTENABLE, REG_RD32(R_VIC_INTENABLE) | bit);
+}
+
+void vic_disable(uint32_t bit) {
+  REG_WR32(R_VIC_INTENCLEAR, bit);
+}
+
+uint32_t vic_status() {
+	return(REG_RD32(R_VIC_IRQSTATUS));
+}
+
+void sic_init() {
+  REG_WR32(R_SIC_ENABLE, 0);
+  REG_WR32(R_SIC_SOFTINTSET, 0);
+  REG_WR32(R_SIC_PICENABLE, 0);
+}
+
+void sic_enable(uint32_t bit) {
+  REG_WR32(R_SIC_ENABLE, REG_RD32(R_SIC_ENABLE) | bit);
+}
+
+void sic_disable(uint32_t bit) {
+  REG_WR32(R_SIC_ENCLR, bit);
+}
+
+uint32_t sic_status() {
+	return(REG_RD32(R_SIC_STATUS));
+}
 
 void irq_init() {
 	// Init the interrupt controllers

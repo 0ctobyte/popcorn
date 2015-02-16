@@ -2,19 +2,34 @@
 
 QEMU=qemu-system-arm
 KERNELIMG="../kernel.img"
-QOPTIONS="-m 512M -serial stdio"
+QMEM="512M"
+QOPTIONS="-serial stdio"
 QPLATFORM="-M realview-pb-a8"
+QCPU="cortex-a8"
 QGDB="-s -S"
 
 while test $# -gt 0
 do
   if [[ $1 == "-p" ]]
   then
-    if [[ $# -ge 2 ]]
+    shift
+    if [[ $# -gt 0 && $1 != "-nogdb" ]]
     then
-      QPLATFORM=-M $2
+      if [[ $1 == "versatilepb" || $1 == "realview-pb-a8" ]]
+      then
+        QPLATFORM="-M $1"
+        if [[ $1 == "versatilepb" ]]
+        then
+          QOPTIONS="-cpu ${QCPU} ${QOPTIONS}"
+          QMEM="128M"
+        fi
+      else
+        echo "Usage: $0 [-p <system_emulator>] [-nogdb]"
+        printf "Platforms supported:\nversatilepb\nrealview-pb-a8\n"
+        exit
+      fi
     else
-      echo "Usage: run.sh [-p <system_emulator>] [-nogdb]"
+      echo "Usage: $0 [-p <system_emulator>] [-nogdb]"
       exit
     fi
   else 
@@ -31,7 +46,11 @@ then
   echo "Running QEMU in GDB mode"
 fi
 
+QOPTIONS="-m ${QMEM} ${QOPTIONS}"
+
 echo "Platform: ${QPLATFORM#-M }"
+echo "CPU: ${QCPU}"
+echo "MEM: ${QMEM}"
 
 # QEMU is able to emulate the RealView Platform Baseboard with a Cortex-A8 CPU
 $QEMU $QPLATFORM $QOPTIONS $QGDB -kernel $KERNELIMG

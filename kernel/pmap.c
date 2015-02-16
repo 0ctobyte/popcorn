@@ -235,14 +235,16 @@ void pmap_init() {
 void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
   // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
 	// Encode the protection and pmap flags in the page table entry 
-	uint32_t pte_flags = 0;
+	uint32_t pte_flags = 0, flags = 0;
   pte_flags |= (vm_prot & VM_PROT_EXECUTE) ? pte_flags : PTE_XN_BIT;
 	pte_flags |= (vm_prot & VM_PROT_WRITE) ? pte_flags : PTE_AP2_BIT;
-	
-  pte_flags |= (pmap_flags & PMAP_WRITE_BACK) ? pte_flags : (PTE_TEX0_BIT | PTE_CB3);
-	pte_flags |= (pmap_flags & PMAP_WRITE_COMBINE) ? pte_flags : (PTE_TEX0_BIT | PTE_CB0);
-	pte_flags |= (pmap_flags & PMAP_NOCACHE_OVR) ? pte_flags : (PTE_CB1 | PTE_XN_BIT);
-	pte_flags |= (pmap_flags & PMAP_NOCACHE) ? pte_flags : (PTE_CB1 | PTE_XN_BIT);
+
+  flags = (pmap_flags & PMAP_WRITE_BACK) ? (PTE_TEX0_BIT | PTE_CB3) : flags;
+	flags = (pmap_flags & PMAP_WRITE_COMBINE) ? (PTE_TEX0_BIT | PTE_CB0) : flags;
+	flags = (pmap_flags & PMAP_NOCACHE_OVR) ? (PTE_CB1 | PTE_XN_BIT) : flags;
+	flags = (pmap_flags & PMAP_NOCACHE) ? (PTE_CB1 | PTE_XN_BIT) : flags;
+
+  pte_flags |= flags;
 	
   pte_t entry = PTE_CREATE(paddr, PTE_S_BIT | pte_flags);
 

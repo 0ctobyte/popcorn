@@ -13,11 +13,13 @@
 .global _loader
 
 # Special use registers
+# R12 MEMBASEADDR
 # R11 holds the page size in bytes
 # R10 holds placement address
 # R9 holds page directory address
 # R8 holds address to first page table
 # R7 holds number of page tables
+MEMBASEADDR .req R12
 PAGE_SIZE .req R11
 placement_addr .req R10
 pgd_addr .req R9
@@ -30,20 +32,21 @@ _loader:
   BL _atagit
 
   # Store the system dependent variables read from the ATAGS
+  MOV MEMBASEADDR, R2
   LDR R3, =PAGESIZE-0xF0000000
-  ADD R3, R3, R2
+  ADD R3, R3, MEMBASEADDR
   STR R0, [R3]
   LDR R3, =MEMSIZE-0xF0000000
-  ADD R3, R3, R2
+  ADD R3, R3, MEMBASEADDR
   STR R1, [R3]
   LDR R3, =MEMBASEADDR-0xF0000000
-  ADD R3, R3, R2
+  ADD R3, R3, MEMBASEADDR
   STR R2, [R3]
 
 	# Set the svc stack, remember we need to use the loaded physical address
-	# Not the virtual address (R2=MEMBASEADDR)
+	# Not the virtual address (R12=MEMBASEADDR)
 	LDR SP, =__svc_stack_bottom+4096-0xF0000000
-  ADD SP, SP, R2
+  ADD SP, SP, MEMBASEADDR
 
 	# Set the page size register
   MOV PAGE_SIZE, R0
@@ -52,7 +55,7 @@ _loader:
 	# put the page directory. Page size is 4 kb
 	LDR pgt_num, =__pgt_num
 	LDR placement_addr, =__pgd_physical_start
-  ADD placement_addr, placement_addr, R2
+  ADD placement_addr, placement_addr, MEMBASEADDR
 
 	# This works because ARM uses PC relative addressing
 	# Create page dir at end of kernel
@@ -79,8 +82,7 @@ _goto_virtual:
   MOV R0, #0
 
   # Get the address into the page dir where the section descriptor for the identity map is located
-  LDR R3, =MEMBASEADDR
-  LDR R1, [R3]
+  MOV R1, MEMBASEADDR
 	LSR R1, R1, #18
 	BIC R1, R1, #3
 	ORR R2, R1, pgd_addr
@@ -90,8 +92,6 @@ _goto_virtual:
 
   # Do this again for the other mapping
   MOV R1, #0
-  LSR R1, R1, #18
-  BIC R1, R1, #3
   ORR R2, R1, pgd_addr
 
   STR R0, [R2]
@@ -168,50 +168,45 @@ _do_mapping:
 	MOVW R0, #0x45E
 
 	# Now map the .text section of the kernel
-  LDR R4, =MEMBASEADDR
 	LDR R1, =__text_virtual_start
 	LDR R2, =__text_physical_start
-  ADD R2, R2, R4
+  ADD R2, R2, MEMBASEADDR
 	LDR R3, =__text_virtual_end
 
 	BL _map_page_range
 
 	# Now map the rest of the kernel with the execute never bit set
 	MOVW R0, #0x45F
-  LDR R4, =MEMBASEADDR
 	LDR R1, =__data_virtual_start
 	LDR R2, =__data_physical_start
-  ADD R2, R2, R4
+  ADD R2, R2, MEMBASEADDR
 	LDR R3, =__data_virtual_end
 
 	BL _map_page_range
 
 	# Now map the page directory and page tables
-  LDR R4, =MEMBASEADDR
 	LDR R1, =__pgd_virtual_start
 	LDR R2, =__pgd_physical_start
-  ADD R2, R2, R4
+  ADD R2, R2, MEMBASEADDR
 	SUB R3, placement_addr, R2
 	ADD R3, R3, R1
 
 	BL _map_page_range
 
 	# Identity map the first 1 Mb
-	LDR R3, =MEMBASEADDR
 	MOVW R0, #0x102E
 	MOVT R0, #0x1
-  LDR R1, [R3]
+  MOV R1, MEMBASEADDR
 	MOV R2, R1
 
 	BL _map_section
 
   # Map the 1 Mb section starting at address 0x0 to the DRAM starting address
   # I don't know why, but this is needed on QEMU systems where DRAM does not start at address 0x0
-	LDR R3, =MEMBASEADDR
   MOVW R0, #0x102E
 	MOVT R0, #0x1
 	MOV R1, #0
-	LDR R2, [R3]
+	MOV R2, MEMBASEADDR
 
 	BL _map_section
 
