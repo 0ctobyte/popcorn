@@ -5,8 +5,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-extern int32_t putchar(char c);
-
 int32_t kputc(const char c) {
 	putchar(c);
 	return(c);

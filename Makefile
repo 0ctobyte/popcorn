@@ -3,8 +3,12 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
-C_SRCS := $(wildcard boot/*.c) $(wildcard platform/**/*.c) $(wildcard platform/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
-S_SRCS := $(wildcard boot/*.s) $(wildcard platform/**/*.s) $(wildcard platform/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
+# TODO: Need a more flexible build system
+PLATFORM=realview-pb
+DEFINES := -DREALVIEW_PB
+
+C_SRCS := $(wildcard boot/*.c) $(wildcard platform/$(PLATFORM)/*.c) $(wildcard platform/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
+S_SRCS := $(wildcard boot/*.s) $(wildcard platform/$(PLATFORM)/*.s) $(wildcard platform/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
 
 OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
@@ -31,7 +35,7 @@ WARNFLAGS   += -Wno-unused-but-set-variable -Wno-unused-result
 WARNFLAGS   += -Wwrite-strings -Wdisabled-optimization -Wpointer-arith
 WARNFLAGS   += -Werror
 
-CFLAGS := -std=c99 $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
+CFLAGS := -std=c99 $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := $(BASEFLAGS)
 ASFLAGS := -g -gstabs
 

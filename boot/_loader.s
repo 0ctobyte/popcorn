@@ -52,6 +52,7 @@ _loader:
 	# put the page directory. Page size is 4 kb
 	LDR pgt_num, =__pgt_num
 	LDR placement_addr, =__pgd_physical_start
+  ADD placement_addr, placement_addr, R2
 
 	# This works because ARM uses PC relative addressing
 	# Create page dir at end of kernel
@@ -161,29 +162,35 @@ A0:
 # (for the loader) and maps the device memory addresses
 .align 2
 _do_mapping:
-	STMFD SP!, {R0, R1, R2, R3, LR}
+	STMFD SP!, {R0, R1, R2, R3, R4, LR}
 
 	# First we need to setup the page table entry descriptor
 	MOVW R0, #0x45E
 
 	# Now map the .text section of the kernel
+  LDR R4, =MEMBASEADDR
 	LDR R1, =__text_virtual_start
 	LDR R2, =__text_physical_start
+  ADD R2, R2, R4
 	LDR R3, =__text_virtual_end
 
 	BL _map_page_range
 
 	# Now map the rest of the kernel with the execute never bit set
 	MOVW R0, #0x45F
+  LDR R4, =MEMBASEADDR
 	LDR R1, =__data_virtual_start
 	LDR R2, =__data_physical_start
+  ADD R2, R2, R4
 	LDR R3, =__data_virtual_end
 
 	BL _map_page_range
 
 	# Now map the page directory and page tables
+  LDR R4, =MEMBASEADDR
 	LDR R1, =__pgd_virtual_start
 	LDR R2, =__pgd_physical_start
+  ADD R2, R2, R4
 	SUB R3, placement_addr, R2
 	ADD R3, R3, R1
 
@@ -208,7 +215,7 @@ _do_mapping:
 
 	BL _map_section
 
-	LDMFD SP!, {R0, R1, R2, R3, PC}
+	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
 
 # Maps a single section appropriately
 # R0 [in] - The section descriptor

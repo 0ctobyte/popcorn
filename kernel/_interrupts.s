@@ -9,8 +9,8 @@ interrupts_enable:
 	STMFD SP!, {R0-R1, LR}
 
 	MRS R0, CPSR
-	# Enable IRQ only
-	BIC R0, R0, #0x80
+	# Enable IRQ and FIQ
+	BIC R0, R0, #0xC0
 	MSR CPSR, R0
 
 	LDMFD SP!, {R0-R1, PC}

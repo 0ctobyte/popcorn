@@ -1,4 +1,5 @@
 #include <kernel/pmap.h>
+#include <kernel/pmm.h>
 
 #include <platform/interrupts.h>
 
@@ -173,10 +174,8 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// Set the end of the kernel's virtual and physical address space
-	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * 
-		(vaddr_t)(&__pgt_num));
-	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * 
-		(paddr_t)(&__pgt_num));
+	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * (vaddr_t)(&__pgt_num));
+	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * (paddr_t)(&__pgt_num)) + MEMBASEADDR;
 
 	// The kernel's pgd has already been set up and we know where it is via the
 	// linker script symbol
@@ -217,14 +216,17 @@ void _pmap_kernel_init() {
 			kernel_pmap.pmap_stats.resident_count++;
 		}
 	}
-
-	// Now remove the identity mapped bottom 1 MB section in the pgd
-	kernel_pmap.pgd->pde[0] = 0x0;
 }
 
 void pmap_init() {
 	// Initialize the kernel pmap
 	_pmap_kernel_init();
+
+  // Initialize pmm
+  pmm_init();
+
+  // Reserve the pages used by the kernel
+  // Also reserve any memory mapped devices within the DRAM memory space
 }
 
 // TODO: Should a lock be used to access kernel_pmap?
@@ -263,7 +265,6 @@ void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_
   pmap_kernel()->pmap_stats.resident_count++;
 }
 
-// TODO: fix this to use pmap_kenter_pa
 vaddr_t pmap_steal_memory(size_t size) {
 	// pmap_init must be called before this function can be used, otherwise
 	// kernel_vend will be an incorrect value
