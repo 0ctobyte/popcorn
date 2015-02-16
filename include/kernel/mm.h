@@ -3,6 +3,13 @@
 
 #include <sys/types.h>
 
+// The page size is platform dependent and determined at boot time
+extern uint32_t PAGESIZE;
+
+// The size and start address of memory is system dependent and determined at boot time
+extern uint32_t MEMSIZE;
+extern uint32_t MEMBASEADDR;
+
 // Virtual address
 typedef uintptr_t vaddr_t;
 
@@ -20,7 +27,6 @@ typedef uint32_t vm_prot_t;
 #define VM_PROT_ALL (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
 
 // Should these even be here?
-#define PAGESIZE (0x1000) // TODO: TEMPORARY
 #define IS_PAGE_ALIGNED(B) (((B) & (PAGESIZE - 1)) == 0)
 #define TRUNC_PAGE(B) ((B) & ~(PAGESIZE - 1))
 #define ROUND_PAGE(B) (IS_PAGE_ALIGNED((B))) ? (B) : (TRUNC_PAGE((B)) + PAGESIZE)

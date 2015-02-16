@@ -8,9 +8,15 @@
 
 void kmain(void) {
 	kprintf("Initializing kernel...\n");
-	evt_init(); // Setup the exception vector table
-	irq_init(); // Setup the IRQ system
-	pmap_init();
+
+  // Setup the exception vector table
+	evt_init();
+
+  // Setup the IRQ system
+	irq_init();
+  
+  // Initializes the pmap and pmm systems
+  pmap_init();
 
 	kprintf("what\n");
 }

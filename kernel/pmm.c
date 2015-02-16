@@ -7,9 +7,7 @@
 
 #include <lib/bithacks.h>
 
-#define MEMSIZE (0x8000000) // TODO: TEMPORARY
-
-#define IS_WITHIN_BOUNDS(B) (((B) < MEMSIZE))
+#define IS_WITHIN_BOUNDS(B) ((((B) >= MEMBASEADDR) && ((B) < (MEMBASEADDR+MEMSIZE))))
 
 // Set a bit and clear a bit in the bitmap
 #define SET_FRAME(bitmap, rel_frame_num) (bitmap) |= (1 << (rel_frame_num))
@@ -175,7 +173,7 @@ paddr_t pmm_alloc() {
 	// array and the bit number in the pagemap's bitmap
 	uint32_t frame = bit_find_contiguous_zeros(top->bitmap, 1);
 	SET_FRAME(top->bitmap, frame);
-	addr = ((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE;
+	addr = (((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE) + MEMBASEADDR;
 
 	// If pagemap is fully allocated, pop it off the stack
 	if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
@@ -190,7 +188,7 @@ void pmm_free(paddr_t addr) {
 	// Calculate the absolute frame number
 	// Get the index into the pagemaps array
 	// Get the frame number relative to the bitmap in the pagemap
-	uint32_t frame_num = ATOP(addr);
+	uint32_t frame_num = ATOP((addr-MEMBASEADDR));
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
@@ -246,7 +244,7 @@ void pmm_reserve(paddr_t addr) {
 	// Check if the address is page aligned and within bounds
 	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
-	uint32_t frame_num = ATOP(addr);
+	uint32_t frame_num = ATOP((addr-MEMBASEADDR));
 	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
 	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 

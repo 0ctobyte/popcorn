@@ -2,8 +2,7 @@
 # page tables, maps the kernel (starting at physical address 0x10000) to
 # 0xF0010000, maps the page directory and page tables to the first 16 kb 
 # aligned address after the kernel.
-# Maps the memory-mapped I/O somewhere in the kernel's address space (I haven't
-# decided where yet), and identity maps the first 1 Mb. 
+# Identity maps the first 1 Mb. 
 # The code then sets up control registers appropriately
 # and enables paging. Then a branch is made kernel/boot/boot.s:_start
 # The kernel is mapped in the top 256 MB of the virtual address space.
@@ -27,13 +26,16 @@ pgt_num .req R7
 
 .align 2
 _loader:
-	
+  # Read the ATAG reference
+
 	# Set the svc stack, remember we need to use the loaded physical address
 	# Not the virtual address
+  LDR R11, =MEMBASEADDR
 	LDR SP, =__svc_stack_bottom+4096-0xF0000000
+  ADD SP, SP, R11
 
 	# 4 kb page size
-	MOV PAGE_SIZE, #0x1000
+	LDR PAGE_SIZE, =PAGESIZE
 
 	# __pgd_physical_start is 16 kb aligned, so this is perfect place to
 	# put the page directory. Page size is 4 kb
@@ -54,9 +56,36 @@ _loader:
 
 	BL _enable_mmu
 
-	LDR R5, =_start
+	LDR R5, =_goto_virtual
 	
 	BX R5
+
+_goto_virtual:
+  # We are now in the virtual memory space, we can remove the identity maps in the page tables
+  # We can't use the stack once the identity maps have been removed (needs to be set to virtual memory location)!
+  
+  MOV R0, #0
+
+  # Get the address into the page dir where the section descriptor for the identity map is located
+  LDR R1, =MEMBASEADDR
+	LSR R1, R1, #18
+	BIC R1, R1, #3
+	ORR R2, R1, pgd_addr
+
+  # Clear the section descriptor (thus removing the mapping)
+  STR R0, [R2]
+
+  # Do this again for the other mapping
+  MOV R1, #0
+  LSR R1, R1, #18
+  BIC R1, R1, #3
+  ORR R2, R1, pgd_addr
+
+  STR R0, [R2]
+
+  # Now we start the kernel proper
+  LDR R5, =_start
+  BX R5
 
 # This routine sets up registers which will be used when paging is enabled
 .align 2
@@ -151,41 +180,50 @@ _do_mapping:
 	# Identity map the first 1 Mb
 	MOVW R0, #0x102E
 	MOVT R0, #0x1
+	LDR R1, =MEMBASEADDR
+	MOV R2, R1
+
+	BL _map_section
+
+  # Map the 1 Mb section starting at address 0x0 to the DRAM starting address
+  # I don't know why, but this is needed on QEMU systems where DRAM does not start at address 0x0
+  MOVW R0, #0x102E
+	MOVT R0, #0x1
 	MOV R1, #0
-	MOV R2, #0
+	LDR R2, =MEMBASEADDR
 
 	BL _map_section
 
 	# THIS SHOULDN'T BE HERE, ONLY TEMPORARY UNTIL WE FIGURE OUT HOW TO MAP
 	# DEVICE MEMORY
 	# map vic
-	MOV R0, #7
-	MOVW R1, #0x0000
-	MOVT R1, #0xFFFF
-	MOVW R2, #0x0000
-	MOVT R2, #0x1014
-	BL _map_page
+	#MOV R0, #7
+	#MOVW R1, #0x0000
+	#MOVT R1, #0xFFFF
+	#MOVW R2, #0x0000
+	#MOVT R2, #0x1014
+	#BL _map_page
 
 	# Map sic
-	MOVW R1, #0x3000
-	MOVT R1, #0xFFFF
-	MOVW R2, #0x3000
-	MOVT R2, #0x1000
-	BL _map_page
+	#MOVW R1, #0x3000
+	#MOVT R1, #0xFFFF
+	#MOVW R2, #0x3000
+	#MOVT R2, #0x1000
+	#BL _map_page
 
 	# Map uart0
-	MOVW R1, #0x1000
-	MOVT R1, #0xFFFF
-	MOVW R2, #0x1000
-	MOVT R2, #0x101F
-	BL _map_page
+	#MOVW R1, #0x1000
+	#MOVT R1, #0xFFFF
+	#MOVW R2, #0x1000
+	#MOVT R2, #0x101F
+	#BL _map_page
 
 	# Map kmi
-	MOVW R1, #0x6000
-	MOVT R1, #0xFFFF
-	MOVW R2, #0x6000
-	MOVT R2, #0x1000
-	BL _map_page 
+	#MOVW R1, #0x6000
+	#MOVT R1, #0xFFFF
+	#MOVW R2, #0x6000
+	#MOVT R2, #0x1000
+	#BL _map_page 
 
 	LDMFD SP!, {R0, R1, R2, PC}
 
@@ -200,8 +238,7 @@ _map_section:
 	# Construct the section descriptor
 	ORR R0, R0, R2
 
-	# Get the address into the page dir where the section descriptor will be
-	# stored
+	# Get the address into the page dir where the section descriptor will be stored
 	LSR R1, R1, #18
 	BIC R1, R1, #3
 	ORR R2, R1, pgd_addr
