@@ -18,7 +18,7 @@ To run on the QEMU emulator simply run the `sim.sh` script in the `tools` direct
 
 To debug the kernel with GDB:
 
-1. Run the `run` script
+1. Run the `emulator` script
 2. Run `arm-none-eabi-gdb` in the terminal
 3. Type `target remote localhost:1234` in the GDB prompt to connect to the QEMU debugger
 

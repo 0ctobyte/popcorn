@@ -1,6 +1,6 @@
 # How To Debug
 
-1. `run`
+1. `emulator`
 2. `arm-none-eabi-gdb -tui`
 
 This should bring up a GDB prompt. To connect to the QEMU debugger, enter into the GDB prompt:
