@@ -194,37 +194,6 @@ _do_mapping:
 
 	BL _map_section
 
-	# THIS SHOULDN'T BE HERE, ONLY TEMPORARY UNTIL WE FIGURE OUT HOW TO MAP
-	# DEVICE MEMORY
-	# map vic
-	#MOV R0, #7
-	#MOVW R1, #0x0000
-	#MOVT R1, #0xFFFF
-	#MOVW R2, #0x0000
-	#MOVT R2, #0x1014
-	#BL _map_page
-
-	# Map sic
-	#MOVW R1, #0x3000
-	#MOVT R1, #0xFFFF
-	#MOVW R2, #0x3000
-	#MOVT R2, #0x1000
-	#BL _map_page
-
-	# Map uart0
-	#MOVW R1, #0x1000
-	#MOVT R1, #0xFFFF
-	#MOVW R2, #0x1000
-	#MOVT R2, #0x101F
-	#BL _map_page
-
-	# Map kmi
-	#MOVW R1, #0x6000
-	#MOVT R1, #0xFFFF
-	#MOVW R2, #0x6000
-	#MOVT R2, #0x1000
-	#BL _map_page 
-
 	LDMFD SP!, {R0, R1, R2, PC}
 
 # Maps a single section appropriately
