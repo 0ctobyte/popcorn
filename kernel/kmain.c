@@ -7,17 +7,19 @@
 #include <platform/interrupts.h>
 
 void kmain(void) {
-	kprintf("Initializing kernel...\n");
-
   // Setup the exception vector table
 	evt_init();
 
+  // Initializes the pmap and pmm systems
+  // We need to also map device memory here (like the GIC and UART)
+  // We need to map the GIC in order to set up the IRQ system
+  // We need to map UART in order to use kprintf!
+  pmap_init();
+  
   // Setup the IRQ system
 	irq_init();
   
-  // Initializes the pmap and pmm systems
-  pmap_init();
-
+	kprintf("Initializing kernel...\n");
 	kprintf("what\n");
 }
 

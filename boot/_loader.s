@@ -26,16 +26,27 @@ pgt_num .req R7
 
 .align 2
 _loader:
-  # Read the ATAG reference
+  # Read the ATAGs
+  BL _atagit
+
+  # Store the system dependent variables read from the ATAGS
+  LDR R3, =PAGESIZE-0xF0000000
+  ADD R3, R3, R2
+  STR R0, [R3]
+  LDR R3, =MEMSIZE-0xF0000000
+  ADD R3, R3, R2
+  STR R1, [R3]
+  LDR R3, =MEMBASEADDR-0xF0000000
+  ADD R3, R3, R2
+  STR R2, [R3]
 
 	# Set the svc stack, remember we need to use the loaded physical address
-	# Not the virtual address
-  LDR R11, =MEMBASEADDR
+	# Not the virtual address (R2=MEMBASEADDR)
 	LDR SP, =__svc_stack_bottom+4096-0xF0000000
-  ADD SP, SP, R11
+  ADD SP, SP, R2
 
-	# 4 kb page size
-	LDR PAGE_SIZE, =PAGESIZE
+	# Set the page size register
+  MOV PAGE_SIZE, R0
 
 	# __pgd_physical_start is 16 kb aligned, so this is perfect place to
 	# put the page directory. Page size is 4 kb
@@ -67,7 +78,8 @@ _goto_virtual:
   MOV R0, #0
 
   # Get the address into the page dir where the section descriptor for the identity map is located
-  LDR R1, =MEMBASEADDR
+  LDR R3, =MEMBASEADDR
+  LDR R1, [R3]
 	LSR R1, R1, #18
 	BIC R1, R1, #3
 	ORR R2, R1, pgd_addr
@@ -149,7 +161,7 @@ A0:
 # (for the loader) and maps the device memory addresses
 .align 2
 _do_mapping:
-	STMFD SP!, {R0, R1, R2, LR}
+	STMFD SP!, {R0, R1, R2, R3, LR}
 
 	# First we need to setup the page table entry descriptor
 	MOVW R0, #0x45E
@@ -178,23 +190,25 @@ _do_mapping:
 	BL _map_page_range
 
 	# Identity map the first 1 Mb
+	LDR R3, =MEMBASEADDR
 	MOVW R0, #0x102E
 	MOVT R0, #0x1
-	LDR R1, =MEMBASEADDR
+  LDR R1, [R3]
 	MOV R2, R1
 
 	BL _map_section
 
   # Map the 1 Mb section starting at address 0x0 to the DRAM starting address
   # I don't know why, but this is needed on QEMU systems where DRAM does not start at address 0x0
+	LDR R3, =MEMBASEADDR
   MOVW R0, #0x102E
 	MOVT R0, #0x1
 	MOV R1, #0
-	LDR R2, =MEMBASEADDR
+	LDR R2, [R3]
 
 	BL _map_section
 
-	LDMFD SP!, {R0, R1, R2, PC}
+	LDMFD SP!, {R0, R1, R2, R3, PC}
 
 # Maps a single section appropriately
 # R0 [in] - The section descriptor

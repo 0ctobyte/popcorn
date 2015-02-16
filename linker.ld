@@ -2,10 +2,6 @@ ENTRY(_loader)
 SECTIONS
 {
 	. = 0xF0010000;
-  /* TODO: This shouldn't be here! */
-  PAGESIZE = 0x1000;
-  MEMSIZE = 0x20000000;
-  MEMBASEADDR = 0x70000000;
 	__kernel_virtual_start = .;
 	__kernel_physical_start = . - 0xF0000000;
 	
