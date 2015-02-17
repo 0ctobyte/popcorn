@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+// Count trailing zeros
+// Returns the # of continuous zeroes from the least significant bit
+uint32_t _ctz(uint32_t);
+
 // Count leading zeros
 // Returns the # of continuous zeros from the most significant bit
 uint32_t _clz(uint32_t);

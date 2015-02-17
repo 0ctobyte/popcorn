@@ -7,8 +7,6 @@
 
 #include <lib/bithacks.h>
 
-#define IS_WITHIN_BOUNDS(B) ((((B) >= MEMBASEADDR) && ((B) < (MEMBASEADDR+MEMSIZE))))
-
 // Set a bit and clear a bit in the bitmap
 #define SET_FRAME(bitmap, rel_frame_num) (bitmap) |= (1 << (rel_frame_num))
 #define CLEAR_FRAME(bitmap, rel_frame_num) (bitmap) &= ~(1 << (rel_frame_num))
@@ -17,15 +15,14 @@
 // page aligned. This gives the absolute frame number.
 // Multiply pagemap array index by BITS and subtract value from absolute
 // frame number to get relative frame number within a bitmap.
-#define GET_REL_FRAME_NUM(abs_frame_num, elem_num) \
-	((abs_frame_num) - ((elem_num) * BITS))
+#define GET_REL_FRAME_NUM(abs_frame_num, elem_num) ((abs_frame_num) - ((elem_num) * BITS))
 
 // The number of bits in each bitmap
 #define BITS (32)
 
 // Shift by the log base 2 of the number of BITS. This gives the index into
 // the pagemaps array
-#define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) << (5))
+#define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) >> (5))
 
 /*
  * So how does this physical memory allocator work?
@@ -253,7 +250,7 @@ void pmm_reserve(paddr_t addr) {
 	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
 	
 	// The bitmap must not already be full
-	kassert(pagemap->bitmap == UINT32_MAX);
+	kassert(pagemap->bitmap != UINT32_MAX);
 
 	// Set the bit and if need be, remove the pagemap
 	SET_FRAME(pagemap->bitmap, rel_frame_num);

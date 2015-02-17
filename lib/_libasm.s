@@ -4,6 +4,18 @@
 .text
 .code 32
 
+# Count trailing zeros
+# Takes a 32-bit integer in R0
+# Returns the number of trailing zeros
+.global _ctz
+.type _ctz, %function
+.align 2
+_ctz:
+  STMFD SP!, {LR}
+  RBIT R0, R0
+  CLZ R0, R0
+  LDMFD SP!, {PC}
+
 # Count leading zeros
 # Takes a 32-bit integer in R0
 # Returns the number of leading zeros

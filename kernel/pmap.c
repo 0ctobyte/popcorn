@@ -173,10 +173,6 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 // TODO: Should a lock be used to access kernel_pmap?
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
-	// Set the end of the kernel's virtual and physical address space
-	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * (vaddr_t)(&__pgt_num));
-	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + sizeof(pgt_t) * (paddr_t)(&__pgt_num)) + MEMBASEADDR;
-
 	// The kernel's pgd has already been set up and we know where it is via the
 	// linker script symbol
 	kernel_pmap.pgd = (pgd_t*)(&__pgd_virtual_start);
@@ -185,8 +181,7 @@ void _pmap_kernel_init() {
 	// We are too early in the bootstrap process to be able to use the heap
 	// so we need to use _pmap_bootstrap_memory
 	uint32_t n_pgt = (uint32_t)(&__pgt_num);
-	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t)
-			* n_pgt);
+	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t) * n_pgt);
 
 	kernel_pmap.pgt_entry_head = pentries;
 
@@ -214,7 +209,7 @@ void _pmap_kernel_init() {
 	uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
 	uint32_t *pte = (uint32_t*)pg_tables;
 	for(uint32_t i = 0; i < n_tot_entries; i++) {
-		if(pte[i] != 0) {
+		if(pte[i] & PTE_PAGE_BIT) {
 			kernel_pmap.pmap_stats.wired_count++;
 			kernel_pmap.pmap_stats.resident_count++;
 		}
@@ -222,6 +217,10 @@ void _pmap_kernel_init() {
 }
 
 void pmap_init() {
+  // Set the end of the kernel's virtual and physical address space
+	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * (vaddr_t)(&__pgt_num));
+	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + MEMBASEADDR + sizeof(pgt_t) * (paddr_t)(&__pgt_num));
+
 	// Initialize the kernel pmap
 	_pmap_kernel_init();
 
@@ -229,7 +228,15 @@ void pmap_init() {
   pmm_init();
 
   // Reserve the pages used by the kernel
-  // Also reserve any memory mapped devices within the DRAM memory space
+	uint32_t n_pgt = (uint32_t)(&__pgt_num);
+  uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
+	pgt_t *pg_tables = (pgt_t*)(&__pgt_virtual_start);
+	uint32_t *pte = (uint32_t*)pg_tables;
+	for(uint32_t i = 0; i < n_tot_entries; i++) {
+		if(pte[i] & PTE_PAGE_BIT) {
+      pmm_reserve(TRUNC_PAGE(pte[i]));
+    }
+  }
 }
 
 // TODO: Should a lock be used to access kernel_pmap?

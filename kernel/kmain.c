@@ -2,7 +2,9 @@
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
 #include <kernel/evt.h>
+#include <kernel/mm.h>
 #include <kernel/pmap.h>
+#include <kernel/pmm.h>
 
 #include <platform/interrupts.h>
 #include <platform/regs.h>
@@ -20,6 +22,7 @@ void kmain(void) {
   // TODO: This shouldn't be here! Only temporary
   // Map the UART, VIC/SIC/GIC
   pmap_kenter_pa(R_UART0_VBASE, R_UART0_PBASE, VM_PROT_DEFAULT, PMAP_NOCACHE);
+  if(IS_WITHIN_BOUNDS(R_UART0_PBASE)) pmm_reserve(R_UART0_PBASE);
 
 	kprintf("Initializing kernel...\n");
 	kprintf("what\n");

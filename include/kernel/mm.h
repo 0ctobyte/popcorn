@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+#include <lib/asm.h>
+
 // The page size is platform dependent and determined at boot time
 extern uint32_t PAGESIZE;
 
@@ -28,10 +30,11 @@ typedef uint32_t vm_prot_t;
 
 // Should these even be here?
 #define IS_PAGE_ALIGNED(B) (((B) & (PAGESIZE - 1)) == 0)
+#define IS_WITHIN_BOUNDS(B) ((((B) >= MEMBASEADDR) && ((B) < (MEMBASEADDR+MEMSIZE))))
 #define TRUNC_PAGE(B) ((B) & ~(PAGESIZE - 1))
 #define ROUND_PAGE(B) (IS_PAGE_ALIGNED((B))) ? (B) : (TRUNC_PAGE((B)) + PAGESIZE)
-#define ATOP(B) (TRUNC_PAGE((B)) << (12)) 
-#define PTOA(B) ((B) << 12)
+#define ATOP(B) (TRUNC_PAGE((B)) >> _ctz(PAGESIZE)) 
+#define PTOA(B) ((B) << _ctz(PAGESIZE))
 
 #endif // __MM_H__
 
