@@ -144,7 +144,7 @@ void pmm_init() {
 	// Allocate memory for the pagemaps
 	// pmap_steal_memory will only work if pmap_init has been called before
 	// Ideally, pmap_init will pmm_init
-	pagestack.size = ((MEMSIZE >> (_ctz(PAGESIZE)) >> (_ctz(BITS));
+	pagestack.size = ((MEMSIZE >> (_ctz(PAGESIZE))) >> (_ctz(BITS)));
 	pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
 
 	// Link the pagemaps together
