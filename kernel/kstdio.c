@@ -12,15 +12,15 @@ int32_t kputc(const char c) {
 
 int32_t kputs(const char *s) {
 	size_t len = strlen(s);
-	for(int i = 0; i < len; i++) {
+	for(uint32_t i = 0; i < len; i++) {
 		kputc(s[i]);
 	}
 	return(0);
 }
 
 // This will be allocated on the data segment (BSS) rather than the stack!
-char __kprintf_buffer[1024];
-spinlock_t buf_lock = SPINLOCK_INIT;
+static char __kprintf_buffer[1024];
+static spinlock_t buf_lock = SPINLOCK_INIT;
 int32_t kprintf(const char *fmt, ...) {
 	va_list args;
 	int32_t r = 0;

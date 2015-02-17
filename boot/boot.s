@@ -59,6 +59,18 @@ _start:
 	# Go back to supervisor mode
 	MSR CPSR, R0
 
+  # CPACR: Allow full (PL0 & PL1) access to coprocessors 10 & 11 (VFPU) 
+  MRC p15, 0, R2, c1, c0, 2
+  MOV R3, #0xF
+  ORR R2, R2, R3, LSL #20
+  MCR p15, 0, R2, c1, c0, 2
+
+  # Enable the VFPU
+  VMRS R2, FPEXC
+  MOV R3, #1
+  ORR R2, R2, R3, LSL #30
+  VMSR FPEXC, R2
+
 	# Jump to kernel main
 	BL kmain
 

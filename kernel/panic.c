@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-char __panic_buffer[1024];
+static char __panic_buffer[1024];
 void panic(const char *fmt, ...) {
 	va_list args;
 	int32_t r = 0;

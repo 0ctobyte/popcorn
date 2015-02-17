@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <lib/asm.h>
+
 // Length sub specifiers
 #define _hh (0x1)
 #define _h (0x2)
@@ -26,7 +28,7 @@
 #define get_number(c) (uint8_t)((c) - '0')
 
 // Holds the formatted number
-char fmt_num[256];
+static char fmt_num[256];
 
 // Count the number of digits in the number represented in the string
 size_t num_digits(const char *s) {
@@ -61,8 +63,8 @@ int32_t atoi(const char *s) {
 }
 
 // Converts an int into a string
-const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
-const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+static const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
 	char *buf = str;
 	char tmp[36];
@@ -72,8 +74,8 @@ char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
 
 	uint32_t i = 0;
 	while(num != 0) {
-		uint32_t R = num % base;
-		num /= base;
+		uint32_t R = _umod(num, base);
+		num = (uint32_t)((double)num / (double)base);
 		tmp[i++] = (upcase) ? upper[R] : lower[R];
 	}
 
@@ -117,9 +119,9 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
 	if(octal != 0) ++working_len;
 	if(*hex != '\0') working_len += 2;
 	if(precision >= 0) {
-		if(specifier == 's' && len > precision) {
+		if(specifier == 's' && len > (uint32_t)precision) {
 			working_len = len = precision;
-		} else if(len < precision) {
+		} else if(len < (uint32_t)precision) {
 			precision_len = precision - len;
 			working_len += precision_len;
 		}

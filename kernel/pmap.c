@@ -133,8 +133,8 @@ extern uintptr_t __pgt_num;
 
 // These are set to the end of the kernel's virtual address space and physical
 // address space
-paddr_t kernel_pend;
-vaddr_t kernel_vend;
+static paddr_t kernel_pend;
+static vaddr_t kernel_vend;
 
 vaddr_t _pmap_bootstrap_memory(size_t size) {
 	// pmap_init must be called before this function can be used, otherwise

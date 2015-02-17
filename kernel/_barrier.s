@@ -7,9 +7,9 @@
 .type barrier_dmb, %function
 .align 2
 barrier_dmb:
-	STMFD SP!, {LR}
 	DMB
-	LDMFD SP!, {PC}
+
+  BX LR
 
 # Data Synchronization Barrier
 # Ensures all instructions before this instruction complete
@@ -19,9 +19,9 @@ barrier_dmb:
 .type barrier_dsb, %function
 .align 2
 barrier_dsb:
-	STMFD SP!, {LR}
 	DSB
-	LDMFD SP!, {PC}
+
+  BX LR
 
 # Instruction Synchronization Barrier
 # Flushes the instruction pipeline in the processor
@@ -30,7 +30,7 @@ barrier_dsb:
 .type barrier_isb, %function
 .align 2
 barrier_isb:
-	STMFD SP!, {LR}
 	ISB
-	LDMFD SP!, {PC}
+
+  BX LR
 

@@ -1,7 +1,7 @@
 #include <platform/interrupts.h>
 #include <platform/regs.h>
 
-isr_t isr_table[64];
+static isr_t isr_table[64];
 
 void _vic_init() {
   REG_WR32(R_VIC_INTSELECT, 0);

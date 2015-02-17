@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+// Unsigned integer modulo
+uint32_t _umod(uint32_t, uint32_t);
+
 // Count trailing zeros
 // Returns the # of continuous zeroes from the least significant bit
 uint32_t _ctz(uint32_t);

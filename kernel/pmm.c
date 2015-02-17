@@ -122,7 +122,7 @@ typedef struct {
 	size_t size;         // # of pagemap_t in the pagemap_t array
 } pagestack_t;
 
-pagestack_t pagestack = {SPINLOCK_INIT, 0, 0, 0};
+static pagestack_t pagestack = {SPINLOCK_INIT, 0, 0, 0};
 
 // Pushes the given pagemap on the stack
 void _pmm_push(pagestack_t *pstack, pagemap_t *pagemap) {

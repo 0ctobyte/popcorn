@@ -9,8 +9,6 @@
 .align 2
 _atagit:
   # ATAGs located at memory address in R2
-
-_atagit_loop:
   # Get the size of the ATAG structure and ATAG structure ID
   LDR R0, [R2], #4 
   LDR R1, [R2], #4
@@ -31,29 +29,29 @@ _atagit_loop:
   CMP R1, R3
   BEQ _atagit_mem
 
-  B _atagit_loop
+  B _atagit
 
 _atagit_core:
   # Make sure the ATAG_CORE structure isn't empty
   CMP R0, #2
-  BEQ _atagit_loop
+  BEQ _atagit
 
   # Get the systems page size, we don't care about the flags or the root device number
   LDR R4, [R2, #4]!
   ADD R2, R2, #8
 
-  B _atagit_loop
+  B _atagit
 
 _atagit_mem:
   # Make sure the ATAG_MEM structure isn't empty
   CMP R0, #2
-  BEQ _atagit_loop
+  BEQ _atagit
 
   # Get the system mem size and physical mem start address
   LDR R5, [R2], #4
   LDR R6, [R2], #4
 
-  B _atagit_loop
+  B _atagit
 
 _atagit_done:
   # Return values: PAGESIZE, MEMSIZE, MEMBASEADDR
