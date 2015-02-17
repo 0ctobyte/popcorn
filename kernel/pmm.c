@@ -6,6 +6,7 @@
 #include <platform/interrupts.h>
 
 #include <lib/bithacks.h>
+#include <lib/asm.h>
 
 // Set a bit and clear a bit in the bitmap
 #define SET_FRAME(bitmap, rel_frame_num) (bitmap) |= (1 << (rel_frame_num))
@@ -22,7 +23,7 @@
 
 // Shift by the log base 2 of the number of BITS. This gives the index into
 // the pagemaps array
-#define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) >> (5))
+#define GET_PAGEMAP_ARRAY_INDEX(abs_frame_num) ((abs_frame_num) >> (_ctz(BITS)))
 
 /*
  * So how does this physical memory allocator work?
@@ -143,7 +144,7 @@ void pmm_init() {
 	// Allocate memory for the pagemaps
 	// pmap_steal_memory will only work if pmap_init has been called before
 	// Ideally, pmap_init will pmm_init
-	pagestack.size = ((MEMSIZE/PAGESIZE)/BITS);
+	pagestack.size = ((MEMSIZE >> (_ctz(PAGESIZE)) >> (_ctz(BITS));
 	pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
 
 	// Link the pagemaps together
