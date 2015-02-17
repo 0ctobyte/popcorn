@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <lib/asm.h>
+
 // Length sub specifiers
 #define _hh (0x1)
 #define _h (0x2)
@@ -72,8 +74,8 @@ char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
 
 	uint32_t i = 0;
 	while(num != 0) {
-		uint32_t R = num % base;
-		num /= base;
+		uint32_t R = _umod(num, base);
+		num = (uint32_t)((double)num / (double)base);
 		tmp[i++] = (upcase) ? upper[R] : lower[R];
 	}
 

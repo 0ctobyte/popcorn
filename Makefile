@@ -14,7 +14,6 @@ OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
 
 INCLUDE := -Iinclude
-LIBS := -lgcc
 LSCRIPT := linker.ld
 
 BASEFLAGS := -g -target armv7-none-eabi -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=vfpv3
@@ -26,7 +25,7 @@ ASFLAGS := $(BASEFLAGS) $(WARNFLAGS)
 all : kernel.img
 
 kernel.elf: $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -T $(LSCRIPT) -o $@
+	$(LD) $(LDFLAGS) $(OBJS) -T $(LSCRIPT) -o $@
 
 kernel.img: kernel.elf
 	$(OBJCOPY) kernel.elf -O binary kernel.img
