@@ -1,7 +1,7 @@
 #include <platform/interrupts.h>
 #include <platform/regs.h>
 
-isr_t isr_table[64];
+static isr_t isr_table[64];
 
 void irq_init() {
   // Enable interrupts on the CPU

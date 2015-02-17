@@ -59,8 +59,8 @@ A2:
 .align 2
 data_abort_exception:
 	STMFD SP!, {R0-R12, LR}
-	MRC P15, 0, R0, C6, C0, 0
-	MRC P15, 0, R1, C5, C0, 0
+	MRC p15, 0, R0, c6, c0, 0
+	MRC p15, 0, R1, c5, c0, 0
 	LDR R0, =evt_table
 	LDR R0, [R0, #12]
 	TEQ R0, #0
@@ -102,9 +102,9 @@ evt_init:
 	
 	# Setup the vector base address register
 	LDR R0, =exception_vector_table
-	MRC P15, 0, R1, C12, C0, 0
+	MRC p15, 0, R1, c12, c0, 0
 	ORR R1, R1, R0
-	MCR P15, 0, R1, C12, C0, 0
+	MCR p15, 0, R1, c12, c0, 0
 
 	LDMFD SP!, {R0, R1, PC}
 

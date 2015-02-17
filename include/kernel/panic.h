@@ -3,7 +3,7 @@
 
 #define HALT() for(;;)
 
-void panic(const char *fmt, ...);
+void panic(const char *fmt, ...) __attribute__((noreturn));
 
 #endif // __PANIC_H__
 

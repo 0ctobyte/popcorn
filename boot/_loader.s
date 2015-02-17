@@ -83,35 +83,35 @@ _enable_mmu:
 	# Setup the domain access control register
 	MOVW R0, #0x500D
 	MOVT R0, #0xFF55
-	MCR P15, 0, R0, C3, C0, 0
+	MCR p15, 0, R0, c3, c0, 0
 
 	# System control register. Enable access flag, Tex remap
 	MOV R1, #3
-	MRC P15, 0, R0, C1, C0, 0
+	MRC p15, 0, R0, c1, c0, 0
 	ORR R0, R0, R1, LSL #28
-	MCR P15, 0, R0, C1, C0, 0
+	MCR p15, 0, R0, c1, c0, 0
 
 	# Set N to zero in Translation Table Base Control Register
-	MRC P15, 0, R0, C2, C0, 2
+	MRC p15, 0, R0, c2, c0, 2
 	BIC R0, R0, #7
-	MCR P15, 0, R0, C2, C0, 2
+	MCR p15, 0, R0, c2, c0, 2
 
 	# Set the address of the page directory in the translation table base
 	# register 0
 	MOV R0, #0
 	ORR R0, pgd_addr, #0x2B
-	MCR P15, 0, R0, C2, C0, 0
+	MCR p15, 0, R0, c2, c0, 0
 
 	# Setup the secure configuration register
-	MRC P15, 0, R0, C1, C1, 0
+	MRC p15, 0, R0, c1, c1, 0
 	BIC R0, R0, #1
-	MCR P15, 0, R0, C1, C1, 0
+	MCR p15, 0, R0, c1, c1, 0
 
 	# Setup the primary region remap register
 	MOVW R0, #0x8AA4
 	MOVT R0, #0xF009
 	# First check if multiple shareability domains are implemented
-	MRC P15, 0, R1, C0, C1, 4
+	MRC p15, 0, R1, c0, c1, 4
 	LSR R1, R1, #12
 	AND R1, R1, #0xF
 	CMP R1, #1
@@ -119,17 +119,17 @@ _enable_mmu:
 	# Only one level, don't need NOSn bits
 	BIC R0, R0, #0xFF000000
 A0:
-	MCR P15, 0, R0, C10, C2, 0
+	MCR p15, 0, R0, c10, c2, 0
 
 	# Setup the normal memory remap register
 	MOVW R0, #0x48E0
 	MOVT R0, #0x44E0
-	MCR P15, 0, R0, C10, C2, 1
+	MCR p15, 0, R0, c10, c2, 1
 
 	# Now we enable the MMU
-	MRC P15, 0, R0, C1, C0, 0
+	MRC p15, 0, R0, c1, c0, 0
 	ORR R0, R0, #1
-	MCR P15, 0, R0, C1, C0, 0
+	MCR p15, 0, R0, c1, c0, 0
 
 	LDMFD SP!, {R0, R1, PC}
 

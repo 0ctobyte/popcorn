@@ -1,5 +1,5 @@
-AS := arm-none-eabi-as
-CC := arm-none-eabi-gcc
+AS := clang
+CC := clang
 LD := arm-none-eabi-gcc
 OBJCOPY := arm-none-eabi-objcopy
 
@@ -17,29 +17,15 @@ INCLUDE := -Iinclude
 
 LSCRIPT := linker.ld
 
-BASEFLAGS := -g -pedantic -pedantic-errors -nostdlib
-BASEFLAGS += -nostartfiles -ffreestanding -nodefaultlibs
-BASEFLAGS += -fno-builtin -mcpu=cortex-a8
+BASEFLAGS := -g -target armv7-none-eabi -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=vfpv3
 
-WARNFLAGS   := -Wall -Wextra -Wshadow -Wcast-align -Wwrite-strings
-WARNFLAGS   += -Wredundant-decls -Winline
-WARNFLAGS   += -Wno-attributes -Wno-deprecated-declarations
-WARNFLAGS   += -Wno-div-by-zero -Wno-endif-labels -Wfloat-equal
-WARNFLAGS   += -Wformat=2 -Wno-format-extra-args -Winit-self
-WARNFLAGS   += -Winvalid-pch -Wmissing-format-attribute
-WARNFLAGS   += -Wmissing-include-dirs -Wno-multichar
-WARNFLAGS   += -Wredundant-decls -Wshadow
-WARNFLAGS   += -Wno-sign-compare -Wswitch -Wsystem-headers -Wundef
-WARNFLAGS   += -Wno-pragmas -Wno-unused-but-set-parameter
-WARNFLAGS   += -Wno-unused-but-set-variable -Wno-unused-result
-WARNFLAGS   += -Wwrite-strings -Wdisabled-optimization -Wpointer-arith
-WARNFLAGS   += -Werror
-
-CFLAGS := -std=c99 $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
-LDFLAGS := $(BASEFLAGS)
-ASFLAGS := -g -gstabs
+WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
 
 LIBS := -lgcc
+
+CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
+LDFLAGS := -nostdlib -nodefaultlibs -nostartfiles
+ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) 
 
 all : kernel.img
 
