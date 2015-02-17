@@ -25,7 +25,6 @@ void kmain(void) {
   pmap_kenter_pa(R_UART0_VBASE, R_UART0_PBASE, VM_PROT_DEFAULT, PMAP_NOCACHE);
   if(IS_WITHIN_BOUNDS(R_UART0_PBASE)) pmm_reserve(R_UART0_PBASE);
 
-  kprintf("%#x, %#o, %d, %f\n", 4096, 16, INT32_MAX, 4.75);
 	kprintf("Initializing kernel...\n");
 	kprintf("what\n");
 
