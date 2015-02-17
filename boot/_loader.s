@@ -13,18 +13,18 @@
 .global _loader
 
 # Special use registers
-# R12 holds the page size in bytes
 # R11 MEMBASEADDR
 # R10 holds placement address
 # R9 holds page directory address
 # R8 holds address to first page table
 # R7 holds number of page tables
-PAGE_SIZE .req R12
+# R6 holds the page size in bytes
 MEMBASEADDR .req R11
 placement_addr .req R10
 pgd_addr .req R9
 pgt_start_addr .req R8
 pgt_num .req R7
+PAGE_SIZE .req R6
 
 .align 2
 _loader:
@@ -72,14 +72,12 @@ _loader:
 	BL _enable_mmu
 
   # Now we start the kernel proper
-  LDR R5, =_start
-  BX R5
+  LDR R0, =_start
+  BX R0
 
 # This routine sets up registers which will be used when paging is enabled
 .align 2
 _enable_mmu:
-	STMFD SP!, {R0, R1, LR}
-
 	# Setup the domain access control register
 	MOVW R0, #0x500D
 	MOVT R0, #0xFF55
@@ -131,13 +129,13 @@ A0:
 	ORR R0, R0, #1
 	MCR p15, 0, R0, c1, c0, 0
 
-	LDMFD SP!, {R0, R1, PC}
+  BX LR
 
 # Maps the kernel to 0xF0010000, identity maps the first 1 Mb
 # (for the loader) and maps the device memory addresses
 .align 2
 _do_mapping:
-	STMFD SP!, {R0, R1, R2, R3, R4, LR}
+	STMFD SP!, {R4, LR}
 
 	# First we need to setup the page table entry descriptor
 	MOVW R0, #0x45E
@@ -160,6 +158,7 @@ _do_mapping:
 	BL _map_page_range
 
 	# Now map the page directory and page tables
+	MOVW R0, #0x45F
 	LDR R1, =__pgd_virtual_start
 	LDR R2, =__pgd_physical_start
   ADD R2, R2, MEMBASEADDR
@@ -176,7 +175,8 @@ _do_mapping:
 
 	BL _map_section
 
-	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
+	LDMFD SP!, {R4, LR}
+  BX LR
 
 # Maps a single section appropriately
 # R0 [in] - The section descriptor
@@ -184,8 +184,6 @@ _do_mapping:
 # R2 [in] - A section-aligned physical address
 .align 2
 _map_section:
-	STMFD SP!, {LR}
-
 	# Construct the section descriptor
 	ORR R0, R0, R2
 
@@ -197,7 +195,7 @@ _map_section:
 	# Write the section descriptor to the page directory
 	STR R0, [R2]
 
-	LDMFD SP!, {PC}
+  BX LR
 
 # Maps a single page in the appropriate page table in the page directory
 # Takes as input a page table entry descriptor in R0, a virtual page-aligned
@@ -207,7 +205,7 @@ _map_section:
 # results of this routine are undefined.
 .align 2
 _map_page:
-	STMFD SP!, {R0, R1, R2, R3, R4, LR}
+	STMFD SP!, {R4}
 
 	# Concatenate the physical page-aligned address with the page table
 	# entry descriptor. This value will be placed in the page table
@@ -229,7 +227,8 @@ _map_page:
 	# entry if one is already present
 	STR R0, [R3]
 
-	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
+	LDMFD SP!, {R4}
+  BX LR
 
 # Maps a range of continuous physical pages to a range of continuous virtual
 # R0 [in] - Page table entry descriptor 
@@ -243,13 +242,15 @@ _map_page:
 # this routine are undefined
 .align 2
 _map_page_range:
-	STMFD SP!, {R0, R1, R2, R3, LR}
+	STMFD SP!, {LR}
 
 _map_page_range_loop:
 	CMP R1, R3
 	BPL _map_page_range_end
 
+  STMFD SP!, {R0, R1, R2, R3}
 	BL _map_page
+  LDMFD SP!, {R0, R1, R2, R3}
 
 	# Increment by page size
 	ADD R1, R1, PAGE_SIZE
@@ -258,12 +259,13 @@ _map_page_range_loop:
 	B _map_page_range_loop
 
 _map_page_range_end:
-	LDMFD SP!, {R0, R1, R2, R3, PC}
+	LDMFD SP!, {LR}
+  BX LR
 
 # Sets up the page directory entries
 .align 2
 _setup_page_dir:
-	STMFD SP!, {R0, R1, R2, R3, R4, LR}
+	STMFD SP!, {R4}
 
 	MOV R0, pgt_start_addr
 	
@@ -300,12 +302,13 @@ _setup_page_dir_loop:
 	B _setup_page_dir_loop
 
 _setup_page_dir_exit:
-	LDMFD SP!, {R0, R1, R2, R3, R4, PC}
+	LDMFD SP!, {R4}
+  BX LR
 
 # Create a page directory (1st level page table)
 .align 2
 _create_page_dir:
-	STMFD SP!, {R0, R1, R2, LR}	
+	STMFD SP!, {LR}	
 
 	# Allocate 16 kb for page directory
 	MOV R0, #16	
@@ -319,16 +322,17 @@ _create_page_dir:
 	MOV R2, #0
 	BL _memsetw
 
-	LDMFD SP!, {R0, R1, R2, PC} 	
+	LDMFD SP!, {LR}
+  BX LR
 
 # Create page tables (2nd level page tables)
 # Takes as input the # of tables to create in R0
 .align 2
 _create_page_tables:
-	STMFD SP!, {R0, R1, LR}
+	STMFD SP!, {R4, LR}
 
 	# R0 will be overwritten by _alloc
-	MOV R1, R0
+	MOV R4, R0
 	
 	# Allocate memory for page tables
 	BL _alloc
@@ -338,30 +342,28 @@ _create_page_tables:
 
 	# There are 256 entries (words) in each page table
 	# Clear it all
-	LSL R1, R1, #8
+	LSL R1, R4, #8
 	MOV R2, #0
 	BL _memsetw
 
-	LDMFD SP!, {R0, R1, PC}
+	LDMFD SP!, {R4, LR}
+  BX LR
 
 # Sets a range of words to the specified value
 # Takes as input the starting address in R0, number of words in R1
 # and value to set in R2
 .align 2
 _memsetw:
-	STMFD SP!, {R0, R1, R2, LR}
-
-_memsetw_loop:
 	SUBS R1, R1, #1
 	BMI _memsetw_done
 
 	# Store word in [R0] and increment R0 to next word
 	STR R2, [R0], #4
 
-	B _memsetw_loop
+	B _memsetw
 
 _memsetw_done:
-	LDMFD SP!, {R0, R1, R2, PC}
+  BX LR
 
 # Simple allocation using the placement address (assumes this value is
 # stored in placement_addr)  as pointer to free block
@@ -369,8 +371,6 @@ _memsetw_done:
 # Returns the address of the beginning of the block
 .align 2
 _alloc:
-	STMFD SP!, {LR}
-
 	# Convert kb to bytes
 	LSL R0, R0, #10
 
@@ -380,5 +380,5 @@ _alloc:
 	# Store starting address of block in R0
 	SUB R0, placement_addr, R0
 
-	LDMFD SP!, {PC}
+  BX LR
 

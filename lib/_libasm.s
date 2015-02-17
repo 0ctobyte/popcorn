@@ -11,10 +11,10 @@
 .type _ctz, %function
 .align 2
 _ctz:
-  STMFD SP!, {LR}
   RBIT R0, R0
   CLZ R0, R0
-  LDMFD SP!, {PC}
+  
+  BX LR
 
 # Count leading zeros
 # Takes a 32-bit integer in R0
@@ -23,9 +23,9 @@ _ctz:
 .type _clz, %function
 .align 2
 _clz:
-	STMFD SP!, {LR}
 	CLZ R0, R0
-	LDMFD SP!, {PC}
+
+  BX LR
 
 # Reverse bit order
 # Takes a 32-bit integer in R0
@@ -34,7 +34,7 @@ _clz:
 .type _rbit, %function
 .align 2
 _rbit:
-	STMFD SP!, {LR}
 	RBIT R0, R0
-	LDMFD SP!, {PC}
+
+  BX LR
 

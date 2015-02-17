@@ -31,7 +31,8 @@ undefined_exception:
 	BEQ A0
 	BLX R0
 A0:
-	LDMFD SP!, {R0-R12, PC}
+	LDMFD SP!, {R0-R12, LR}
+  BX LR
 
 .align 2
 swi_exception:
@@ -42,7 +43,8 @@ swi_exception:
 	BEQ A1
 	BLX R0
 A1:
-	LDMFD SP!, {R0-R12, PC}
+	LDMFD SP!, {R0-R12, LR}
+  BX LR
 
 .align 2
 prefetch_abort_exception:
@@ -98,15 +100,13 @@ A5:
 .type evt_init, %function
 .align 2
 evt_init:
-	STMFD SP!, {R0, R1, LR}
-	
 	# Setup the vector base address register
 	LDR R0, =exception_vector_table
 	MRC p15, 0, R1, c12, c0, 0
 	ORR R1, R1, R0
 	MCR p15, 0, R1, c12, c0, 0
 
-	LDMFD SP!, {R0, R1, PC}
+  BX LR
 
 # R0 [in] - Exception type
 # R1 [in] - Exception handler address
@@ -114,11 +114,9 @@ evt_init:
 .type evt_register_handler, %function
 .align 2
 evt_register_handler:
-	STMFD SP!, {R0-R2, LR}
-
 	LDR R2, =evt_table
 	LSL R0, R0, #2
 	STR R1, [R2, R0]
 
-	LDMFD SP!, {R0-R2, PC}
+  BX LR
 
