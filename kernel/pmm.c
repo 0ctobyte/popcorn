@@ -212,7 +212,7 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 
 	// Loop through the stack until we find a bitmap that has enough 
 	// contiguous frames
-	for(curr = pagestack.top; curr != NULL; prev = curr, curr = curr->next) {
+	for(curr = pagestack.top, prev = NULL; curr != NULL; prev = curr, curr = curr->next) {
 		// Find the index of the first frame in the contiguous set
 		frame = bit_find_contiguous_zeros(curr->bitmap, frames);
 		
@@ -227,7 +227,8 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 			// Now, if the bitmap is fully allocated...
 			if(curr->bitmap == UINTPTR_MAX) {
 				// Remove the pagemap from the stack
-				prev->next = curr->next;
+        if(prev == NULL) pagestack.top = curr->next;
+        else prev->next = curr->next;
 				curr->next = NULL;
 			}
 			break;
