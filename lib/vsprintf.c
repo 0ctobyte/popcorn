@@ -414,6 +414,41 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
 				*n = (int32_t)(str-s);
 				break;
 			}
+      case 'f':
+      {
+        specifier = 'f';
+
+        double num = va_arg(args, double);
+        char str_num[32];
+
+        uint32_t whole = (uint32_t)num;
+        itoa2(whole, str_num, 10, false);
+        size_t len = strlen(str_num);
+        for(uint32_t i = 0; i < len; i++) *str++ = str_num[i];
+        
+
+        uint32_t pow10 = 10;
+        for(int32_t i = precision; i > 0; i--) {
+          pow10 *= pow10;
+        }
+
+        double frac_part = num - (double)((uint32_t)num);
+        uint32_t frac = (precision > 6) ? (uint32_t)(frac_part * (double)pow10) : (uint32_t)(frac_part * (double)1000000);
+        if(frac == 0 && (flags & SPECIAL)) {
+          *str++ = '.';
+          *str++ = '0';
+        } else {
+          *str++ = '.';
+          memset(str_num, 32, 0);
+          itoa2(frac, str_num, 10, false);
+          number(fmt_num, str_num, flags, width, precision, false, specifier);
+          len = strlen(fmt_num);
+          for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+        }
+
+
+        break;
+      }
 			case '%':
 			{
 				specifier = '%';
