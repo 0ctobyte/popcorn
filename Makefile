@@ -14,17 +14,13 @@ OBJS := $(patsubst %.s,%.o,$(S_SRCS))
 OBJS += $(patsubst %.c,%.o,$(C_SRCS))
 
 INCLUDE := -Iinclude
-
+LIBS := -lgcc
 LSCRIPT := linker.ld
 
 BASEFLAGS := -g -target armv7-none-eabi -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=vfpv3
-
 WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
-
-LIBS := -lgcc
-
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
-LDFLAGS := -nostdlib -nodefaultlibs -nostartfiles
+LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles
 ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) 
 
 all : kernel.img
