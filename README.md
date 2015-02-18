@@ -2,7 +2,7 @@
 
 This is (or will be) a 32-bit kernel for the ARMv7-A architecture
 
-Currently the kernel is able to boot and run on an emulated (using QEMU) 
+Currently the kernel is able to boot and run in virtual memory mode on an emulated (using QEMU) 
 Versatile platform board and RealView platform board with an ARM Cortex-A8 CPU and 128M of RAM.
 
 ## Build
@@ -62,5 +62,17 @@ contains code to set up the ARM exception vectors and register handlers for each
 disable interrupts. `kstdio.c` for an implementation of the printf (`kprintf`) function for use by the kernel (since no standard libraries can be used).
 The `panic.c` module contains the `panic` function which prints an error message and halts the cpu.
 
+##### lib
+The lib code consists of useful helper functions and implementations of some of the standard C library functions.
 
+##### Todo
+The code is still incomplete. As of now, the kernel boots and runs in virtual memory mode on an emulated ARM platform board and is able to print text over UART.
+
+Next steps:
+* Need a kernel heap/slab allocator to allocate kernel structures (pmaps, pgd, pgts etc.)
+* Managing platform specific IO devices and memory mappings 
+* Initialization of platform specific devices 
+* Better build system
+* Debugging output on aborts/exceptions (register dump, stack trace)
+* Enabling and modifying functionality of caches, TLBs, and CPU (branch prediction) through the control registers
 
