@@ -33,19 +33,26 @@ _loader:
 
   # Store the system dependent variables read from the ATAGS
   MOV MEMBASEADDR, R2
-  LDR R3, =PAGESIZE-0xF0000000
+  LDR R4, =__kernel_virtual_start
+  LDR R5, =__kernel_physical_start
+  SUB R4, R4, R5
+  LDR R3, =PAGESIZE
+  SUB R3, R3, R4
   ADD R3, R3, MEMBASEADDR
   STR R0, [R3]
-  LDR R3, =MEMSIZE-0xF0000000
+  LDR R3, =MEMSIZE
+  SUB R3, R3, R4
   ADD R3, R3, MEMBASEADDR
   STR R1, [R3]
-  LDR R3, =MEMBASEADDR-0xF0000000
+  LDR R3, =MEMBASEADDR
+  SUB R3, R3, R4
   ADD R3, R3, MEMBASEADDR
   STR R2, [R3]
 
 	# Set the svc stack, remember we need to use the loaded physical address
 	# Not the virtual address (R12=MEMBASEADDR)
-	LDR SP, =__svc_stack_bottom+4096-0xF0000000
+	LDR SP, =__svc_stack_limit+4096
+  SUB SP, SP, R4
   ADD SP, SP, MEMBASEADDR
 
 	# Set the page size register

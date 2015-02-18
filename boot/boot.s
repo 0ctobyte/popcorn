@@ -4,12 +4,12 @@
 .global _start
 
 # Setup the stacks in the BSS
-.comm __svc_stack_bottom, 4096, 4
-.comm __abt_stack_bottom, 4096, 4
-.comm __irq_stack_bottom, 4096, 4
-.comm __fiq_stack_bottom, 4096, 4
-.comm __und_stack_bottom, 4096, 4
-.comm __mon_stack_bottom, 4096, 4
+.comm __svc_stack_limit, 4096, 4
+.comm __abt_stack_limit, 4096, 4
+.comm __irq_stack_limit, 4096, 4
+.comm __fiq_stack_limit, 4096, 4
+.comm __und_stack_limit, 4096, 4
+.comm __mon_stack_limit, 4096, 4
 
 # Setup the system dependent variables in the BSS
 .comm PAGESIZE, 4, 4
@@ -21,7 +21,7 @@
 .align 2 
 _start:
 	# Set the svc stack
-	LDR SP, =__svc_stack_bottom+4096
+	LDR SP, =__svc_stack_limit+4096
 
 	# Get the program status register	
 	MRS R0, CPSR
@@ -30,31 +30,31 @@ _start:
 	BIC R1, R0, #0x1F
 	ORR R1, R1, #0x12
 	MSR CPSR, R1
-	LDR SP, =__irq_stack_bottom+4096
+	LDR SP, =__irq_stack_limit+4096
 
 	# Set up the FIQ mode stack
 	BIC R1, R0, #0x1F
 	ORR R1, R1, #0x11
 	MSR CPSR, R1
-	LDR SP, =__fiq_stack_bottom+4096
+	LDR SP, =__fiq_stack_limit+4096
 	
 	# Set up the Abort mode stack
 	BIC R1, R0, #0x1F
 	ORR R1, R1, #0x17
 	MSR CPSR, R1
-	LDR SP, =__abt_stack_bottom+4096
+	LDR SP, =__abt_stack_limit+4096
 
 	# Set up the Undefined mode stack
 	BIC R1, R0, #0x1F
 	ORR R1, R1, #0x1B
 	MSR CPSR, R1
-	LDR SP, =__und_stack_bottom+4096
+	LDR SP, =__und_stack_limit+4096
 
 	# Set up the Monitor mode stack
 	BIC R1, R0, #0x1F
 	ORR R1, R1, #0x16
 	MSR CPSR, R1
-	LDR SP, =__mon_stack_bottom+4096
+	LDR SP, =__mon_stack_limit+4096
 
 	# Go back to supervisor mode
 	MSR CPSR, R0
