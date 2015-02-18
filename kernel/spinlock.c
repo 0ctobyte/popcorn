@@ -2,8 +2,7 @@
 #include <kernel/atomic.h>
 #include <kernel/barrier.h>
 #include <kernel/kassert.h>
-
-#include <platform/interrupts.h>
+#include <kernel/interrupts.h>
 
 // Meaning of the bits in the spinlock's lock variable
 // Bit 0 is the lock value: 0 for unlocked, 1 for locked

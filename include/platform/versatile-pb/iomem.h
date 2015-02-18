@@ -1,5 +1,5 @@
-#ifndef __HWREGS_H__
-#define __HWREGS_H__
+#ifndef __PLATFORM_IOMEM_H__
+#define __PLATFORM_IOMEM_H__
 
 // UART0
 // TODO: VBASE shouldn't be hardcoded!
@@ -71,5 +71,5 @@
 #define O_SIC_PICENCLR (0x24)
 #define R_SIC_PICENCLR (R_SIC_VBASE+O_SIC_PICENCLR)
 
-#endif // __HWREGS_H__
+#endif // __PLATFORM_IOMEM_H__
 

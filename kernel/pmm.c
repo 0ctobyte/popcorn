@@ -2,8 +2,7 @@
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
 #include <kernel/pmap.h>
-
-#include <platform/interrupts.h>
+#include <kernel/interrupts.h>
 
 #include <lib/bithacks.h>
 #include <lib/asm.h>

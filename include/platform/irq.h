@@ -1,5 +1,5 @@
-#ifndef __INTERRUPTS_H__
-#define __INTERRUPTS_H__
+#ifndef __IRQ_H__
+#define __IRQ_H__
 
 #include <sys/types.h>
 
@@ -11,19 +11,7 @@
   #error "Undefined platform"
 #endif
 
-#define INTERRUPT_LOCK bool __en = interrupts_enabled(); interrupts_disable();
-#define INTERRUPT_UNLOCK if(__en) interrupts_enable();
-
 typedef void (*isr_t)(void);
-
-// Enables interrupts on the processor
-void interrupts_enable();
-
-// Disables interrupts on the processor
-void interrupts_disable();
-
-// Checks if interrupts are enabled on the processor
-bool interrupts_enabled();
 
 // Initialize IRQ systems, VIC, SIC...
 void irq_init();
@@ -44,5 +32,5 @@ isr_t irq_get_isr(irq_type_t);
 // Register and ISR for the specified IRQ source
 void irq_register_isr(irq_type_t, isr_t);
 
-#endif // __INTERRUPTS_H__
+#endif // __IRQ_H__
 

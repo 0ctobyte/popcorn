@@ -1,11 +1,9 @@
-#include <platform/interrupts.h>
-#include <platform/regs.h>
+#include <platform/irq.h>
+#include <platform/iomem.h>
 
 static isr_t isr_table[64];
 
 void irq_init() {
-  // Enable interrupts on the CPU
-  interrupts_enable();
 }
 
 void irq_enable(irq_type_t type) {

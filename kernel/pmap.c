@@ -1,8 +1,7 @@
 #include <kernel/pmap.h>
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
-
-#include <platform/interrupts.h>
+#include <kernel/interrupts.h>
 
 #include <string.h>
 

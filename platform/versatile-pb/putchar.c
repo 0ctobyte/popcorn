@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <platform/regs.h>
+#include <platform/iomem.h>
 
 int32_t putchar(char c) {
 	if(REG_RD32(R_UART0_FR) & (1 << 3)) return(-1);

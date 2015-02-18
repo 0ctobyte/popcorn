@@ -5,10 +5,11 @@
 #include <kernel/mm.h>
 #include <kernel/pmap.h>
 #include <kernel/pmm.h>
+#include <kernel/interrupts.h>
 #include <lib/asm.h>
 
-#include <platform/interrupts.h>
-#include <platform/regs.h>
+#include <platform/irq.h>
+#include <platform/iomem.h>
 
 void kmain(void) {
   // Setup the exception vector table
@@ -27,6 +28,9 @@ void kmain(void) {
 
 	kprintf("Initializing kernel...\n");
 	kprintf("what\n");
+
+  // Enable interrupts on the CPU
+  interrupts_enable();
 
   // Setup the IRQ system
 	//irq_init();

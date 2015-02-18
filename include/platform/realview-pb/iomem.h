@@ -1,5 +1,5 @@
-#ifndef __HWREGS_H__
-#define __HWREGS_H__
+#ifndef __PLATFORM_IOMEM_H__
+#define __PLATFORM_IOMEM_H__
 
 // UART0
 // TODO: VBASE SHOULDN'T BE HARDCODED!
@@ -16,5 +16,5 @@
 #define R_GIC0_PBASE (0x1E000000)
 #define R_GIC0_VBASE (0xFFFF1000)
 
-#endif // __HWREGS_H__
+#endif // __PLATFORM_IOMEM_H__
 
