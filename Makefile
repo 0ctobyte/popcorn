@@ -19,7 +19,7 @@ LSCRIPT := linker.ld
 BASEFLAGS := -g -target armv7-none-eabi -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=vfpv3
 WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
-LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T$(LSCRIPT)
+LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
 ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) 
 OCFLAGS := --target elf32-littlearm -O binary
 
