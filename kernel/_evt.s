@@ -61,20 +61,35 @@ A2:
 .align 2
 data_abort_exception:
 	STMFD SP!, {R0-R12, LR, PC}
+
+  # Get the SPSR
+  MRS R0, SPSR
+  STR R0, [SP, #-4]!
+
+  # Get useful abort info from the exception status registers
+	MRC p15, 0, R0, c6, c0, 0
+  STR R0, [SP, #-4]!
+	MRC p15, 0, R0, c5, c0, 0
+  STR R0, [SP, #-4]!
+  
   # The register dump on the stack
   MOV R0, SP
-	MRC p15, 0, R1, c6, c0, 0
-	MRC p15, 0, R2, c5, c0, 0
-	LDR R3, =evt_table
-	LDR R3, [R3, #12]
-	TEQ R3, #0
+
+	LDR R1, =evt_table
+	LDR R1, [R1, #12]
+	TEQ R1, #0
 	BEQ A3
-	BLX R3
+	BLX R1
 A3:
+  # Drop the SPSR and exception status register values off the stack
+  ADD SP, SP, #12
+
 	LDMFD SP!, {R0-R12, LR}
+  
   # Drop the PC value off the stack
   ADD SP, SP, #4
-	SUBS PC, LR, #8
+	
+  SUBS PC, LR, #8
 
 .align 2
 irq_exception:

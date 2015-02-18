@@ -11,18 +11,6 @@
 #include <platform/irq.h>
 #include <platform/iomem.h>
 
-void data_abort_handler(void *p) {
-  uint32_t *rdump = (uint32_t*)p;
-
-  kprintf("dump addr: %#x\n", (uintptr_t)rdump);
-
-  for(uint32_t i = 0; i < 16; i++) {
-    kprintf("R%u: %#x\n", i, rdump[i]);
-  }
-
-  panic("DATA ABORT\n");
-}
-
 void kmain(void) {
   // Setup the exception vector table
 	evt_init();
@@ -43,10 +31,6 @@ void kmain(void) {
 
   // Enable interrupts on the CPU
   interrupts_enable();
-
-  evt_register_handler(EVT_DATA_ABORT, data_abort_handler);
-
-  kprintf("%u\n", REG_RD32(R_GIC0_VBASE));
 
   // Setup the IRQ system
 	//irq_init();
