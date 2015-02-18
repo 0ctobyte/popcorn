@@ -346,16 +346,12 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
 				if(specifier == 'x') upcase = false;
 				else specifier = 'X';
 
-				int32_t num = va_arg(args, int32_t);
+				uint32_t num = va_arg(args, uint32_t);
 				bool negative = false;
 				char str_num[32];
 
 				if(precision == 0 && num == 0) break;
 
-				if(num < 0) {
-					negative = true;
-					num *= -1;
-				}
 				itoa2(num, str_num, 16, upcase);
 
 				number(fmt_num, str_num, flags, width, precision, negative, specifier);

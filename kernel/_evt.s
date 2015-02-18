@@ -60,16 +60,20 @@ A2:
 
 .align 2
 data_abort_exception:
-	STMFD SP!, {R0-R12, LR}
-	MRC p15, 0, R0, c6, c0, 0
-	MRC p15, 0, R1, c5, c0, 0
-	LDR R0, =evt_table
-	LDR R0, [R0, #12]
-	TEQ R0, #0
+	STMFD SP!, {R0-R12, LR, PC}
+  # The register dump on the stack
+  MOV R0, SP
+	MRC p15, 0, R1, c6, c0, 0
+	MRC p15, 0, R2, c5, c0, 0
+	LDR R3, =evt_table
+	LDR R3, [R3, #12]
+	TEQ R3, #0
 	BEQ A3
-	BLX R0
+	BLX R3
 A3:
 	LDMFD SP!, {R0-R12, LR}
+  # Drop the PC value off the stack
+  ADD SP, SP, #4
 	SUBS PC, LR, #8
 
 .align 2

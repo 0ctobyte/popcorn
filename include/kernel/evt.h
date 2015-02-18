@@ -10,7 +10,7 @@ typedef enum {
 	EVT_FIQ				      = 5, // FIQ exception
 } evt_type_t;
 
-typedef void (*evt_handler_t)(void);
+typedef void (*evt_handler_t)(void*);
 
 // Sets the vector base address register
 void evt_init();
