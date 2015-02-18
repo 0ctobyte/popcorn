@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-#if defined(REALVIEW_PB)
-  #include <platform/realview-pb/iomem.h>
-#elif defined(VERSATILE_PB)
-  #include <platform/versatile-pb/iomem.h>
+#if defined(REALVIEWPB)
+  #include <platform/realviewpb/iomem.h>
+#elif defined(VERSATILEPB)
+  #include <platform/versatilepb/iomem.h>
 #else
   #error "Undefined platform"
 #endif
