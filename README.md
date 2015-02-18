@@ -65,7 +65,7 @@ The `panic.c` module contains the `panic` function which prints an error message
 ##### lib
 The lib code consists of useful helper functions and implementations of some of the standard C library functions.
 
-##### Todo
+## Todo
 The code is still incomplete. As of now, the kernel boots and runs in virtual memory mode on an emulated ARM platform board and is able to print text over UART.
 
 Next steps:
