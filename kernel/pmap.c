@@ -1,5 +1,6 @@
 #include <kernel/pmap.h>
 #include <kernel/pmm.h>
+#include <kernel/kassert.h>
 
 #include <platform/interrupts.h>
 
@@ -240,9 +241,10 @@ void pmap_init() {
 }
 
 // TODO: Should a lock be used to access kernel_pmap?
-// TODO: Assert valid vaddr (must be in kernel high memory)
-// TODO: Assert memory available (what if no more high memory left?), panic 
 void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
+  // The mapping must be in the kernel virtual address space
+  kassert(vaddr >= (uintptr_t)(&__kernel_virtual_start));
+
   // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
 	// Encode the protection and pmap flags in the page table entry 
 	uint32_t pte_flags = 0, flags = 0;
@@ -269,7 +271,9 @@ void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_
   // Kernel page tables start at this entry number in the page directory
   uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
 
-  // Place the entry in the page table
+  // Place the entry in the page table if one doesn't already exist
+  pte_t existing_entry = pgts[PGD_GET_INDEX(vaddr)-pgt_n].pte[PGT_GET_INDEX(vaddr)];
+  kassert(!(existing_entry & PTE_PAGE_BIT));
   pgts[PGD_GET_INDEX(vaddr)-pgt_n].pte[PGT_GET_INDEX(vaddr)] = entry;
 
   // Update the stats
@@ -284,6 +288,9 @@ vaddr_t pmap_steal_memory(size_t size) {
   // This function should only be used before pmm_init is called
 	static vaddr_t placement_addr = 0;
 	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
+
+  // Make sure enough memory is left!
+  kassert((UINT32_MAX-placement_addr) >= size);
 
 	vaddr_t start = placement_addr;
 	vaddr_t end = placement_addr + size;
