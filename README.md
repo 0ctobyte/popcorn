@@ -6,7 +6,7 @@ Currently the kernel is able to boot and run in virtual memory mode on an emulat
 Versatile platform board and RealView platform board with an ARM Cortex-A8 CPU and 128M of RAM.
 
 ## Build
-Need to have the arm-none-eabi-gcc toolchain for the ld (linker) and objcopy tools. Clang is used for compilation.
+Need to have the arm-none-eabi-gcc toolchain for the ld (linker) and binutils for the objcopy tool. Clang is used for compilation.
 [This](http://blog.y3xz.com/blog/2012/10/07/setting-up-an-arm-eabi-toolchain-on-mac-os-x) site is a good place to start to install on Mac OS.
 
 To compile:
