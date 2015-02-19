@@ -29,6 +29,9 @@ typedef struct {
 	// Page directory is the 1st level translation table on ARMv7
 	pgd_t *pgd;
 
+  // The physical address of the page directory
+  paddr_t pgd_pa;
+
 	// Page tables are the 2nd level translation tables on ARMv7
 	// Page tables will be allocated on demand and when a new table is created
 	// it will be added to this list.
@@ -104,7 +107,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 #define pmap_kernel() (&(kernel_pmap))
 
 // Used to determine the kernel's virtual address space start and end
-void pmap_virtual_space(vaddr_t *start, vaddr_t *end);
+void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_start, vaddr_t *data_end, vaddr_t *stack_start, vaddr_t *heap_start);
 
 // Enter an unmanaged mapping for the kernel pmap
 // This mapping will not be affected by other systems and will always be wired

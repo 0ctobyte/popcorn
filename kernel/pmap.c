@@ -131,6 +131,9 @@ extern uintptr_t __pgt_virtual_start;
 extern uintptr_t __pgt_physical_start;
 extern uintptr_t __pgt_num;
 
+// End of the SVC stack. The beginning of the stack is this value+4096
+extern uintptr_t __svc_stack_limit;
+
 // These are set to the end of the kernel's virtual address space and physical
 // address space
 static paddr_t kernel_pend;
@@ -173,20 +176,18 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 // TODO: Should a lock be used to access kernel_pmap?
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
-	// The kernel's pgd has already been set up and we know where it is via the
-	// linker script symbol
+	// The kernel's pgd has already been set up and we know where it is via the linker script symbols
 	kernel_pmap.pgd = (pgd_t*)(&__pgd_virtual_start);
+  kernel_pmap.pgd_pa = (paddr_t)(&__pgd_physical_start);
 
 	// Need to allocate memory for the pgt_entry structs
-	// We are too early in the bootstrap process to be able to use the heap
-	// so we need to use _pmap_bootstrap_memory
+	// We are too early in the bootstrap process to be able to use the heap so we need to use _pmap_bootstrap_memory
 	uint32_t n_pgt = (uint32_t)(&__pgt_num);
 	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t) * n_pgt);
 
 	kernel_pmap.pgt_entry_head = pentries;
 
-	// The kernel's page tables have already been setup and we know where they
-	// are located via the linker script symbols
+	// The kernel's page tables have already been setup and we know where they are located via the linker script symbols
 	pgt_t *pg_tables = (pgt_t*)(&__pgt_virtual_start);
 
 	for(uint32_t i = 0; i < n_pgt; i++) {
@@ -196,24 +197,13 @@ void _pmap_kernel_init() {
 		// Assign the next pgt_entry
 		pentries[i].next = ((i+1) < n_pgt) ? &pentries[i+1] : NULL;
 
-		// The kernel virtual address space is always the last n MB, thus the 
-		// page tables will always be the mapped to the last n entries in the 
-		// page directories. Where n == n_pgt
+		// The kernel virtual address space is always the last n MB, thus the page tables will always be the 
+    // mapped to the last n entries in the page directories. Where n == n_pgt
 		pentries[i].offset = PGDNENTRIES-n_pgt+i;
 	}
 
   // Remove the identity mapped section
   kernel_pmap.pgd->pde[PGD_GET_INDEX(MEMBASEADDR)] = 0x0;
-
-	// Count the resident and wired pages for the kernel (will be the same)
-	uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
-	uint32_t *pte = (uint32_t*)pg_tables;
-	for(uint32_t i = 0; i < n_tot_entries; i++) {
-		if(pte[i] & PTE_PAGE_BIT) {
-			kernel_pmap.pmap_stats.wired_count++;
-			kernel_pmap.pmap_stats.resident_count++;
-		}
-	}
 }
 
 void pmap_init() {
@@ -228,15 +218,24 @@ void pmap_init() {
   pmm_init();
 
   // Reserve the pages used by the kernel
-	uint32_t n_pgt = (uint32_t)(&__pgt_num);
-  uint32_t n_tot_entries = n_pgt * PGTNENTRIES;
-	pgt_t *pg_tables = (pgt_t*)(&__pgt_virtual_start);
-	uint32_t *pte = (uint32_t*)pg_tables;
-	for(uint32_t i = 0; i < n_tot_entries; i++) {
+	for(uint32_t i = 0, n_tot_entries = (uint32_t)(&__pgt_num) * PGTNENTRIES, *pte = (uint32_t*)((pgt_t*)(&__pgt_virtual_start)); i < n_tot_entries; i++) {
 		if(pte[i] & PTE_PAGE_BIT) {
+	    // Count the resident and wired pages for the kernel (will be the same)
+      kernel_pmap.pmap_stats.wired_count++;
+			kernel_pmap.pmap_stats.resident_count++;
+
       pmm_reserve(TRUNC_PAGE(pte[i]));
     }
   }
+}
+
+void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_start, vaddr_t *data_end, vaddr_t *stack_start, vaddr_t *heap_start) {
+  if(text_start != NULL) *text_start = (uintptr_t)(&__text_virtual_start);
+  if(text_end != NULL) *text_end = (uintptr_t)(&__text_virtual_end);
+  if(data_start != NULL) *data_start = (uintptr_t)(&__data_virtual_start);
+  if(data_end != NULL) *data_end = (uintptr_t)(&__data_virtual_end);
+  if(stack_start != NULL) *stack_start = (uintptr_t)(&__svc_stack_limit)+0x1000;
+  if(heap_start != NULL) *heap_start = (uintptr_t)(kernel_vend);
 }
 
 // TODO: Should a lock be used to access kernel_pmap?
