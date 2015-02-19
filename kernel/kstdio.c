@@ -25,7 +25,7 @@ int32_t kprintf(const char *fmt, ...) {
 	va_list args;
 	int32_t r = 0;
 
-	spin_lock(&buf_lock);
+	spin_irqlock(&buf_lock);
 	
 	va_start(args, fmt);
 	r = vsprintf(__kprintf_buffer, fmt, args);
@@ -33,7 +33,7 @@ int32_t kprintf(const char *fmt, ...) {
 
 	kputs(__kprintf_buffer);
 
-	spin_unlock(&buf_lock);
+	spin_irqunlock(&buf_lock);
 
 	return(r);
 }

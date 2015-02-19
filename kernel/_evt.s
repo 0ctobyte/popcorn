@@ -6,6 +6,7 @@
 .comm evt_table, 6*4, 4
 
 # The vector base register requires that the base address is 32 bit aligned
+.global exception_vector_table
 .align 5
 exception_vector_table:
 	LDR PC, =reset_exception

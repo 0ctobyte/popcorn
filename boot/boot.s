@@ -3,13 +3,13 @@
 .code 32 
 .global _start
 
-# Setup the stacks in the BSS
-.comm __svc_stack_limit, 4096, 4
-.comm __abt_stack_limit, 4096, 4
-.comm __irq_stack_limit, 4096, 4
-.comm __fiq_stack_limit, 4096, 4
-.comm __und_stack_limit, 4096, 4
-.comm __mon_stack_limit, 4096, 4
+# Setup the stacks in the BSS. I like my stacks page-aligned pls
+.comm __svc_stack_limit, 4096, 4096
+.comm __abt_stack_limit, 4096, 4096
+.comm __irq_stack_limit, 4096, 4096
+.comm __fiq_stack_limit, 4096, 4096
+.comm __und_stack_limit, 4096, 4096
+.comm __mon_stack_limit, 4096, 4096
 
 # Setup the system dependent variables in the BSS
 .comm PAGESIZE, 4, 4

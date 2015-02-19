@@ -3,11 +3,9 @@
 
 #include <sys/types.h>
 
-#define SPINLOCK_INIT {0}
+#define SPINLOCK_INIT (0)
 
-typedef struct {
-	uint32_t lock;
-} spinlock_t;
+typedef uint32_t spinlock_t;
 
 // Initializes a spinlock, MUST always be called on a newly declared spinlock
 void spin_init(spinlock_t*);
