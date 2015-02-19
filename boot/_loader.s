@@ -145,7 +145,8 @@ _do_mapping:
 	STMFD SP!, {R4, LR}
 
 	# First we need to setup the page table entry descriptor
-	MOVW R0, #0x45E
+  # Disable write access to the text section (0x200)
+	MOVW R0, #0x65E
 
 	# Now map the .text section of the kernel
 	LDR R1, =__text_virtual_start
