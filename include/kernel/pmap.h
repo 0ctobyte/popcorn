@@ -32,6 +32,10 @@ typedef struct {
   // The physical address of the page directory
   paddr_t pgd_pa;
 
+  // Reference count on the pmap
+  // TODO: Should be atomic?
+  uint32_t refcount;
+
 	// Page tables are the 2nd level translation tables on ARMv7
 	// Page tables will be allocated on demand and when a new table is created
 	// it will be added to this list.
@@ -52,10 +56,10 @@ pmap_t* pmap_create();
 
 // Drops the reference count on the pmap. If it becomes 0, then all resources
 // allocated for the pmap are destroyed
-void pmap_destroy(pmap_t*);
+void pmap_destroy(pmap_t *pmap);
 
 // Increments the reference count on the specified pmap
-void pmap_reference(pmap_t*);
+void pmap_reference(pmap_t *pmap);
 
 // Returns the # of pages resident in the pmap
 #define pmap_resident_count(pmap) ((pmap)->pmap_stats.resident_count)
@@ -111,7 +115,7 @@ void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_st
 
 // Enter an unmanaged mapping for the kernel pmap
 // This mapping will not be affected by other systems and will always be wired
-void pmap_kenter_pa(vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
+void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap_flags);
 
 // Removes all mappings starting at the specified virtual address to the size
 // (in bytes) specified from the kernel pmap. All mappings must have been
@@ -121,7 +125,7 @@ void pmap_kremove(vaddr_t, size_t);
 // This function should only be used as a bootstrap memory allocator before
 // the memory management systems have been setup. It will allocate the required
 // memory if available and map it into the kernel's address space
-vaddr_t pmap_steal_memory(size_t);
+vaddr_t pmap_steal_memory(size_t vsize);
 
 // Clears the modified attribute of a page
 //pmap_clear_modify

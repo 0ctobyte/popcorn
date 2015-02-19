@@ -204,6 +204,9 @@ void _pmap_kernel_init() {
 
   // Remove the identity mapped section
   kernel_pmap.pgd->pde[PGD_GET_INDEX(MEMBASEADDR)] = 0x0;
+
+  // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
+  pmap_reference(pmap_kernel());
 }
 
 void pmap_init() {
@@ -229,6 +232,24 @@ void pmap_init() {
   }
 }
 
+void pmap_destroy(pmap_t *pmap) {
+  kassert(pmap != NULL);
+
+  pmap->refcount--;
+
+  // The kernel's pmap should never be 0!! Something is fucking up
+  kassert(pmap == pmap_kernel() && pmap->refcount != 0);
+
+  // TODO: Deallocate resources for pmap if refcount is 0
+}
+
+void pmap_reference(pmap_t *pmap) {
+  // Can't be NULL!
+  kassert(pmap != NULL);
+  
+  pmap->refcount++;
+}
+
 void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_start, vaddr_t *data_end, vaddr_t *stack_start, vaddr_t *heap_start) {
   if(text_start != NULL) *text_start = (uintptr_t)(&__text_virtual_start);
   if(text_end != NULL) *text_end = (uintptr_t)(&__text_virtual_end);
@@ -239,9 +260,9 @@ void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_st
 }
 
 // TODO: Should a lock be used to access kernel_pmap?
-void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
+void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
   // The mapping must be in the kernel virtual address space
-  kassert(vaddr >= (uintptr_t)(&__kernel_virtual_start));
+  kassert(va >= (uintptr_t)(&__kernel_virtual_start));
 
   // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
 	// Encode the protection and pmap flags in the page table entry 
@@ -256,7 +277,7 @@ void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_
 
   pte_flags |= flags;
 	
-  pte_t entry = PTE_CREATE(paddr, PTE_S_BIT | pte_flags);
+  pte_t entry = PTE_CREATE(pa, PTE_S_BIT | pte_flags);
 
   // Now we must place the page table entry in the correct kernel page table
   // Since we know that the pgts are laid out contiguously in memory we can cheat by
@@ -270,16 +291,16 @@ void pmap_kenter_pa(vaddr_t vaddr, paddr_t paddr, vm_prot_t vm_prot, pmap_flags_
   uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
 
   // Place the entry in the page table if one doesn't already exist
-  pte_t existing_entry = pgts[PGD_GET_INDEX(vaddr)-pgt_n].pte[PGT_GET_INDEX(vaddr)];
+  pte_t existing_entry = pgts[PGD_GET_INDEX(va)-pgt_n].pte[PGT_GET_INDEX(va)];
   kassert(!(existing_entry & PTE_PAGE_BIT));
-  pgts[PGD_GET_INDEX(vaddr)-pgt_n].pte[PGT_GET_INDEX(vaddr)] = entry;
+  pgts[PGD_GET_INDEX(va)-pgt_n].pte[PGT_GET_INDEX(va)] = entry;
 
   // Update the stats
   pmap_kernel()->pmap_stats.wired_count++;
   pmap_kernel()->pmap_stats.resident_count++;
 }
 
-vaddr_t pmap_steal_memory(size_t size) {
+vaddr_t pmap_steal_memory(size_t vsize) {
 	// pmap_init must be called before this function can be used, otherwise
 	// kernel_vend will be an incorrect value
 	// kernel_vend and kernel_pend should be page aligned
@@ -288,10 +309,10 @@ vaddr_t pmap_steal_memory(size_t size) {
 	placement_addr = (placement_addr == 0) ? kernel_vend : placement_addr;
 
   // Make sure enough memory is left!
-  kassert((UINT32_MAX-placement_addr) >= size);
+  kassert((UINT32_MAX-placement_addr) >= vsize);
 
 	vaddr_t start = placement_addr;
-	vaddr_t end = placement_addr + size;
+	vaddr_t end = placement_addr + vsize;
 
 	// Allocate a new page if there is not enough memory
 	if(end >= kernel_vend) {
@@ -302,7 +323,7 @@ vaddr_t pmap_steal_memory(size_t size) {
 	}
 
 	// Zero the memory
-	memset((void*)placement_addr, 0x0, size);
+	memset((void*)placement_addr, 0x0, vsize);
 
 	placement_addr = end;
 

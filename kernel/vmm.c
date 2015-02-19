@@ -51,12 +51,17 @@ typedef struct {
 } vmap_t;
 
 
-// static vmap_t kernel_vmap;
+static vmap_t kernel_vmap;
 
 void _vmap_kernel_init() {
+  // Get a reference to the kernel's pmap
+  kernel_vmap.pmap = pmap_kernel();
+
 }
 
 void vmm_init() {
+  // Initialize the kernel vmap
+  _vmap_kernel_init();
 }
 
 
