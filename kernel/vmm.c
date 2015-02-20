@@ -81,6 +81,18 @@ void _vmap_kernel_init() {
   }
 
   // Now lets set up the (empty) heap region
+  // So what is happening here? Initially the kernel heap is empty, meaning there are no pages in the heap region.
+  // Okay, thats great. So when kheap_init is called, it wants to extend the heap region to a certain size and the function vmm_km_heap_extend should do that.
+  // Alright. But whats the problem? Well for each virtual page that kheap_init wants to extend the heap region by, there needs to be a vm_anon_t and vpage_t struct 
+  // associated with those pages. Not only that but a vm_amap_t structure needs to be allocated for the heap region.
+  // The problem is now, where the hell do we put these structures? We can't put them on the heap because technically the heap hasn't even been fully initialized.
+  // Now assume that the kheap has been initialized somehow. When kheap tries to allocate memory but sees that there isn't enough, it asks vmm_km_heap_extend to map 
+  // more memory for the heap region. Again, vmm needs to allocate vm_anon_t and vpage_t structures and reallocate the vm_amap_t structure and again we can't use the
+  // kheap because the kheap is asking vmm for more memory! The problem is cyclic dependency. kheap needs vmm_km_heap_extend to extend the heap region but vmm_km_heap_extend
+  // needs kheap to allocate data structures which manage the new memory mappings!
+  // So, the idea is to calculate the maximum potential size of the kheap and preallocate all the needed data structures. That way whenever vmm_km_heap_extend is called
+  // it doesn't have to allocate any memory, it can just use what's already been allocated. Of course this means that kernel heap region structure can't be used with 
+  // any other vmm function since it needs 'special' treatment.
   pmap_virtual_space(NULL, &kernel_vmap.heap_start);
   kernel_vmap.regions[2].vstart = kernel_vmap.regions[2].vend = kernel_vmap.heap_end = kernel_vmap.heap_start = ROUND_PAGE(kernel_vmap.heap_start);
   size_t max_heap_size = 0xFFFF000 - kernel_vmap.heap_start;
