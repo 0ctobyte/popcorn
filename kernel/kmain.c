@@ -7,6 +7,8 @@
 #include <kernel/pmm.h>
 #include <kernel/vmm.h>
 #include <kernel/interrupts.h>
+#include <kernel/kheap.h>
+
 #include <lib/asm.h>
 
 #include <platform/irq.h>
@@ -36,6 +38,7 @@ void kmain(void) {
 
   kprintf("Kernel: vmm init\n");
   vmm_init();
+  kheap_init();
 
   kprintf("\nKERNEL VIRTUAL MEMORY MAP\n");
   for(vregion_t *kregions = vmap_kernel()->regions; kregions != NULL; kregions = kregions->next) {

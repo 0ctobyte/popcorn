@@ -111,7 +111,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 #define pmap_kernel() (&(kernel_pmap))
 
 // Used to determine the kernel's virtual address space start and end
-void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_start, vaddr_t *data_end, vaddr_t *heap_start, vaddr_t *stack_start);
+void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp);
 
 // Enter an unmanaged mapping for the kernel pmap
 // This mapping will not be affected by other systems and will always be wired

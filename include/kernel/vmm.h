@@ -50,7 +50,7 @@ typedef struct vregion {
 
   // The region's attributes
   vm_prot_t vm_prot;
-  uint32_t needs_copy, copy_on_write;
+  uint16_t needs_copy, copy_on_write;
 
   // The anonymous memory associated with this region
   vm_aref_t aref;
@@ -80,6 +80,13 @@ extern vmap_t kernel_vmap;
 
 // Initialize the VMM system and initializes the kernel's vmap
 void vmm_init();
+
+// Find the vregion that encompasses the given address
+vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va);
+
+// Extends by size bytes (rounded to a page) the kernel heap region specified
+// Returns the new (total) size of the region
+size_t vmm_km_heap_extend(vregion_t *region, size_t size);
 
 // Returns a reference to the kernel's vmap
 #define vmap_kernel() (&(kernel_vmap))

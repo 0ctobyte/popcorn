@@ -224,7 +224,7 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 			addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
 			
 			// Now, if the bitmap is fully allocated...
-			if(curr->bitmap == UINTPTR_MAX) {
+			if(curr->bitmap == UINT32_MAX) {
 				// Remove the pagemap from the stack
         if(prev == NULL) pagestack.top = curr->next;
         else prev->next = curr->next;

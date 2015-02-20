@@ -1,5 +1,20 @@
 #include <kernel/vmm.h>
+#include <kernel/kassert.h>
+#include <kernel/pmm.h>
+#include <kernel/kheap.h>
 
+#include <string.h>
+
+#define IS_KERNEL_REGION(region) (((region) == &vmap_kernel()->regions[0]) ? true : (((region) == &vmap_kernel()->regions[1]) ? true : (((region) == &vmap_kernel()->regions[2]) ? true : (((region) == &vmap_kernel()->regions[3]) ? true : false))))
+
+// Linker symbols
+extern uintptr_t __text_virtual_start;
+extern uintptr_t __text_virtual_end;
+extern uintptr_t __data_virtual_start;
+extern uintptr_t __data_virtual_end;
+
+// SVC stack location
+extern uintptr_t __svc_stack_limit;
 
 // Kernel vmap
 vmap_t kernel_vmap;
@@ -11,11 +26,9 @@ void _vmap_kernel_init() {
 
   // We need to create the regions: text, data, stack, and heap. And vm objects.
   kernel_vmap.regions = (vregion_t*)pmap_steal_memory(sizeof(vregion_t) * 4);
-  vm_amap_t *amaps = (vm_amap_t*)pmap_steal_memory(sizeof(vm_amap_t) * 4);
 
   // We need to get the start and end addresses of the virtual memory regions of the kernel
-  vaddr_t vas[8];
-  pmap_virtual_space(&vas[0], &vas[1], &vas[2], &vas[3], &vas[4], &vas[7]);
+  vaddr_t vas[8] = {(uintptr_t)(&__text_virtual_start), (uintptr_t)(&__text_virtual_end), (uintptr_t)(&__data_virtual_start), (uintptr_t)(&__data_virtual_end), 0, 0, (uintptr_t)(&__svc_stack_limit), 0};
   
   // The kernel heap doesn't exist yet (hence heap_end = heap_start)
   vas[5] = vas[4];
@@ -24,7 +37,7 @@ void _vmap_kernel_init() {
   // Since the stack grows downward, the end of stack (or start of the virtual memory region) is vas[7]-0x1000 (since we have defined the stacks
   // to be 4096 bytes in size)
   // TODO: PAGESIZE shouldn't be hardcoded. What if we change the size of the kernel stacks? Maybe have a STACKSIZE?
-  vas[6] = vas[7]-PAGESIZE;
+  vas[7] = vas[6]+PAGESIZE;
 
   kernel_vmap.text_start = vas[0];
   kernel_vmap.text_end = vas[1];
@@ -47,13 +60,12 @@ void _vmap_kernel_init() {
     kernel_vmap.regions[i].needs_copy = kernel_vmap.regions[i].copy_on_write = 0;
     
     // Populate the amaps
-    // TODO: Allocate memory for pages
     uint32_t num_pages = (uint32_t)((double)(kernel_vmap.regions[i].vend - kernel_vmap.regions[i].vstart) / (double)PAGESIZE);
-    kernel_vmap.regions[i].aref.amap = &amaps[i];
+    kernel_vmap.regions[i].aref.amap = (vm_amap_t*)pmap_steal_memory(sizeof(vm_amap_t));
     kernel_vmap.regions[i].aref.slotoff = 0;
-    amaps[i].maxslots = amaps[i].nslots = num_pages;
-    amaps[i].refcount = 1;
-    if(num_pages > 0) amaps[i].aslots = (vm_anon_t**)pmap_steal_memory(sizeof(vm_anon_t*) * num_pages);
+    kernel_vmap.regions[i].aref.amap->maxslots = kernel_vmap.regions[i].aref.amap->nslots = num_pages;
+    kernel_vmap.regions[i].aref.amap->refcount = 1;
+    if(num_pages > 0) kernel_vmap.regions[i].aref.amap->aslots = (vm_anon_t**)pmap_steal_memory(sizeof(vm_anon_t*) * num_pages);
 
     // Populate the anon structs and put them in amap.aslots
     for(uint32_t j = 0; j < num_pages; j++) {
@@ -68,7 +80,28 @@ void _vmap_kernel_init() {
     else kernel_vmap.regions[i].next = NULL;
   }
 
-  // Now lets set up the heap
+  // Now lets set up the (empty) heap region
+  pmap_virtual_space(NULL, &kernel_vmap.heap_start);
+  kernel_vmap.regions[2].vstart = kernel_vmap.regions[2].vend = kernel_vmap.heap_end = kernel_vmap.heap_start = ROUND_PAGE(kernel_vmap.heap_start);
+  size_t max_heap_size = 0xFFFF000 - kernel_vmap.heap_start;
+  uint32_t num_pages_needed = (uint32_t)((double)max_heap_size/(double)PAGESIZE);
+  uint32_t num_bytes_needed = ROUND_PAGE(sizeof(uintptr_t)*num_pages_needed + sizeof(vm_anon_t)*num_pages_needed + sizeof(vpage_t)*num_pages_needed);
+  kernel_vmap.regions[2].vstart = kernel_vmap.regions[2].vend = kernel_vmap.heap_end = kernel_vmap.heap_start += num_bytes_needed;
+
+  kernel_vmap.regions[2].aref.slotoff = 0;
+  kernel_vmap.regions[2].aref.amap->maxslots = kernel_vmap.regions[2].aref.amap->nslots = 0;
+  kernel_vmap.regions[2].aref.amap->refcount = 1;
+  kernel_vmap.regions[2].aref.amap->aslots = (vm_anon_t**)pmap_steal_memory(sizeof(vm_anon_t*) * num_pages_needed);
+
+  for(uint32_t i = 0; i < num_pages_needed; i++) {
+    vm_anon_t *anon = (vm_anon_t*)pmap_steal_memory(sizeof(vm_anon_t));
+    anon->page = (vpage_t*)pmap_steal_memory(sizeof(vpage_t));
+    anon->page->vaddr = UINT32_MAX;
+    kernel_vmap.regions[2].aref.amap->aslots[i] = anon;
+    anon->refcount = 1;
+  }
+
+
 }
 
 void vmm_init() {
@@ -76,4 +109,51 @@ void vmm_init() {
   _vmap_kernel_init();
 }
 
+vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va) {
+  kassert(vmap != NULL);
+
+  vregion_t *region;
+  for(region = vmap->regions; region != NULL; region = region->next) {
+    // Regions are sorted by increasing start addresses. If the va is less than the starting address of a region we
+    // can reasonably assume that the va doesn't exist in any of the succeeding regions
+    if(va < region->vstart) {
+      region = NULL;
+      break;
+    }
+
+    // We found the region that encompasses this va (The second comparison is for when the region start==end)
+    if((va >= region->vstart && va < region->vend) || va == region->vstart) break;
+  }
+
+  return region;
+}
+
+// TODO: Wholly incomplete. Need allocate (or realloc) memory for amap and create new anons and vpages
+size_t vmm_km_heap_extend(vregion_t *region, size_t size) {
+  kassert(IS_KERNEL_REGION(region));
+  kassert((UINT32_MAX - region->vend) > ROUND_PAGE(size));
+
+  vaddr_t prev_vend = region->vend;
+  region->vend += ROUND_PAGE(size);
+
+  for(vaddr_t va = prev_vend; va < region->vend; va += PAGESIZE) {
+    // Allocate a free page if one should be available else panic
+    paddr_t pa = pmm_alloc();
+    kassert(pa != UINTPTR_MAX);
+
+    // TODO: Use pmap_enter here instead
+    pmap_kenter_pa(va, pa, region->vm_prot, PMAP_WIRED | PMAP_WRITE_COMBINE); 
+
+    // Enter the information into the amap
+    region->aref.amap->aslots[(uint32_t)((double)(va-region->vstart)/(double)PAGESIZE)]->page->vaddr = va;
+  }
+
+  memset((vaddr_t*)prev_vend, 0, PAGESIZE);
+  vmap_kernel()->heap_end = region->vend;
+  
+  uint32_t new_size = region->vend - region->vstart;
+  region->aref.amap->maxslots = region->aref.amap->nslots = (uint32_t)((double)new_size/(double)PAGESIZE);
+
+  return new_size;
+}
 

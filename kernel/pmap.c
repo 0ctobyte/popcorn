@@ -250,13 +250,9 @@ void pmap_reference(pmap_t *pmap) {
   pmap->refcount++;
 }
 
-void pmap_virtual_space(vaddr_t *text_start, vaddr_t *text_end, vaddr_t *data_start, vaddr_t *data_end, vaddr_t *heap_start, vaddr_t *stack_start) {
-  if(text_start != NULL) *text_start = (uintptr_t)(&__text_virtual_start);
-  if(text_end != NULL) *text_end = (uintptr_t)(&__text_virtual_end);
-  if(data_start != NULL) *data_start = (uintptr_t)(&__data_virtual_start);
-  if(data_end != NULL) *data_end = (uintptr_t)(&__data_virtual_end);
-  if(heap_start != NULL) *heap_start = (uintptr_t)(kernel_vend);
-  if(stack_start != NULL) *stack_start = (uintptr_t)(&__svc_stack_limit);
+void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
+  if(vstartp != NULL) *vstartp = (uintptr_t)(&__kernel_virtual_start);
+  if(vendp != NULL) *vendp = kernel_vend;
 }
 
 // TODO: Should a lock be used to access kernel_pmap?
