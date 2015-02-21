@@ -16,6 +16,18 @@
 
 extern uintptr_t exception_vector_table;
 
+void _print_bins() {
+  for(uint32_t i = 0; i < (sizeof(bins)>>2); i++) {
+    kprintf("%u byte bin\n", 4 << i);
+    vaddr_t head = bins[i];
+
+    for(vaddr_t j = head, k = 0; j != 0; j = *(vaddr_t*)j, k++) {
+      kprintf("block %u @ %#x\n", k, j);
+    }
+    kprintf("\n");
+  }
+}
+
 void kmain(void) {
   // Setup the exception vector table
 	evt_init();
@@ -50,13 +62,31 @@ void kmain(void) {
     if(kregions->vm_prot & VM_PROT_EXECUTE) kprintf("x");
     kprintf("\n");
 
-    uint32_t nslots = (uint32_t)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
-    for(uint32_t i = 0; i < nslots; i++) {
-      vm_anon_t *anon = kregions->aref.amap->aslots[kregions->aref.slotoff + i];
-      kprintf("Page %u: %#x\n", i, anon->page->vaddr);
+    if(kregions->aref.amap != NULL) {
+      uint32_t nslots = (uint32_t)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
+      for(uint32_t i = 0; i < nslots; i++) {
+       vm_anon_t *anon = kregions->aref.amap->aslots[kregions->aref.slotoff + i];
+       kprintf("Page %u: %#x\n", i, anon->page->vaddr);
+      }
     }
     kprintf("\n");
   }
+
+  vaddr_t *adr = (vaddr_t*)kheap_alloc(1<<21);
+  _print_bins();
+  vaddr_t *adr1 = (vaddr_t*)kheap_alloc(1<<21);
+  _print_bins();
+  vaddr_t *adr2 = (vaddr_t*)kheap_alloc(PAGESIZE<<1);
+  _print_bins();
+
+  kprintf("Allocated\n");
+
+  kheap_free(adr);
+  _print_bins();
+  kheap_free(adr1);
+  _print_bins();
+  kheap_free(adr2);
+  _print_bins();
 
   // Enable interrupts on the CPU
   kprintf("Kernel: Enabling interrupts on the CPU\n");

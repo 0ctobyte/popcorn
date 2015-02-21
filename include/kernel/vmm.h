@@ -37,7 +37,6 @@ struct vm_amap {
   uint32_t nslots;
 };
 
-
 typedef struct {
   // A pointer to an amap and the slot offset within the anon array of that amap where this memory region begins
   vm_amap_t *amap;
@@ -84,9 +83,15 @@ void vmm_init();
 // Find the vregion that encompasses the given address
 vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va);
 
+// Initial kernel memory allocator used by vmm before the heap is initialized
+vaddr_t vmm_km_zalloc(size_t size);
+
+// Initializes the kernel heap region
+void vmm_km_heap_init();
+
 // Extends by size bytes (rounded to a page) the kernel heap region specified
-// Returns the new (total) size of the region
-size_t vmm_km_heap_extend(vregion_t *region, size_t size);
+// Returns the address to the start of the block of the specified size
+vaddr_t vmm_km_heap_extend(size_t size);
 
 // Returns a reference to the kernel's vmap
 #define vmap_kernel() (&(kernel_vmap))
