@@ -25,7 +25,7 @@
 #define CONSTRAIN_TO_MIN_BLOCK_SIZE(n) (((n) < MIN_BLOCK_SIZE) ? MIN_BLOCK_SIZE : (n))
 
 // Given a power of 2 #, return the index into the bin array
-#define GET_BIN_INDEX(n) ((BITS-1) - (_clz(((n) >> (_ctz(MIN_BLOCK_SIZE))))))
+#define GET_BIN_INDEX(n) (_ctz(((n) >> (_ctz(MIN_BLOCK_SIZE)))))
 
 // Given the address of the block and size, returns the address of it's buddy
 #define GET_BUDDY(f, s) ((((f)-vmap_kernel()->heap_start) ^ (s)) + vmap_kernel()->heap_start)
