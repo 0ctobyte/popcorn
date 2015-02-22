@@ -108,6 +108,8 @@ vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va) {
 }
 
 vaddr_t vmm_km_zalloc(size_t size) {
+  // Pre kernel heap unmanaged memory allocator
+  // This should not only be used before kheap_init has been called
   static vaddr_t placement_addr = 0;
   if(placement_addr == 0) {
     pmap_virtual_space(NULL, &kernel_vend);

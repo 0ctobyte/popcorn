@@ -72,19 +72,11 @@ void kmain(void) {
     kprintf("\n");
   }
 
-  vaddr_t *adr = (vaddr_t*)kheap_alloc(1<<21);
-  _print_bins();
-  vaddr_t *adr1 = (vaddr_t*)kheap_alloc(1<<21);
-  _print_bins();
-  vaddr_t *adr2 = (vaddr_t*)kheap_alloc(PAGESIZE<<1);
+  vaddr_t *adr2 = (vaddr_t*)kheap_alloc(PAGESIZE);
   _print_bins();
 
   kprintf("Allocated\n");
 
-  kheap_free(adr);
-  _print_bins();
-  kheap_free(adr1);
-  _print_bins();
   kheap_free(adr2);
   _print_bins();
 
