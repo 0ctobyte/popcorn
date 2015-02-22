@@ -19,7 +19,7 @@
 #define IS_POW2(n) (((n) & ((n)-1)) == 0)
 
 // Round to next power of 2
-#define ROUND_NEXT_POW2(n) (IS_POW2((n)) ? (n) : ((~(1 << (((BITS-1) - _clz((n))) - 1)) & (n)) << 1))
+#define ROUND_NEXT_POW2(n) (IS_POW2((n)) ? (n) : (1 << ((BITS-1) - _clz((n)) + 1)))
 
 // Make sure the size is at least MIN_BLOCK_SIZE
 #define CONSTRAIN_TO_MIN_BLOCK_SIZE(n) (((n) < MIN_BLOCK_SIZE) ? MIN_BLOCK_SIZE : (n))
