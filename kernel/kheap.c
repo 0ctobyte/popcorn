@@ -58,7 +58,7 @@ typedef struct kheap_ublock {
   struct kheap_ublock *prev;
 } kheap_ublock_t;
 
-vaddr_t bins[NUM_BINS] = {0};
+static vaddr_t bins[NUM_BINS] = {0};
 static kheap_ublock_t *root;
 
 void _kheap_bin_insert(vaddr_t free, size_t block_size) {

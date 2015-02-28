@@ -3,9 +3,6 @@
 
 #include <sys/types.h>
 
-// TODO: This is temporary for testing
-extern uintptr_t bins[20];
-
 // Initialize the kernel heap
 void kheap_init();
 

@@ -16,18 +16,6 @@
 
 extern uintptr_t exception_vector_table;
 
-void _print_bins() {
-  for(uint32_t i = 0; i < (sizeof(bins)>>2); i++) {
-    kprintf("%u byte bin\n", 4 << i);
-    vaddr_t head = bins[i];
-
-    for(vaddr_t j = head, k = 0; j != 0; j = *(vaddr_t*)j, k++) {
-      kprintf("block %u @ %#x\n", k, j);
-    }
-    kprintf("\n");
-  }
-}
-
 void kmain(void) {
   // Setup the exception vector table
 	evt_init();
@@ -71,14 +59,6 @@ void kmain(void) {
     }
     kprintf("\n");
   }
-
-  vaddr_t *adr2 = (vaddr_t*)kheap_alloc(PAGESIZE);
-  _print_bins();
-
-  kprintf("Allocated\n");
-
-  kheap_free(adr2);
-  _print_bins();
 
   // Enable interrupts on the CPU
   kprintf("Kernel: Enabling interrupts on the CPU\n");

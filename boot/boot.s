@@ -4,6 +4,7 @@
 .global _start
 
 # Setup the stacks in the BSS. I like my stacks page-aligned pls
+# TODO: Should probably make stacks bigger/flexible size
 .comm __svc_stack_limit, 4096, 4096
 .comm __abt_stack_limit, 4096, 4096
 .comm __irq_stack_limit, 4096, 4096
