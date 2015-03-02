@@ -254,7 +254,7 @@ void pmap_reference(pmap_t *pmap) {
   // Can't be NULL!
   kassert(pmap != NULL);
   
-  pmap->refcount++;
+  atomic_inc(&pmap->refcount);
 }
 
 void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
