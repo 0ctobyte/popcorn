@@ -14,6 +14,7 @@ atomic_test_and_set:
 	LDREX R0, [R1]
 	CMP R0, #0
 	STREXEQ R0, R2, [R1]
+  CLREX
 
   BX LR
 
@@ -31,6 +32,49 @@ atomic_test_and_set_bit:
 	ANDS R3, R0, R2
 	ORREQ R2, R0, R2
 	STREXEQ R0, R2, [R1]
+  CLREX
 	
+  BX LR
+
+# Atomically set to the specified value
+# R0 [in] - Memory location of atomic value
+# R1 [in] - Value to set
+.global atomic_set
+.type atomic_set, %function
+.align 2
+atomic_set:
+  LDREX R2, [R0]
+  STREX R2, R1, [R0]
+  CMP R2, #0
+  BNE atomic_set
+
+  BX LR
+
+# Atomically increment the value
+# R0 [in] - Memory location of atomic value
+.global atomic_inc
+.type atomic_inc, %function
+.align 2
+atomic_inc:
+  LDREX R1, [R0]
+  ADD R1, R1, #1
+  STREX R2, R1, [R0]
+  CMP R2, #0
+  BNE atomic_inc
+
+  BX LR
+
+# Atomically decrement the value
+# R0 [in] - Memory location of atomic value
+.global atomic_dec
+.type atomic_dec, %function
+.align 2
+atomic_dec:
+  LDREX R1, [R0]
+  SUB R1, R1, #1
+  STREX R2, R1, [R0]
+  CMP R2, #0
+  BNE atomic_dec
+
   BX LR
 

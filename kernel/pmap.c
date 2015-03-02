@@ -2,6 +2,7 @@
 #include <kernel/pmm.h>
 #include <kernel/kassert.h>
 #include <kernel/interrupts.h>
+#include <kernel/kheap.h>
 
 #include <string.h>
 
@@ -230,6 +231,12 @@ void pmap_init() {
       pmm_reserve(TRUNC_PAGE(pte[i]));
     }
   }
+}
+
+pmap_t* pmap_create() {
+  pmap_t *pmap = (pmap_t*)kheap_alloc(sizeof(pmap_t));
+  pmap_reference(pmap);
+  return pmap;
 }
 
 void pmap_destroy(pmap_t *pmap) {
