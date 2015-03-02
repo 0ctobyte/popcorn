@@ -35,26 +35,26 @@ void data_abort_handler(void *d) {
   kprintf("Fault on Write or Read? %s\n", (registers[1] & (1 << 11)) ? "write" : "read");
   uint32_t fault_status = ((registers[1] & (1 << 10)) >> 6) | (registers[1] & 0xF);
 
-  if(fault_status & 0x1) kprintf("Alignment Fault");
-  else if(fault_status & 0x4) kprintf("Instruction Cache Maintenance Fault");
-  else if(fault_status & 0xC) kprintf("Synchronous External Abort on 1st Level Translation Table Walk");
-  else if(fault_status & 0xE) kprintf("Synchronous External Abort on 2nd Level Translation Table Walk");
-  else if(fault_status & 0x1C) kprintf("Synchronous Parity Error on 1st Level Translation Table Walk");
-  else if(fault_status & 0x1E) kprintf("Synchronous Parity Error on 2nd Level Translation Table Walk");
-  else if(fault_status & 0x5) kprintf("1st Level Translation Fault");
-  else if(fault_status & 0x7) kprintf("2nd Level Translation Fault");
-  else if(fault_status & 0x3) kprintf("1st Level Access Flag Fault");
-  else if(fault_status & 0x6) kprintf("2nd Level Access Flag Fault");
-  else if(fault_status & 0x9) kprintf("1st Level Domain Fault");
-  else if(fault_status & 0xB) kprintf("2nd Level Domain Fault");
-  else if(fault_status & 0xD) kprintf("1st Level Permission Fault");
-  else if(fault_status & 0xF) kprintf("2nd Level Permission Fault");
-  else if(fault_status & 0x2) kprintf("Debug Event");
-  else if(fault_status & 0x8) kprintf("Synchronous External Abort");
-  else if(fault_status & 0x10) kprintf("TLB Conflict Abort");
-  else if(fault_status & 0x19) kprintf("Synchronous Parity Error on Memory Access");
-  else if(fault_status & 0x16) kprintf("Asynchronous External Abort");
-  else if(fault_status & 0x18) kprintf("Asynchronous Parity Error on Memory Access");
+  if(fault_status == 0x1) kprintf("Alignment Fault");
+  else if(fault_status == 0x4) kprintf("Instruction Cache Maintenance Fault");
+  else if(fault_status == 0xC) kprintf("Synchronous External Abort on 1st Level Translation Table Walk");
+  else if(fault_status == 0xE) kprintf("Synchronous External Abort on 2nd Level Translation Table Walk");
+  else if(fault_status == 0x1C) kprintf("Synchronous Parity Error on 1st Level Translation Table Walk");
+  else if(fault_status == 0x1E) kprintf("Synchronous Parity Error on 2nd Level Translation Table Walk");
+  else if(fault_status == 0x5) kprintf("1st Level Translation Fault");
+  else if(fault_status == 0x7) kprintf("2nd Level Translation Fault");
+  else if(fault_status == 0x3) kprintf("1st Level Access Flag Fault");
+  else if(fault_status == 0x6) kprintf("2nd Level Access Flag Fault");
+  else if(fault_status == 0x9) kprintf("1st Level Domain Fault");
+  else if(fault_status == 0xB) kprintf("2nd Level Domain Fault");
+  else if(fault_status == 0xD) kprintf("1st Level Permission Fault");
+  else if(fault_status == 0xF) kprintf("2nd Level Permission Fault");
+  else if(fault_status == 0x2) kprintf("Debug Event");
+  else if(fault_status == 0x8) kprintf("Synchronous External Abort");
+  else if(fault_status == 0x10) kprintf("TLB Conflict Abort");
+  else if(fault_status == 0x19) kprintf("Synchronous Parity Error on Memory Access");
+  else if(fault_status == 0x16) kprintf("Asynchronous External Abort");
+  else if(fault_status == 0x18) kprintf("Asynchronous Parity Error on Memory Access");
   else kprintf("Unknown Abort");
 
   kprintf("\n");
@@ -115,7 +115,20 @@ void kmain(void) {
   // Enable interrupts on the CPU
   kprintf("Kernel: Enabling interrupts on the CPU\n");
   interrupts_enable();
-  
+ 
+  uint32_t s = 5;
+  void *ptr[5];
+
+  for(uint32_t i = 0; i < s; i++) {
+    ptr[i] = kheap_alloc((1 << 2) << (10-i));
+    print_heap_stats();
+  }
+
+  for(uint32_t i = 0; i < s; i++) {
+    kheap_free(ptr[i]);
+    print_heap_stats();
+  }
+
   // Setup the IRQ system
 	//irq_init();
 }
