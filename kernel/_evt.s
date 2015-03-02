@@ -68,11 +68,13 @@ data_abort_exception:
   STR R0, [SP, #-4]!
 
   # Get useful abort info from the exception status registers
-	MRC p15, 0, R0, c6, c0, 0
-  STR R0, [SP, #-4]!
+  # DFSR (Data Fault Status Register)
 	MRC p15, 0, R0, c5, c0, 0
   STR R0, [SP, #-4]!
-  
+  # DFAR (Data Fault Address Register)
+	MRC p15, 0, R0, c6, c0, 0
+  STR R0, [SP, #-4]!
+
   # The register dump on the stack
   MOV R0, SP
 

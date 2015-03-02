@@ -256,3 +256,21 @@ void kheap_free(void *free) {
  // TODO: Shrink heap region?
 }
 
+void kheap_stats(size_t *heap_free, size_t *heap_allocated, size_t *num_free_blocks, size_t *num_used_blocks) {
+  *heap_free = 0, *heap_allocated = 0, *num_used_blocks = 0, *num_free_blocks = 0;
+
+  // Calculate size of free memory and # of available blocks
+  for(uint32_t i = 0; i < NUM_BINS; i++) {
+    size_t bin_block_size = (1 << _ctz(MIN_BLOCK_SIZE)) << i;
+    for(vaddr_t v = bins[i]; v != 0; v = *(vaddr_t*)v) {
+      ++(*num_free_blocks);
+      *heap_free += bin_block_size;
+    }
+  }
+
+  // Calculate size of allocated memory and # of used blocks
+  for(kheap_ublock_t *ub = root; ub != NULL; ub = ub->next) {
+    ++(*num_used_blocks);
+    *heap_allocated += ub->size;
+  }
+}
