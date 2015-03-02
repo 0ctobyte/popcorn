@@ -36,20 +36,6 @@ atomic_test_and_set_bit:
 	
   BX LR
 
-# Atomically set to the specified value
-# R0 [in] - Memory location of atomic value
-# R1 [in] - Value to set
-.global atomic_set
-.type atomic_set, %function
-.align 2
-atomic_set:
-  LDREX R2, [R0]
-  STREX R2, R1, [R0]
-  CMP R2, #0
-  BNE atomic_set
-
-  BX LR
-
 # Atomically increment the value
 # R0 [in] - Memory location of atomic value
 .global atomic_inc

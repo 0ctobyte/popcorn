@@ -242,7 +242,7 @@ pmap_t* pmap_create() {
 void pmap_destroy(pmap_t *pmap) {
   kassert(pmap != NULL);
 
-  pmap->refcount--;
+  atomic_dec(&pmap->refcount);
 
   // The kernel's pmap should never be 0!! Something is fucking up
   kassert(pmap == pmap_kernel() && pmap->refcount != 0);

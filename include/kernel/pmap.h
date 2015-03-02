@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <kernel/mm.h>
+#include <kernel/atomic.h>
 
 // Flag bits
 typedef uint32_t pmap_flags_t;
@@ -33,8 +34,7 @@ typedef struct {
   paddr_t pgd_pa;
 
   // Reference count on the pmap
-  // TODO: Should be atomic?
-  uint32_t refcount;
+  atomic_t refcount;
 
 	// Page tables are the 2nd level translation tables on ARMv7
 	// Page tables will be allocated on demand and when a new table is created
