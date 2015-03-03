@@ -65,6 +65,7 @@ _start:
   MOV R3, #0xF
   ORR R2, R2, R3, LSL #20
   MCR p15, 0, R2, c1, c0, 2
+  ISB
 
   # Enable the VFPU
   VMRS R2, FPEXC
