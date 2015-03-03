@@ -235,9 +235,14 @@ void pmap_init() {
 
 pmap_t* pmap_create() {
   pmap_t *pmap = (pmap_t*)kheap_alloc(sizeof(pmap_t));
+  memset(pmap, 0, sizeof(pmap_t));
   pmap_reference(pmap);
   return pmap;
 }
+
+//uint32_t pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t flags) {
+
+//}
 
 void pmap_destroy(pmap_t *pmap) {
   kassert(pmap != NULL);

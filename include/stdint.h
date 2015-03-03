@@ -22,6 +22,11 @@
  *
 \*===----------------------------------------------------------------------===*/
 
+/*
+ * Modified 2015 by Sekhar Bhattacharya
+ * Added #undef's before macro redefinitions wherever needed
+ */
+
 #ifndef __CLANG_STDINT_H
 #define __CLANG_STDINT_H
 
