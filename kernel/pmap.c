@@ -116,14 +116,6 @@ pmap_t kernel_pmap;
 // Linker symbols
 extern uintptr_t __kernel_virtual_start;
 extern uintptr_t __kernel_physical_start;
-extern uintptr_t __text_virtual_start;
-extern uintptr_t __text_physical_start;
-extern uintptr_t __text_virtual_end;
-extern uintptr_t __text_physical_end;
-extern uintptr_t __data_virtual_start;
-extern uintptr_t __data_physical_start;
-extern uintptr_t __data_virtual_end;
-extern uintptr_t __data_physical_end;
 extern uintptr_t __kernel_virtual_end;
 extern uintptr_t __kernel_physical_end;
 extern uintptr_t __pgd_virtual_start;

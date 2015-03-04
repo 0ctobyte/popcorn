@@ -115,7 +115,7 @@ _enable_mmu:
 	# Setup the primary region remap register
 	MOVW R0, #0x8AA4
 	MOVT R0, #0xF009
-	# First check if multiple shareability domains are implemented
+	# First check if multiple shareability domains are implemented in ID_MMFR0
 	MRC p15, 0, R1, c0, c1, 4
 	LSR R1, R1, #12
 	AND R1, R1, #0xF
@@ -138,35 +138,30 @@ A0:
 
   BX LR
 
-# Maps the kernel to 0xF0010000, identity maps the first 1 Mb
-# (for the loader) and maps the device memory addresses
+# Maps the kernel to 0xF0010000, identity maps the first 1 Mb (for the loader)
 .align 2
 _do_mapping:
 	STMFD SP!, {R4, LR}
 
 	# First we need to setup the page table entry descriptor
-  # Disable write access to the text section (0x200)
-	MOVW R0, #0x65E
+  # Attributes:
+  # - Normal Memory
+  # - Inner & Outer Cacheable
+  # - R/W permissions only in PL1
+  # - Inner Shareable
+  # - Global (not flushed from cache on context switch)
+	MOVW R0, #0x44E
 
-	# Now map the .text section of the kernel
-	LDR R1, =__text_virtual_start
-	LDR R2, =__text_physical_start
+	# Now map the kernel (.text & .data section)
+	LDR R1, =__kernel_virtual_start
+	LDR R2, =__kernel_physical_start
   ADD R2, R2, MEMBASEADDR
-	LDR R3, =__text_virtual_end
-
-	BL _map_page_range
-
-	# Now map the rest of the kernel with the execute never bit set
-	MOVW R0, #0x45F
-	LDR R1, =__data_virtual_start
-	LDR R2, =__data_physical_start
-  ADD R2, R2, MEMBASEADDR
-	LDR R3, =__data_virtual_end
+	LDR R3, =__kernel_virtual_end
 
 	BL _map_page_range
 
 	# Now map the page directory and page tables
-	MOVW R0, #0x45F
+	MOVW R0, #0x44E
 	LDR R1, =__pgd_virtual_start
 	LDR R2, =__pgd_physical_start
   ADD R2, R2, MEMBASEADDR
@@ -175,7 +170,15 @@ _do_mapping:
 
 	BL _map_page_range
 
-	# Identity map the first 1 Mb
+	# Identity map the first 1 MiB so when we switch to virtual memory mode we don't 
+  # encounter instruction prefetch or data aborts
+  # The page directory entry represents a section entry with the following attributes:
+  # - Normal Memory 
+  # - Inner & Outer cacheable
+  # - R/W permissions only in PL1
+  # - Inner Shareable
+  # - Global
+  # - Non-secure memory 
 	MOVW R0, #0x102E
 	MOVT R0, #0x1
   MOV R1, MEMBASEADDR

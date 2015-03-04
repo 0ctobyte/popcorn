@@ -6,16 +6,9 @@ SECTIONS
 	__kernel_physical_start = . - 0xF0000000;
 	
 	/* Align to page (4 kb) boundary */
-	__text_virtual_start = ALIGN(.);
-	__text_physical_start = ALIGN(.) - 0xF0000000;
 	.text ALIGN(0x1000) : AT(ADDR(.text) - 0xF0000000) {
 		*(.text)
 	}
-	__text_virtual_end = .;
-	__text_physical_end = . - 0xF0000000;
-
-	__data_virtual_start = ALIGN(0x1000);
-	__data_physical_start = ALIGN(0x1000) - 0xF0000000;
 	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - 0xF0000000) {
 		*(.rodata)
 	}
@@ -28,9 +21,6 @@ SECTIONS
 		*(.bss)
 		*(.COMMON)
 	}
-
-	__data_virtual_end = .;
-	__data_physical_end = . - 0xF0000000;
 	
 	__kernel_virtual_end = .;
 	__kernel_physical_end = . - 0xF0000000;

@@ -5,13 +5,9 @@
 
 #include <string.h>
 
-#define IS_KERNEL_REGION(region) (((region) == &vmap_kernel()->regions[0]) ? true : (((region) == &vmap_kernel()->regions[1]) ? true : (((region) == &vmap_kernel()->regions[2]) ? true : (((region) == &vmap_kernel()->regions[3]) ? true : false))))
-
 // Linker symbols
-extern uintptr_t __text_virtual_start;
-extern uintptr_t __text_virtual_end;
-extern uintptr_t __data_virtual_start;
-extern uintptr_t __data_virtual_end;
+extern uintptr_t __kernel_virtual_start;
+extern uintptr_t __kernel_virtual_end;
 
 // SVC stack location
 extern uintptr_t __svc_stack_limit;
@@ -27,33 +23,33 @@ void _vmap_kernel_init() {
   kernel_vmap.pmap = pmap_kernel();
   pmap_reference(kernel_vmap.pmap);
 
-  // We need to create the regions: text, data, stack, and heap. And vm objects.
-  kernel_vmap.regions = (vregion_t*)vmm_km_zalloc(sizeof(vregion_t) * 4);
+  // We need to create the regions: text/data, stack, and heap. And vm objects.
+  kernel_vmap.regions = (vregion_t*)vmm_km_zalloc(sizeof(vregion_t) * 3);
 
   // We need to get the start and end addresses of the virtual memory regions of the kernel
-  vaddr_t vas[8] = {(uintptr_t)(&__text_virtual_start), (uintptr_t)(&__text_virtual_end), (uintptr_t)(&__data_virtual_start), (uintptr_t)(&__data_virtual_end), 0, 0, (uintptr_t)(&__svc_stack_limit), 0};
+  vaddr_t vas[6] = {(uintptr_t)(&__kernel_virtual_start), (uintptr_t)(&__kernel_virtual_end), 0, 0, (uintptr_t)(&__svc_stack_limit), 0};
   
-  // The address of the start of the stack is in vas[7] (This address represents the end of the virtual memory region however). 
-  // Since the stack grows downward, the end of stack (or start of the virtual memory region) is vas[7]-0x1000 (since we have defined the stacks
+  // The address of the start of the stack is in vas[5] (This address represents the end of the virtual memory region however). 
+  // Since the stack grows downward, the end of stack (or start of the virtual memory region) is vas[5]-0x1000 (since we have defined the stacks
   // to be 4096 bytes in size)
   // TODO: PAGESIZE shouldn't be hardcoded. What if we change the size of the kernel stacks? Maybe have a STACKSIZE?
-  vas[7] = vas[6]+PAGESIZE;
+  vas[5] = vas[4]+PAGESIZE;
 
   kernel_vmap.text_start = vas[0];
   kernel_vmap.text_end = vas[1];
-  kernel_vmap.data_start = vas[2];
-  kernel_vmap.data_end = vas[3];
-  kernel_vmap.stack_start = vas[7];
+  kernel_vmap.data_start = vas[0];
+  kernel_vmap.data_end = vas[1];
+  kernel_vmap.stack_start = vas[5];
   
   // The kernel heap doesn't exist yet
   // These values need to be updated after the final vmm_km_zalloc call
-  kernel_vmap.heap_start = vas[4];
+  kernel_vmap.heap_start = vas[2];
   kernel_vmap.heap_end = kernel_vmap.heap_end;
 
   // Now lets populate each of the vregion structs
   // Note the indexing operator only works here because we have allocated the vregions contiguously. Usually a linked list.
-  vm_prot_t prots[4] = {VM_PROT_READ | VM_PROT_EXECUTE, VM_PROT_DEFAULT, VM_PROT_DEFAULT, VM_PROT_DEFAULT};
-  for(uint32_t i = 0, num_regions = 4; i < num_regions; i++) {
+  vm_prot_t prots[3] = {VM_PROT_ALL, VM_PROT_DEFAULT, VM_PROT_DEFAULT};
+  for(uint32_t i = 0, num_regions = 3; i < num_regions; i++) {
     kernel_vmap.regions[i].vstart = vas[(i*2)];
     kernel_vmap.regions[i].vend = ROUND_PAGE(vas[(i*2)+1]);
     kernel_vmap.regions[i].vm_prot = prots[i];
@@ -86,25 +82,6 @@ void _vmap_kernel_init() {
 void vmm_init() {
   // Initialize the kernel vmap
   _vmap_kernel_init();
-}
-
-vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va) {
-  kassert(vmap != NULL);
-
-  vregion_t *region;
-  for(region = vmap->regions; region != NULL; region = region->next) {
-    // Regions are sorted by increasing start addresses. If the va is less than the starting address of a region we
-    // can reasonably assume that the va doesn't exist in any of the succeeding regions
-    if(va < region->vstart) {
-      region = NULL;
-      break;
-    }
-
-    // We found the region that encompasses this va (The second comparison is for when the region start==end)
-    if((va >= region->vstart && va < region->vend) || va == region->vstart) break;
-  }
-
-  return region;
 }
 
 vaddr_t vmm_km_zalloc(size_t size) {
