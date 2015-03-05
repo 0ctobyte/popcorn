@@ -18,6 +18,7 @@ vmap_t kernel_vmap;
 // The end of unmanaged kernel virtual memory. This is used by vmm_km_zalloc to allocate unmanaged memory before kheap is initialized
 static vaddr_t kernel_vend;
 
+// TODO: Refactor this disgusting code
 void _vmap_kernel_init() {
   // Get a reference to the kernel's pmap
   kernel_vmap.pmap = pmap_kernel();
@@ -116,6 +117,7 @@ vaddr_t vmm_km_zalloc(size_t size) {
 	return(start);
 }
 
+// TODO: This function shouldn't need to exist. Find another way
 void vmm_km_heap_init() {
   // Now lets set up the (empty) heap region
   // So what is happening here? Initially the kernel heap is empty, meaning there are no pages in the heap region.
@@ -159,6 +161,7 @@ void vmm_km_heap_init() {
   kernel_vmap.regions[2].vstart = kernel_vmap.regions[2].vend = kernel_vmap.heap_end = kernel_vmap.heap_start = ROUND_PAGE(kernel_vmap.heap_start);
 } 
 
+// TODO: This function shouldn't need to exist. Find another way
 vaddr_t vmm_km_heap_extend(size_t size) {
   vregion_t *region = &vmap_kernel()->regions[2];
   kassert((UINT32_MAX - region->vend) > ROUND_PAGE(size));
