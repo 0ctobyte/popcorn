@@ -80,9 +80,6 @@ extern vmap_t kernel_vmap;
 // Initialize the VMM system and initializes the kernel's vmap
 void vmm_init();
 
-// Find the vregion that encompasses the given address
-vregion_t* vmm_region_lookup(vmap_t *vmap, vaddr_t va);
-
 // Initial kernel memory allocator used by vmm before the heap is initialized
 vaddr_t vmm_km_zalloc(size_t size);
 
