@@ -80,6 +80,19 @@
 // 	inner write-back, write-allocate
 #define PTE_CB3 (0xC)
 
+// Encode the pmap flag bits into PTE bits
+// If multiple pmap flag bits are set, PMAP_NOCACHE (and PMAP_NOCACHE_OVR) takes precedence, followed by PMAP_WRITE_COMBINE and finally PMAP_WRITE_BACK
+// Otherwise default to TEX[0]==0, C==0 and B==0 (i.e. strongly ordered, outer and inner non-cacheable)
+#define PTE_ENCODE_PMAP_FLAGS(pmap_flags) ((((pmap_flags) & PMAP_NOCACHE) || ((pmap_flags) & PMAP_NOCACHE_OVR)) ? (PTE_CB1 | PTE_XN_BIT) : \
+                                          (((pmap_flags) & PMAP_WRITE_COMBINE) ? (PTE_TEX0_BIT | PTE_CB0) : \
+                                          (((pmap_flags) & PMAP_WRITE_BACK) ? (PTE_TEX0_BIT | PTE_CB3) : 0x0)))
+
+// Encode the protection bits into PTE bits
+// If the pmap is not the kernel's pmap then set the PTE_AP1_BIT to enable PL0 access
+#define PTE_ENCODE_PROTECTION(vm_prot, pmap) ((((pmap) == pmap_kernel()) ? 0x0: PTE_AP1_BIT) | \
+                                             (((vm_prot) & VM_PROT_EXECUTE) ? 0x0 : PTE_XN_BIT) | \
+                                             (((vm_prot) & VM_PROT_WRITE) ? 0x0 : PTE_AP2_BIT))
+
 // Page directory entries and page table entries are both 32 bits
 typedef uint32_t pde_t;
 typedef uint32_t pte_t;
@@ -228,7 +241,13 @@ pmap_t* pmap_create() {
 }
 
 //uint32_t pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t flags) {
-
+//  // Must have a valid pmap
+//  kassert(pmap != NULL);
+//
+//  // Encode the protection bits in the page table entry
+//  // If pmap isn't the kernel pmap, then enable access for PL0
+//  uint32_t pte_flags = PTE_ENCODE_PROTECTION(vm_prot, pmap) | PTE_ENCODE_PMAP_FLAGS(pmap_flags);
+//
 //}
 
 void pmap_destroy(pmap_t *pmap) {
@@ -259,20 +278,8 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap
   // The mapping must be in the kernel virtual address space
   kassert(va >= (uintptr_t)(&__kernel_virtual_start));
 
-  // vaddr must be in the kernel virtual address space (i.e. >= 0xF0010000)
 	// Encode the protection and pmap flags in the page table entry 
-	uint32_t pte_flags = 0, flags = 0;
-  pte_flags |= (vm_prot & VM_PROT_EXECUTE) ? pte_flags : PTE_XN_BIT;
-	pte_flags |= (vm_prot & VM_PROT_WRITE) ? pte_flags : PTE_AP2_BIT;
-
-  flags = (pmap_flags & PMAP_WRITE_BACK) ? (PTE_TEX0_BIT | PTE_CB3) : flags;
-	flags = (pmap_flags & PMAP_WRITE_COMBINE) ? (PTE_TEX0_BIT | PTE_CB0) : flags;
-	flags = (pmap_flags & PMAP_NOCACHE_OVR) ? (PTE_CB1 | PTE_XN_BIT) : flags;
-	flags = (pmap_flags & PMAP_NOCACHE) ? (PTE_CB1 | PTE_XN_BIT) : flags;
-
-  pte_flags |= flags;
-	
-  pte_t entry = PTE_CREATE(pa, PTE_S_BIT | pte_flags);
+  pte_t entry = PTE_CREATE(pa, PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 
   // Now we must place the page table entry in the correct kernel page table
   // Since we know that the pgts are laid out contiguously in memory we can cheat by

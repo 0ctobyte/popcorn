@@ -27,7 +27,6 @@ typedef uint32_t pmap_flags_t;
 #define PMAP_WRITE_COMBINE (0x40)
 #define PMAP_WRITE_BACK (0x80)
 #define PMAP_NOCACHE_OVR (0x100)
-#define PMAP_DEVICE_MEM (0x200)
 
 // Opaque types used in pmap_t
 typedef struct pgd_struct pgd_t;
