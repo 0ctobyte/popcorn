@@ -16,6 +16,10 @@
 .comm PAGESIZE, 4, 4
 .comm MEMSIZE, 4, 4
 .comm MEMBASEADDR, 4, 4
+.comm NUMPAGETABLES, 4, 4
+.comm KVIRTUALBASEADDR, 4, 4
+.comm PGDPHYSICALBASEADDR, 4, 4
+.comm PGTPHYSICALSTARTADDR, 4, 4
 
 # Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
 # order bits

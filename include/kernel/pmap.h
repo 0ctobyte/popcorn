@@ -5,6 +5,19 @@
 #include <kernel/mm.h>
 #include <kernel/atomic.h>
 
+// The start of the kernel's virtual address space (not necessarily the start of the
+// kernel's .text section)
+extern uint32_t KVIRTUALBASEADDR;
+
+// The physical address of the kernel's page directory
+extern uint32_t PGDPHYSICALBASEADDR;
+
+// The physical address of the start of kernel's page tables array
+extern uint32_t PGTPHYSICALSTARTADDR;
+
+// The number of page tables used for the kernel
+extern uint32_t NUMPAGETABLES;
+
 // Flag bits
 typedef uint32_t pmap_flags_t;
 

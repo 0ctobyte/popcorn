@@ -118,11 +118,6 @@ extern uintptr_t __kernel_virtual_start;
 extern uintptr_t __kernel_physical_start;
 extern uintptr_t __kernel_virtual_end;
 extern uintptr_t __kernel_physical_end;
-extern uintptr_t __pgd_virtual_start;
-extern uintptr_t __pgd_physical_start;
-extern uintptr_t __pgt_virtual_start;
-extern uintptr_t __pgt_physical_start;
-extern uintptr_t __pgt_num;
 
 // End of the SVC stack. The beginning of the stack is this value+4096
 extern uintptr_t __svc_stack_limit;
@@ -145,10 +140,10 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 	// Allocate a new page if there is not enough memory
 	if(end >= kernel_vend) {
 		// Start of page table array
-		pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
+		pgt_t *pgts = (pgt_t*)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR);
 
 		// Kernel page tables start at this entry number in the page directory
-		uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+		uint32_t pgt_n = PGDNENTRIES - (uint32_t)(NUMPAGETABLES);
 
 		// Loop through and map the pages while incrementing kernel_pend and 
 		// kernel_vend 
@@ -170,18 +165,18 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
 	// The kernel's pgd has already been set up and we know where it is via the linker script symbols
-	kernel_pmap.pgd = (pgd_t*)(&__pgd_virtual_start);
-  kernel_pmap.pgd_pa = (paddr_t)(&__pgd_physical_start);
+	kernel_pmap.pgd = (pgd_t*)(PGDPHYSICALBASEADDR-MEMBASEADDR+KVIRTUALBASEADDR);
+  kernel_pmap.pgd_pa = (paddr_t)(PGDPHYSICALBASEADDR);
 
 	// Need to allocate memory for the pgt_entry structs
 	// We are too early in the bootstrap process to be able to use the heap so we need to use _pmap_bootstrap_memory
-	uint32_t n_pgt = (uint32_t)(&__pgt_num);
+	uint32_t n_pgt = (uint32_t)(NUMPAGETABLES);
 	pgt_entry_t *pentries = (pgt_entry_t*)_pmap_bootstrap_memory(sizeof(pgt_entry_t) * n_pgt);
 
 	kernel_pmap.pgt_entry_head = pentries;
 
 	// The kernel's page tables have already been setup and we know where they are located via the linker script symbols
-	pgt_t *pg_tables = (pgt_t*)(&__pgt_virtual_start);
+	pgt_t *pg_tables = (pgt_t*)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR);
 
 	for(uint32_t i = 0; i < n_pgt; i++) {
 		// Get the location of the page table
@@ -204,8 +199,8 @@ void _pmap_kernel_init() {
 
 void pmap_init() {
   // Set the end of the kernel's virtual and physical address space
-	kernel_vend = ROUND_PAGE((vaddr_t)(&__pgt_virtual_start) + sizeof(pgt_t) * (vaddr_t)(&__pgt_num));
-	kernel_pend = ROUND_PAGE((paddr_t)(&__pgt_physical_start) + MEMBASEADDR + sizeof(pgt_t) * (paddr_t)(&__pgt_num));
+	kernel_vend = ROUND_PAGE((vaddr_t)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR) + sizeof(pgt_t) * (vaddr_t)(NUMPAGETABLES));
+	kernel_pend = ROUND_PAGE((paddr_t)(PGTPHYSICALSTARTADDR) + sizeof(pgt_t) * (paddr_t)(NUMPAGETABLES));
 
 	// Initialize the kernel pmap
 	_pmap_kernel_init();
@@ -214,7 +209,7 @@ void pmap_init() {
   pmm_init();
 
   // Reserve the pages used by the kernel
-	for(uint32_t i = 0, n_tot_entries = (uint32_t)(&__pgt_num) * PGTNENTRIES, *pte = (uint32_t*)((pgt_t*)(&__pgt_virtual_start)); i < n_tot_entries; i++) {
+	for(uint32_t i = 0, n_tot_entries = (uint32_t)(NUMPAGETABLES) * PGTNENTRIES, *pte = (uint32_t*)((pgt_t*)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR)); i < n_tot_entries; i++) {
 		if(pte[i] & PTE_PAGE_BIT) {
 	    // Count the resident and wired pages for the kernel (will be the same)
       kernel_pmap.pmap_stats.wired_count++;
@@ -285,10 +280,10 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap
   // to search for the pgt_entry with the correct offset in the pgd.
 
   // Start of the page table array
-  pgt_t *pgts = (pgt_t*)(&__pgt_virtual_start);
+  pgt_t *pgts = (pgt_t*)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR);
 
   // Kernel page tables start at this entry number in the page directory
-  uint32_t pgt_n = PGDNENTRIES - (uint32_t)(&__pgt_num);
+  uint32_t pgt_n = PGDNENTRIES - (uint32_t)(NUMPAGETABLES);
 
   // Place the entry in the page table if one doesn't already exist
   pte_t existing_entry = pgts[PGD_GET_INDEX(va)-pgt_n].pte[PGT_GET_INDEX(va)];

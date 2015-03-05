@@ -13,18 +13,20 @@
 .global _loader
 
 # Special use registers
-# R11 MEMBASEADDR
-# R10 holds placement address
-# R9 holds page directory address
-# R8 holds address to first page table
+# R12 holds the start address of the kernel virtual address space (0xF0000000)
+# R11 holds the physical start address of system DRAM
+# R10 holds placement physical address
+# R9 holds page directory physical address
+# R8 holds physical address to first page table
 # R7 holds number of page tables
 # R6 holds the page size in bytes
+VIRTUALBASEADDR .req R12
 MEMBASEADDR .req R11
 placement_addr .req R10
 pgd_addr .req R9
 pgt_start_addr .req R8
 pgt_num .req R7
-PAGE_SIZE .req R6
+PAGESIZE .req R6
 
 .align 2
 _loader:
@@ -36,41 +38,72 @@ _loader:
   LDR R4, =__kernel_virtual_start
   LDR R5, =__kernel_physical_start
   SUB R4, R4, R5
+  # The kernel virtual address space starts at 0xF0000000
+  # The kernel proper doesn't start until 0xF0010000
+  MOV VIRTUALBASEADDR, R4
+  
+  LDR R3, =KVIRTUALBASEADDR
+  SUB R3, R3, VIRTUALBASEADDR
+  ADD R3, R3, MEMBASEADDR
+  STR R4, [R3]
+  
   LDR R3, =PAGESIZE
-  SUB R3, R3, R4
+  SUB R3, R3, VIRTUALBASEADDR
   ADD R3, R3, MEMBASEADDR
   STR R0, [R3]
+  
   LDR R3, =MEMSIZE
-  SUB R3, R3, R4
+  SUB R3, R3, VIRTUALBASEADDR
   ADD R3, R3, MEMBASEADDR
   STR R1, [R3]
+  
   LDR R3, =MEMBASEADDR
-  SUB R3, R3, R4
+  SUB R3, R3, VIRTUALBASEADDR
   ADD R3, R3, MEMBASEADDR
   STR R2, [R3]
 
 	# Set the svc stack, remember we need to use the loaded physical address
-	# Not the virtual address (R12=MEMBASEADDR)
+	# Not the virtual address (R11=MEMBASEADDR)
 	LDR SP, =__svc_stack_limit+4096
-  SUB SP, SP, R4
+  SUB SP, SP, VIRTUALBASEADDR
   ADD SP, SP, MEMBASEADDR
 
-	# Set the page size register
-  MOV PAGE_SIZE, R0
+  # Set the page size register
+  MOV PAGESIZE, R0
 
-	# __pgd_physical_start is 16 kb aligned, so this is perfect place to
-	# put the page directory. Page size is 4 kb
-	LDR pgt_num, =__pgt_num
-	LDR placement_addr, =__pgd_physical_start
+  # 256 page tables == 256 MiB of kernel memory
+	MOVW pgt_num, #0x100
+  LDR R0, =NUMPAGETABLES
+  SUB R0, R0, VIRTUALBASEADDR
+  ADD R0, R0, MEMBASEADDR
+  STR pgt_num, [R0]
+
+  # Set placement_addr to a 16 KiB boundary after __kernel_physical_end so we can place
+  # the page directory there since the page directory needs to be 16 KiB aligned
+	LDR placement_addr, =__kernel_physical_end
+  # Round down to last 16 KiB boundary
+  MOVW R0, #0x3FFF
+  BIC placement_addr, placement_addr, R0
+  # Now add 0x4000 (16384) to get address of next 16 KiB boundary
+  MOVW R0, #0x4000
+  ADD placement_addr, placement_addr, R0
   ADD placement_addr, placement_addr, MEMBASEADDR
-
+  
 	# This works because ARM uses PC relative addressing
 	# Create page dir at end of kernel
 	BL _create_page_dir
+  LDR R0, =PGDPHYSICALBASEADDR
+  SUB R0, R0, VIRTUALBASEADDR
+  ADD R0, R0, MEMBASEADDR
+  STR pgd_addr, [R0]
 
 	# Page tables will be created right after the page directory
 	MOV R0, pgt_num
 	BL _create_page_tables
+  LDR R0, =PGTPHYSICALSTARTADDR
+  SUB R0, R0, VIRTUALBASEADDR
+  ADD R0, R0, MEMBASEADDR
+  STR pgt_start_addr, [R0]
 
 	BL _setup_page_dir
 
@@ -162,11 +195,14 @@ _do_mapping:
 
 	# Now map the page directory and page tables
 	MOVW R0, #0x44E
-	LDR R1, =__pgd_virtual_start
-	LDR R2, =__pgd_physical_start
-  ADD R2, R2, MEMBASEADDR
-	SUB R3, placement_addr, R2
-	ADD R3, R3, R1
+	SUB R1, pgd_addr, MEMBASEADDR
+  ADD R1, R1, VIRTUALBASEADDR
+	MOV R2, pgd_addr 
+  MOVW R3, #0x400
+  MUL R3, R3, pgt_num
+  ADD R3, R3, pgt_start_addr
+  SUB R3, R3, MEMBASEADDR
+  ADD R3, R3, VIRTUALBASEADDR
 
 	BL _map_page_range
 
@@ -229,7 +265,9 @@ _map_page:
 
 	# Get the address into the page table; this is where the page table
 	# entry will be placed
-	BIC R3, R1, #0xFFF00FFF
+  MOVW R2, #0x0FFF
+  MOVT R2, #0xFFF0
+	BIC R3, R1, R2
 	MOVW R2, #0x3FF
 	BIC R4, R4, R2
 	ORR R3, R4, R3, LSR #10
@@ -264,8 +302,8 @@ _map_page_range_loop:
   LDMFD SP!, {R0, R1, R2, R3}
 
 	# Increment by page size
-	ADD R1, R1, PAGE_SIZE
-	ADD R2, R2, PAGE_SIZE
+	ADD R1, R1, PAGESIZE
+	ADD R2, R2, PAGESIZE
 
 	B _map_page_range_loop
 
