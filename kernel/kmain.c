@@ -129,6 +129,9 @@ void kmain(void) {
     print_heap_stats();
   }
 
+  void *p = kheap_alloc(0x4000);
+  kprintf("%#p, %#x\n", p, (uintptr_t)p & (~0x3fff));
+
   // Setup the IRQ system
 	//irq_init();
 }
