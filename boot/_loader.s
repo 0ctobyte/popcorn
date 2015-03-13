@@ -152,7 +152,7 @@ _enable_mmu:
 	MRC p15, 0, R1, c0, c1, 4
 	LSR R1, R1, #12
 	AND R1, R1, #0xF
-	CMP R1, #1
+	TEQ R1, #1
 	BEQ A0
 	# Only one level, don't need NOSn bits
 	BIC R0, R0, #0xFF000000

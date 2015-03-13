@@ -12,7 +12,7 @@ atomic_test_and_set:
 	MOV R2, R1
 	MOV R1, R0
 	LDREX R0, [R1]
-	CMP R0, #0
+	TEQ R0, #0
 	STREXEQ R0, R2, [R1]
   CLREX
 
@@ -29,7 +29,7 @@ atomic_test_and_set_bit:
 	MOV R2, R1
 	MOV R1, R0
 	LDREX R0, [R1]
-	ANDS R3, R0, R2
+	TST R0, R2
 	ORREQ R2, R0, R2
 	STREXEQ R0, R2, [R1]
   CLREX
@@ -45,7 +45,7 @@ atomic_inc:
   LDREX R1, [R0]
   ADD R1, R1, #1
   STREX R2, R1, [R0]
-  CMP R2, #0
+  TEQ R2, #0
   BNE atomic_inc
 
   BX LR
@@ -59,7 +59,7 @@ atomic_dec:
   LDREX R1, [R0]
   SUB R1, R1, #1
   STREX R2, R1, [R0]
-  CMP R2, #0
+  TEQ R2, #0
   BNE atomic_dec
 
   BX LR

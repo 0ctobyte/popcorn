@@ -32,7 +32,7 @@ interrupts_disable:
 interrupts_enabled:
 	MRS R0, CPSR
 	# Check if IRQ's are enabled
-	ANDS R0, R0, #0x80
+	TST R0, #0x80
 	MOVEQ R0, #1
 	MOVNE R0, #0
 

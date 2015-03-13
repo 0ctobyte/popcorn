@@ -7,6 +7,8 @@
   #include <platform/realviewpb/irqtypes.h>
 #elif defined(VERSATILEPB)
   #include <platform/versatilepb/irqtypes.h>
+#elif defined(BBB)
+  #include <platform/beagleboneblack/irqtypes.h>
 #else
   #error "Undefined platform"
 #endif

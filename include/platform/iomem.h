@@ -7,6 +7,8 @@
   #include <platform/realviewpb/iomem.h>
 #elif defined(VERSATILEPB)
   #include <platform/versatilepb/iomem.h>
+#elif defined(BBB)
+  #include <platform/beagleboneblack/iomem.h>
 #else
   #error "Undefined platform"
 #endif
