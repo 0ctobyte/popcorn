@@ -30,9 +30,30 @@ PAGESIZE .req R6
 
 .align 2
 _loader:
+  # Switch to supervisor mode & disable all interrupts
+  CPSID aif, #0x13
+  
+  # Reset SCTLR such that the I & D cache, branch predictor and MMU are disabled
+  MRC p15, 0, R0, c1, c0, 0
+  # Clear bit 12 to disable ICache
+  BIC R0, R0, #0x1000   
+  # Clear bit 2 to disable DCache
+  BIC R0, R0, #0x2    
+  # Clear bit 11 to disable branch predictior
+  BIC R0, R0, #0x0800 
+  # Clear bit 0 to disable MMU
+  BIC R0, R0, #0x1    
+  MCR p15, 0, R0, c1, c0, 0
+  
+  # Invalidate all caches
+  BL _tlb_invalidate_all
+  BL _icache_invalidate_all
+  BL _dcache_invalidate_all
+  BL _bp_invalidate_all
+  
   # Read the ATAGs
   BL _atagit
-
+  
   # Store the system dependent variables read from the ATAGS
   MOV MEMBASEADDR, R2
   LDR R4, =__kernel_virtual_start
@@ -428,6 +449,57 @@ _alloc:
 
 	# Store starting address of block in R0
 	SUB R0, placement_addr, R0
+
+  BX LR
+
+.align 2
+_tlb_invalidate_all:
+  # ITLBIALL
+  MCR p15, 0, R0, c8, c5, 0
+  # DTLBIALL
+  MCR p15, 0, R0, c8, c6, 0
+  # TLBIALL
+  MCR p15, 0, R0, c8, c7, 0
+  # Make sure the invalidation is complete
+  DSB
+  # Make sure the instruction stream sees the invalidation
+  ISB
+
+  BX LR
+
+.align 2
+_icache_invalidate_all:
+  # ICIALLU
+  MCR p15, 0, R0, c7, c5, 0
+  # BPIALL (branch prediction invalidate)
+  MCR p15, 0, R0, c7, c5, 6
+  # Make sure the invalidation is complete
+  DSB
+  # Make sure the instruction stream sees the invalidation
+  ISB
+
+  BX LR
+
+.align 2
+_bp_invalidate_all:
+  # Invalidate branch predictor array
+  # BPIALL (branch prediction invalidate)
+  MCR p15, 0, R0, c7, c5, 6
+
+  BX LR
+
+.align 2
+_dcache_invalidate_all:
+  # CLIDR - Cache Level ID Register. Get # of levels of caches
+  MRC p15, 1, R0, c0, c0, 1
+  MOVW R1, #0x0000
+  MOVT R1, #0x0700
+  # Extract coherency level
+  AND R0, R0, R1
+  LSR R0, R0, #24
+
+  # DCISW
+  #MCR p15, 0, R0, c7, c6, 2
 
   BX LR
 
