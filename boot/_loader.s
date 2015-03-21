@@ -32,13 +32,16 @@ PAGESIZE .req R6
 _loader:
   # Switch to supervisor mode & disable all interrupts
   CPSID aif, #0x13
-  
+ 
+  # Disable watchdog timer
+  #BL _disable_wdt
+ 
   # Reset SCTLR such that the I & D cache, branch predictor and MMU are disabled
   MRC p15, 0, R0, c1, c0, 0
   # Clear bit 12 to disable ICache
   BIC R0, R0, #0x1000   
   # Clear bit 2 to disable DCache
-  BIC R0, R0, #0x2    
+  BIC R0, R0, #0x4  
   # Clear bit 11 to disable branch predictior
   BIC R0, R0, #0x0800 
   # Clear bit 0 to disable MMU
@@ -50,10 +53,15 @@ _loader:
   BL _icache_invalidate_all
   BL _dcache_invalidate_all
   BL _bp_invalidate_all
-  
+ 
   # Read the ATAGs
   BL _atagit
-  
+  #MOV R0, #0x1000
+  #MOVW R1, #0x0000
+  #MOVT R1, #0x2000
+  #MOVW R2, #0x0000
+  #MOVT R2, #0x8000
+
   # Store the system dependent variables read from the ATAGS
   MOV MEMBASEADDR, R2
   LDR R4, =__kernel_virtual_start
@@ -157,14 +165,13 @@ _enable_mmu:
 
 	# Set the address of the page directory in the translation table base
 	# register 0
-	MOV R0, #0
-	ORR R0, pgd_addr, #0x2B
+	MOV R0, pgd_addr
 	MCR p15, 0, R0, c2, c0, 0
 
 	# Setup the secure configuration register
-	MRC p15, 0, R0, c1, c1, 0
+	#MRC p15, 0, R0, c1, c1, 0
 	BIC R0, R0, #1
-	MCR p15, 0, R0, c1, c1, 0
+	#MCR p15, 0, R0, c1, c1, 0
 
 	# Setup the primary region remap register
 	MOVW R0, #0x8AA4
@@ -180,10 +187,19 @@ _enable_mmu:
 A0:
 	MCR p15, 0, R0, c10, c2, 0
 
-	# Setup the normal memory remap register
+  # Setup the normal memory remap register
 	MOVW R0, #0x48E0
 	MOVT R0, #0x44E0
 	MCR p15, 0, R0, c10, c2, 1
+
+  # Disable Normal shareable memory in the PRRR
+  #MRC p15, 0, R0, c10, c2, 0
+  #MOVW R1, #0x0000
+  #MOVT R1, #0x000F
+  #BIC R0, R0, R1
+  #MOVW R1, #0x3
+  #BFI R0, R1, #16, #4
+  #MCR p15, 0, R0, c10, c2, 0
 
 	# Now we enable the MMU
 	MRC p15, 0, R0, c1, c0, 0
@@ -204,7 +220,7 @@ _do_mapping:
   # - R/W permissions only in PL1
   # - Inner Shareable
   # - Global (not flushed from cache on context switch)
-	MOVW R0, #0x44E
+	MOVW R0, #0x45E
 
 	# Now map the kernel (.text & .data section)
 	LDR R1, =__kernel_virtual_start
@@ -215,7 +231,7 @@ _do_mapping:
 	BL _map_page_range
 
 	# Now map the page directory and page tables
-	MOVW R0, #0x44E
+	MOVW R0, #0x45E
 	SUB R1, pgd_addr, MEMBASEADDR
   ADD R1, R1, VIRTUALBASEADDR
 	MOV R2, pgd_addr 
@@ -226,6 +242,13 @@ _do_mapping:
   ADD R3, R3, VIRTUALBASEADDR
 
 	BL _map_page_range
+  
+  #MOVW R0, #0x142E
+  #MOVT R0, #0x1
+  #MOVW R1, #0x0000
+  #MOVT R1, #0x9F70
+  #MOV R2, R1
+  #BL _map_section
 
 	# Identity map the first 1 MiB so when we switch to virtual memory mode we don't 
   # encounter instruction prefetch or data aborts
@@ -236,7 +259,7 @@ _do_mapping:
   # - Inner Shareable
   # - Global
   # - Non-secure memory 
-	MOVW R0, #0x102E
+	MOVW R0, #0x142E
 	MOVT R0, #0x1
   MOV R1, MEMBASEADDR
 	MOV R2, R1
@@ -500,6 +523,32 @@ _dcache_invalidate_all:
 
   # DCISW
   #MCR p15, 0, R0, c7, c6, 2
+
+  BX LR
+
+# Disable the watchdog timer
+.align 2
+_disable_wdt:
+  MOVW R0, #0x5000
+  MOVT R0, #0x44E3
+  MOVW R2, #0xAAAA
+WDT_WPSR_WRITE:
+  # Offset to WSPR register (watchdog timer start/stop register) 
+  ADD R1, R0, #0x48
+  STR R2, [R1]
+  # Offset to WWPS register (watchdog timer write posting bits register)
+  ADD R1, R0, #0x34
+WDT_WWPS_POLL:
+  LDR R3, [R1]
+  # Check if write is pending
+  TST R3, #0x10
+  BNE WDT_WWPS_POLL
+  MOVW R3, #0x5555
+  TEQ R2, R3
+  BEQ WDT_DONE
+  MOVW R2, #0x5555
+  B WDT_WPSR_WRITE
+WDT_DONE:
 
   BX LR
 
