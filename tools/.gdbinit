@@ -1,4 +1,4 @@
-symbol-file kernel.elf
+file ../kernel.elf
 target remote localhost:1234
 layout asm
 layout reg

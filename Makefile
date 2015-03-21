@@ -4,8 +4,8 @@ LD := arm-none-eabi-ld
 OBJCOPY := objcopy
 
 # TODO: Need a more flexible build system
-PLATFORM := realviewpb
-DEFINES := -DREALVIEWPB
+PLATFORM := beagleboneblack
+DEFINES := -DBBB
 
 C_SRCS := $(wildcard boot/*.c) $(wildcard platform/$(PLATFORM)/*.c) $(wildcard platform/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
 S_SRCS := $(wildcard boot/*.s) $(wildcard platform/$(PLATFORM)/*.s) $(wildcard platform/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
@@ -21,7 +21,7 @@ WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wn
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
 ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) 
-OCFLAGS := --target elf32-littlearm -O binary
+OCFLAGS := --target elf32-littlearm --set-section-flags .bss=contents,alloc,load -O binary
 
 all : kernel.img
 

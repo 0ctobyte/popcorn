@@ -167,7 +167,7 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 		// Loop through and map the pages while incrementing kernel_pend and 
 		// kernel_vend 
 		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
-			pte_t entry = PTE_CREATE(kernel_pend, PTE_XN_BIT|PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
+			pte_t entry = PTE_CREATE(kernel_pend, PTE_AP0_BIT|PTE_XN_BIT|PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
 			KERNEL_PGTS_BASE[PGD_GET_INDEX(kernel_vend)-KERNEL_PGD_PGT_INDEX_BASE].pte[PGT_GET_INDEX(kernel_vend)] = entry;
 		}
 	}
@@ -258,7 +258,7 @@ uint32_t pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pma
 
   // Encode the protection bits in the page table entry
   // Encode the protection and pmap flags in the page table entry 
-  pte_t entry = PTE_CREATE(pa, PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
+  pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 
   // First check if the page table for the given va exists within the page directory. If not create the page table
   uint32_t pgd_index = PGD_GET_INDEX(va);
@@ -300,7 +300,8 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap
   kassert(va >= (uintptr_t)(&__kernel_virtual_start) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
 
 	// Encode the protection and pmap flags in the page table entry 
-  pte_t entry = PTE_CREATE(pa, PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
+  pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
+
 
   // Now we must place the page table entry in the correct kernel page table
   // Since we know that the pgts are laid out contiguously in memory we can cheat by
