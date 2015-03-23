@@ -2,17 +2,24 @@
 
 This is (or will be) a 32-bit kernel for the ARMv7-A architecture
 
-Currently the kernel is able to boot and run in virtual memory mode on an emulated (using QEMU) 
-Versatile platform board and RealView platform board with an ARM Cortex-A8 CPU and 128M of RAM.
+Currently the kernel is able to boot and run in virtual memory mode on the following systems:
+
+|System                       | CPU          | Memory | Emulated? |
+|---------------------------- |--------------|--------|-----------|
+|Beaglebone Black             |ARM Cortex-A8 |512 MiB |No         |
+|Realview Platform Baseboard  |ARM Cortex-A8 |512 MiB |Yes (QEMU) |
+|Versatile Platform Baseboard |ARM Cortex-A8 |128 MiB |Yes (QEMU) |
+
+Documentation to load and run the kernel image on the Beaglebone Black will be coming soon
 
 ## Build
-Need to have the arm-none-eabi-gcc toolchain for the ld (linker) and binutils for the objcopy tool. Clang is used for compilation.
-[This](http://blog.y3xz.com/blog/2012/10/07/setting-up-an-arm-eabi-toolchain-on-mac-os-x) site is a good place to start to install on Mac OS.
+You will need to have the arm-none-eabi-gcc toolchain for the arm-none-eabi-ld (linker) tool and binutils for the objcopy tool. Clang is used for compilation.
+[This](http://blog.y3xz.com/blog/2012/10/07/setting-up-an-arm-eabi-toolchain-on-mac-os-x) site is a good place to start for installing the arm-none-eabi-gcc toolchain on Mac OS X.
 
 To compile:
 `make`
 
-This should produce `kernel.img` which is a binary image of the kernel.
+This should produce `kernel.img` which is a flat binary image of the kernel.
 
 To run on the QEMU emulator simply run the `emulator` script in the `tools` directory (See the `README.md` in the tools folder for usage info).
 QEMU must already be installed for the script to work.
