@@ -34,7 +34,7 @@ _loader:
   CPSID aif, #0x13
  
   # Disable watchdog timer
-  #BL _disable_wdt
+  BL _disable_wdt
  
   # Reset SCTLR such that the I & D cache, branch predictor and MMU are disabled
   MRC p15, 0, R0, c1, c0, 0
@@ -55,12 +55,12 @@ _loader:
   BL _bp_invalidate_all
  
   # Read the ATAGs
-  BL _atagit
-  #MOV R0, #0x1000
-  #MOVW R1, #0x0000
-  #MOVT R1, #0x2000
-  #MOVW R2, #0x0000
-  #MOVT R2, #0x8000
+  #BL _atagit
+  MOV R0, #0x1000
+  MOVW R1, #0x0000
+  MOVT R1, #0x2000
+  MOVW R2, #0x0000
+  MOVT R2, #0x8000
 
   # Store the system dependent variables read from the ATAGS
   MOV MEMBASEADDR, R2
@@ -193,13 +193,13 @@ A0:
 	MCR p15, 0, R0, c10, c2, 1
 
   # Disable Normal shareable memory in the PRRR
-  #MRC p15, 0, R0, c10, c2, 0
-  #MOVW R1, #0x0000
-  #MOVT R1, #0x000F
-  #BIC R0, R0, R1
-  #MOVW R1, #0x3
-  #BFI R0, R1, #16, #4
-  #MCR p15, 0, R0, c10, c2, 0
+  MRC p15, 0, R0, c10, c2, 0
+  MOVW R1, #0x0000
+  MOVT R1, #0x000F
+  BIC R0, R0, R1
+  MOVW R1, #0x3
+  BFI R0, R1, #16, #4
+  MCR p15, 0, R0, c10, c2, 0
 
 	# Now we enable the MMU
 	MRC p15, 0, R0, c1, c0, 0
@@ -243,12 +243,12 @@ _do_mapping:
 
 	BL _map_page_range
   
-  #MOVW R0, #0x142E
-  #MOVT R0, #0x1
-  #MOVW R1, #0x0000
-  #MOVT R1, #0x9F70
-  #MOV R2, R1
-  #BL _map_section
+  MOVW R0, #0x142E
+  MOVT R0, #0x1
+  MOVW R1, #0x0000
+  MOVT R1, #0x9F70
+  MOV R2, R1
+  BL _map_section
 
 	# Identity map the first 1 MiB so when we switch to virtual memory mode we don't 
   # encounter instruction prefetch or data aborts
