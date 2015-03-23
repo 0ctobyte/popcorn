@@ -5,7 +5,7 @@
 #include <string.h>
 
 int32_t kputc(const char c) {
-	putchar(c);
+	while(putchar(c) == -1) continue;
 	return(c);
 }
 
