@@ -1,6 +1,6 @@
 # 32-Bit ARM Kernel
 
-This is (or will be) a 32-bit kernel for the ARMv7-A architecture
+This is (or will be) a 32-bit micro-kernel targeting ARMv7-A based systems
 
 Currently the kernel is able to boot and run in virtual memory mode on the following systems:
 
