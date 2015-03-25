@@ -5,7 +5,16 @@ OBJCOPY := objcopy
 
 # TODO: Need a more flexible build system
 PLATFORM := beagleboneblack
+
+ifeq ($(PLATFORM), beagleboneblack)
 DEFINES := -DBBB
+else ifeq ($(PLATFORM), realviewpb)
+DEFINES := -DREALVIEWPB
+else ifeq ($(PLATFORM), versatilepb)
+DEFINES := -DVERSATILEPB
+else
+$(error Invalid platform)
+endif
 
 C_SRCS := $(wildcard boot/*.c) $(wildcard platform/$(PLATFORM)/*.c) $(wildcard platform/*.c) $(wildcard kernel/*.c) $(wildcard lib/*.c)
 S_SRCS := $(wildcard boot/*.s) $(wildcard platform/$(PLATFORM)/*.s) $(wildcard platform/*.s) $(wildcard kernel/*.s) $(wildcard lib/*.s)
