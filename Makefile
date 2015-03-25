@@ -23,19 +23,11 @@ LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
 ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) 
 OCFLAGS := --target elf32-littlearm --set-section-flags .bss=contents,alloc,load -O binary
 
-all : kernel.img
-
-kernel.elf: $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS) -o $@
-
 kernel.img: kernel.elf
 	$(OBJCOPY) $(OCFLAGS) kernel.elf kernel.img
 
-clean:
-	$(RM) -f $(OBJS) kernel.elf kernel.img
-
-dist-clean: clean
-	$(RM) -f *.d
+kernel.elf: $(OBJS) linker.ld
+	$(LD) $(LDFLAGS) $(OBJS) -o $@
 
 %.o: %.s Makefile
 	$(AS) $(ASFLAGS) -c $< -o $@
@@ -43,4 +35,7 @@ dist-clean: clean
 %.o: %.c Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
 
+.PHONY: clean
+clean:
+	$(RM) -f $(OBJS) kernel.elf kernel.img
 
