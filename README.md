@@ -73,10 +73,10 @@ The `panic.c` module contains the `panic` function which prints an error message
 The lib code consists of useful helper functions and implementations of some of the standard C library functions.
 
 ## Todo
-The code is still incomplete. As of now, the kernel boots and runs in virtual memory mode on an emulated ARM platform board and is able to print text over UART.
+The code is still incomplete. As of now, the kernel boots and runs in virtual memory mode on an emulated ARM platform board as well as on real hardware (Beaglebone Black) and is able to print text over UART.
 
 Next steps:
-* Need a kernel heap/slab allocator to allocate kernel structures (pmaps, pgd, pgts etc.)
+* Need a slab allocator to allocate kernel structures (pmaps, pgd, pgts etc.)
 * Managing platform specific IO devices and memory mappings 
 * Initialization of platform specific devices 
 * Better build system
