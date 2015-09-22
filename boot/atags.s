@@ -10,18 +10,18 @@
 _atagit:
   # ATAGs located at memory address in R2
   # Get the size of the ATAG structure and ATAG structure ID
-  LDR R0, [R2], #4 
-  LDR R1, [R2], #4
+  ldr r0, [r2], #4 
+  ldr r1, [r2], #4
 
   # Done if we receive the ATAG_NONE ID (0x0)
-  TEQ R1, #0
-  BEQ _atagit_done
+  teq r1, #0
+  beq _atagit_done
 
   # Read the ATAG_CORE structure
-  MOVW R3, #0x0001
-  MOVT R3, #0x5441
-  TEQ R1, R3
-  BEQ _atagit_core
+  movw r3, #0x0001
+  movt r3, #0x5441
+  teq r1, r3
+  beq _atagit_core
 
   # Read the ATAG_MEM structure
   MOVW R3, #0x0002
@@ -29,34 +29,34 @@ _atagit:
   TEQ R1, R3
   BEQ _atagit_mem
 
-  B _atagit
+  b _atagit
 
 _atagit_core:
   # Make sure the ATAG_CORE structure isn't empty
-  TEQ R0, #2
-  BEQ _atagit
+  teq r0, #2
+  beq _atagit
 
   # Get the systems page size, we don't care about the flags or the root device number
-  LDR R4, [R2, #4]!
-  ADD R2, R2, #8
+  ldr r4, [r2, #4]!
+  add r2, r2, #8
 
-  B _atagit
+  b _atagit
 
 _atagit_mem:
   # Make sure the ATAG_MEM structure isn't empty
-  TEQ R0, #2
-  BEQ _atagit
+  teq r0, #2
+  beq _atagit
 
   # Get the system mem size and physical mem start address
-  LDR R5, [R2], #4
-  LDR R6, [R2], #4
+  ldr r5, [r2], #4
+  ldr r6, [r2], #4
 
-  B _atagit
+  b _atagit
 
 _atagit_done:
   # Return values: PAGESIZE, MEMSIZE, MEMBASEADDR
-  MOV R0, R4
-  MOV R1, R5
-  MOV R2, R6
-  BX LR
+  mov r0, r4
+  mov r1, r5
+  mov r2, r6
+  bx lr
 
