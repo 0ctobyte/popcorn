@@ -7,9 +7,9 @@
 .type barrier_dmb, %function
 .align 2
 barrier_dmb:
-	DMB
+	dmb
 
-  BX LR
+  bx lr
 
 # Data Synchronization Barrier
 # Ensures all instructions before this instruction complete
@@ -19,9 +19,9 @@ barrier_dmb:
 .type barrier_dsb, %function
 .align 2
 barrier_dsb:
-	DSB
+	dsb
 
-  BX LR
+  bx lr
 
 # Instruction Synchronization Barrier
 # Flushes the instruction pipeline in the processor
@@ -30,7 +30,7 @@ barrier_dsb:
 .type barrier_isb, %function
 .align 2
 barrier_isb:
-	ISB
+	isb
 
-  BX LR
+  bx lr
 

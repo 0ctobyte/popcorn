@@ -26,60 +26,60 @@
 .align 2 
 _start:
 	# Set the svc stack
-	LDR SP, =__svc_stack_limit+4096
+	ldr sp, =__svc_stack_limit+4096
 
 	# Get the program status register	
-	MRS R0, CPSR
+	mrs r0, cpsr
 
 	# Set IRQ mode stack, SP (and LR) is banked in IRQ mode
-	BIC R1, R0, #0x1F
-	ORR R1, R1, #0x12
-	MSR CPSR, R1
-	LDR SP, =__irq_stack_limit+4096
+	bic r1, r0, #0x1f
+	orr r1, r1, #0x12
+	msr cpsr, r1
+	ldr sp, =__irq_stack_limit+4096
 
 	# Set up the FIQ mode stack
-	BIC R1, R0, #0x1F
-	ORR R1, R1, #0x11
-	MSR CPSR, R1
-	LDR SP, =__fiq_stack_limit+4096
+	bic r1, r0, #0x1f
+	orr r1, r1, #0x11
+	msr cpsr, r1
+	ldr sp, =__fiq_stack_limit+4096
 	
 	# Set up the Abort mode stack
-	BIC R1, R0, #0x1F
-	ORR R1, R1, #0x17
-	MSR CPSR, R1
-	LDR SP, =__abt_stack_limit+4096
+	bic r1, r0, #0x1f
+	orr r1, r1, #0x17
+	msr cpsr, r1
+	ldr sp, =__abt_stack_limit+4096
 
 	# Set up the Undefined mode stack
-	BIC R1, R0, #0x1F
-	ORR R1, R1, #0x1B
-	MSR CPSR, R1
-	LDR SP, =__und_stack_limit+4096
+	bic r1, r0, #0x1f
+	orr r1, r1, #0x1b
+	msr cpsr, r1
+	ldr sp, =__und_stack_limit+4096
 
 	# Set up the Monitor mode stack
-	BIC R1, R0, #0x1F
-	ORR R1, R1, #0x16
-	MSR CPSR, R1
-	LDR SP, =__mon_stack_limit+4096
+	bic r1, r0, #0x1f
+	orr r1, r1, #0x16
+	msr cpsr, r1
+	ldr sp, =__mon_stack_limit+4096
 
 	# Go back to supervisor mode
-	MSR CPSR, R0
+	msr cpsr, r0
 
   # CPACR: Allow full (PL0 & PL1) access to coprocessors 10 & 11 (VFPU) 
-  MRC p15, 0, R2, c1, c0, 2
-  MOV R3, #0xF
-  ORR R2, R2, R3, LSL #20
-  MCR p15, 0, R2, c1, c0, 2
-  ISB
+  mrc p15, 0, r2, c1, c0, 2
+  mov r3, #0xf
+  orr r2, r2, r3, lsl #20
+  mcr p15, 0, r2, c1, c0, 2
+  isb
 
   # Enable the VFPU
-  VMRS R2, FPEXC
-  MOV R3, #1
-  ORR R2, R2, R3, LSL #30
-  VMSR FPEXC, R2
+  vmrs r2, fpexc
+  mov r3, #1
+  orr r2, r2, r3, lsl #30
+  vmsr fpexc, r2
 
 	# Jump to kernel main
-	BL kmain
+	bl kmain
 
 	# In case kmain returns
-	B .
+	b .
 

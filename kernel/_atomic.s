@@ -9,14 +9,14 @@
 .type atomic_test_and_set, %function
 .align 2
 atomic_test_and_set:
-	MOV R2, R1
-	MOV R1, R0
-	LDREX R0, [R1]
-	TEQ R0, #0
-	STREXEQ R0, R2, [R1]
-  CLREX
+	mov r2, r1
+	mov r1, r0
+	ldrex r0, [r1]
+	teq r0, #0
+	strexeq r0, r2, [r1]
+  clrex
 
-  BX LR
+  bx lr
 
 # Atomically test and set specified bit, test fails if bit is not zero
 # R0 [in] - Memory location of value to atomically test and set
@@ -26,15 +26,15 @@ atomic_test_and_set:
 .type atomic_test_and_set_bit, %function
 .align 2
 atomic_test_and_set_bit:
-	MOV R2, R1
-	MOV R1, R0
-	LDREX R0, [R1]
-	TST R0, R2
-	ORREQ R2, R0, R2
-	STREXEQ R0, R2, [R1]
-  CLREX
+	mov r2, r1
+	mov r1, r0
+	ldrex r0, [r1]
+	tst r0, r2
+	orreq r2, r0, r2
+	strexeq r0, r2, [r1]
+  clrex
 	
-  BX LR
+  bx lr
 
 # Atomically increment the value
 # R0 [in] - Memory location of atomic value
@@ -42,13 +42,13 @@ atomic_test_and_set_bit:
 .type atomic_inc, %function
 .align 2
 atomic_inc:
-  LDREX R1, [R0]
-  ADD R1, R1, #1
-  STREX R2, R1, [R0]
-  TEQ R2, #0
-  BNE atomic_inc
+  ldrex r1, [r0]
+  add r1, r1, #1
+  strex r2, r1, [r0]
+  teq r2, #0
+  bne atomic_inc
 
-  BX LR
+  bx lr
 
 # Atomically decrement the value
 # R0 [in] - Memory location of atomic value
@@ -56,11 +56,11 @@ atomic_inc:
 .type atomic_dec, %function
 .align 2
 atomic_dec:
-  LDREX R1, [R0]
-  SUB R1, R1, #1
-  STREX R2, R1, [R0]
-  TEQ R2, #0
-  BNE atomic_dec
+  ldrex r1, [r0]
+  sub r1, r1, #1
+  strex r2, r1, [r0]
+  teq r2, #0
+  bne atomic_dec
 
-  BX LR
+  bx lr
 

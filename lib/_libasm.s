@@ -6,26 +6,26 @@
 
 # Unsigned integer modulo
 # operand1 % operand2
-# R0 [in] - operand1
-# R1 [in] - operand2
-# R0 [out] - The modulo value
+# r0 [in] - operand1
+# r1 [in] - operand2
+# r0 [out] - The modulo value
 .global _umod
 .type _umod, %function
 .align 2
 _umod:
-  VMOV S0, R0
-  VCVT.F64.U32 D0, S0
-  VMOV S2, R1
-  VCVT.F64.U32 D1, S2
+  vmov s0, r0
+  vcvt.f64.u32 d0, s0
+  vmov s2, r1
+  vcvt.f64.u32 d1, s2
 
-  VDIV.F64 D0, D0, D1
-  VCVT.U32.F64 S0, D0
+  vdiv.f64 d0, d0, d1
+  vcvt.u32.f64 s0, d0
 
-  VMOV R2, S0
+  vmov r2, s0
 
-  MLS R0, R1, R2, R0
+  mls r0, r1, r2, r0
 
-  BX LR
+  bx lr
 
 # Count trailing zeros
 # Takes a 32-bit integer in R0
@@ -34,10 +34,10 @@ _umod:
 .type _ctz, %function
 .align 2
 _ctz:
-  RBIT R0, R0
-  CLZ R0, R0
+  rbit r0, r0
+  clz r0, r0
   
-  BX LR
+  bx lr
 
 # Count leading zeros
 # Takes a 32-bit integer in R0
@@ -46,9 +46,9 @@ _ctz:
 .type _clz, %function
 .align 2
 _clz:
-	CLZ R0, R0
+	clz r0, r0
 
-  BX LR
+  bx lr
 
 # Reverse bit order
 # Takes a 32-bit integer in R0
@@ -57,7 +57,7 @@ _clz:
 .type _rbit, %function
 .align 2
 _rbit:
-	RBIT R0, R0
+	rbit r0, r0
 
-  BX LR
+  bx lr
 

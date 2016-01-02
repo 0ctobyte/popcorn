@@ -6,35 +6,35 @@
 .type interrupts_enable, %function
 .align 2
 interrupts_enable:
-	MRS R0, CPSR
+	mrs r0, cpsr
 	# Enable IRQ and FIQ
-	BIC R0, R0, #0xC0
-	MSR CPSR, R0
+	bic r0, r0, #0xc0
+	msr cpsr, r0
 
-  BX LR
+  bx lr
 
 # Disable interrupts on the processor
 .global interrupts_disable
 .type interrupts_disable, %function
 .align 2
 interrupts_disable:
-	MRS R0, CPSR
+	mrs r0, cpsr
 	# Disable IRQ and FIQ
-	ORR R0, R0, #0xC0
-	MSR CPSR, R0
+	orr r0, r0, #0xc0
+	msr cpsr, r0
 
-  BX LR
+  bx lr
 
 # True if interrupts enabled, false otherwise
 .global interrupts_enabled
 .type interrupts_enabled, %function
 .align 2
 interrupts_enabled:
-	MRS R0, CPSR
+	mrs r0, cpsr
 	# Check if IRQ's are enabled
-	TST R0, #0x80
-	MOVEQ R0, #1
-	MOVNE R0, #0
+	tst r0, #0x80
+	moveq r0, #1
+	movne r0, #0
 
-  BX LR
+  bx lr
  
