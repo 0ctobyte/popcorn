@@ -14,7 +14,8 @@ Documentation to load and run the kernel image on the Beaglebone Black will be c
 
 ## Build
 You will need to have the arm-none-eabi-gcc toolchain for the arm-none-eabi-ld (linker) tool and binutils for the objcopy tool. Clang is used for compilation.
-[This](http://blog.y3xz.com/blog/2012/10/07/setting-up-an-arm-eabi-toolchain-on-mac-os-x) site is a good place to start for installing the arm-none-eabi-gcc toolchain on Mac OS X.
+For MacOS, you can install the gcc-arm-embedded toolchain from [ARM](https://developer.arm.com/open-source/gnu-toolchain/gnu-rm) using homebrew:
+`brew cask install gcc-arm-embedded`
 
 To compile:
 `make`

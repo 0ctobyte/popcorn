@@ -1,7 +1,7 @@
 AS := clang
 CC := clang
 LD := arm-none-eabi-ld
-OBJCOPY := objcopy
+OBJCOPY := arm-none-eabi-objcopy
 
 # TODO: Need a more flexible build system
 PLATFORM := beagleboneblack
