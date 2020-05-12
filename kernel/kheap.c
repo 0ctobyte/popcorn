@@ -253,11 +253,11 @@ void kheap_free(void *free) {
 
     _kheap_free_used_block((vaddr_t)free);
 
-// TODO: Shrink heap region?
+    // TODO: Shrink heap region?
 }
 
 void kheap_stats(size_t *heap_free, size_t *heap_allocated, size_t *num_free_blocks, size_t *num_used_blocks) {
-    *heap_free = 0, *heap_allocated = 0, *num_used_blocks = 0, *num_free_blocks = 0;
+    *heap_free = *heap_allocated = *num_used_blocks = *num_free_blocks = 0;
 
     // Calculate size of free memory and # of available blocks
     for(uint32_t i = 0; i < NUM_BINS; i++) {

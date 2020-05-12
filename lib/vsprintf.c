@@ -452,7 +452,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
                 *str++ = '0';
             } else {
                 *str++ = '.';
-                memset(str_num, 32, 0);
+                memset(str_num, 0, 32);
                 itoa2(frac, str_num, 10, false);
                 number(fmt_num, str_num, flags, width, precision, false, specifier);
                 len = strlen(fmt_num);
