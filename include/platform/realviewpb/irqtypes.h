@@ -2,7 +2,7 @@
 #define __IRQTYPES_H__
 
 typedef enum {
-	IRQ_NONE		= -1,
+    IRQ_NONE        = -1,
 } irq_type_t;
 
 #endif // __IRQTYPES_H__

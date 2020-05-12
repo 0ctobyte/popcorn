@@ -13,19 +13,19 @@
 .type _umod, %function
 .align 2
 _umod:
-  vmov s0, r0
-  vcvt.f64.u32 d0, s0
-  vmov s2, r1
-  vcvt.f64.u32 d1, s2
+    vmov s0, r0
+    vcvt.f64.u32 d0, s0
+    vmov s2, r1
+    vcvt.f64.u32 d1, s2
 
-  vdiv.f64 d0, d0, d1
-  vcvt.u32.f64 s0, d0
+    vdiv.f64 d0, d0, d1
+    vcvt.u32.f64 s0, d0
 
-  vmov r2, s0
+    vmov r2, s0
 
-  mls r0, r1, r2, r0
+    mls r0, r1, r2, r0
 
-  bx lr
+    bx lr
 
 # Count trailing zeros
 # Takes a 32-bit integer in R0
@@ -34,10 +34,10 @@ _umod:
 .type _ctz, %function
 .align 2
 _ctz:
-  rbit r0, r0
-  clz r0, r0
+    rbit r0, r0
+    clz r0, r0
 
-  bx lr
+    bx lr
 
 # Count leading zeros
 # Takes a 32-bit integer in R0
@@ -46,9 +46,9 @@ _ctz:
 .type _clz, %function
 .align 2
 _clz:
-	clz r0, r0
+    clz r0, r0
 
-  bx lr
+    bx lr
 
 # Reverse bit order
 # Takes a 32-bit integer in R0
@@ -57,7 +57,6 @@ _clz:
 .type _rbit, %function
 .align 2
 _rbit:
-	rbit r0, r0
+    rbit r0, r0
 
-  bx lr
-
+    bx lr

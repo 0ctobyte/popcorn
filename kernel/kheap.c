@@ -52,225 +52,225 @@
  */
 
 typedef struct kheap_ublock {
-  size_t size;
-  vaddr_t addr;
-  struct kheap_ublock *next;
-  struct kheap_ublock *prev;
+    size_t size;
+    vaddr_t addr;
+    struct kheap_ublock *next;
+    struct kheap_ublock *prev;
 } kheap_ublock_t;
 
 static vaddr_t bins[NUM_BINS] = {0};
 static kheap_ublock_t *root;
 
 void _kheap_bin_insert(vaddr_t free, size_t block_size) {
-  kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
+    kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
 
-  uint32_t index = GET_BIN_INDEX(block_size);
-  vaddr_t head = bins[index];
+    uint32_t index = GET_BIN_INDEX(block_size);
+    vaddr_t head = bins[index];
 
-  // The list of free blocks is sorted by increasing address
-  vaddr_t next, prev = 0, prev_prev = 0;
-  for(next = head; next != 0; next = *(vaddr_t*)next) {
-    if(free < next) break;
-    prev_prev = prev;
-    prev = next;
-  }
+    // The list of free blocks is sorted by increasing address
+    vaddr_t next, prev = 0, prev_prev = 0;
+    for(next = head; next != 0; next = *(vaddr_t*)next) {
+        if(free < next) break;
+        prev_prev = prev;
+        prev = next;
+    }
 
-  // Is prev or next a buddy of this block? If so merge them. We can't merge blocks that are MAX_BLOCK_SIZE
-  vaddr_t buddy = ((block_size == MAX_BLOCK_SIZE) ? free : GET_BUDDY(free, block_size));
-  if(buddy == prev) {
-    // prev block is a buddy
-    if(prev_prev != 0) *((vaddr_t*)prev_prev) = next;
-    else bins[index] = next;
-    *((vaddr_t*)prev) = 0;
-    _kheap_bin_insert(prev, block_size << 1);
-  } else if(buddy == next) {
-    // next block is a buddy
-    vaddr_t next_next = *((vaddr_t*)next);
-    if(prev != 0) *((vaddr_t*)prev) = next_next;
-    else bins[index] = next_next;
-    *((vaddr_t*)next) = 0;
-    _kheap_bin_insert(free, block_size << 1);
-  } else {
-    // No buddies, just insert here
-    *((vaddr_t*)free) = next;
-    if(prev != 0) *((vaddr_t*)prev) = free;
-    else bins[index] = free;
-  }
+    // Is prev or next a buddy of this block? If so merge them. We can't merge blocks that are MAX_BLOCK_SIZE
+    vaddr_t buddy = ((block_size == MAX_BLOCK_SIZE) ? free : GET_BUDDY(free, block_size));
+    if(buddy == prev) {
+        // prev block is a buddy
+        if(prev_prev != 0) *((vaddr_t*)prev_prev) = next;
+        else bins[index] = next;
+        *((vaddr_t*)prev) = 0;
+        _kheap_bin_insert(prev, block_size << 1);
+    } else if(buddy == next) {
+        // next block is a buddy
+        vaddr_t next_next = *((vaddr_t*)next);
+        if(prev != 0) *((vaddr_t*)prev) = next_next;
+        else bins[index] = next_next;
+        *((vaddr_t*)next) = 0;
+        _kheap_bin_insert(free, block_size << 1);
+    } else {
+        // No buddies, just insert here
+        *((vaddr_t*)free) = next;
+        if(prev != 0) *((vaddr_t*)prev) = free;
+        else bins[index] = free;
+    }
 }
 
 vaddr_t _kheap_bin_pop(size_t block_size) {
-  kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
+    kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
 
-  uint32_t index = GET_BIN_INDEX(block_size);
-  vaddr_t head = bins[index];
+    uint32_t index = GET_BIN_INDEX(block_size);
+    vaddr_t head = bins[index];
 
-  // Unlink it from the bin if the block exists
-  if(head != 0) {
-    bins[index] = *(vaddr_t*)head;
-    memset((void*)head, 0, block_size);
-  }
+    // Unlink it from the bin if the block exists
+    if(head != 0) {
+        bins[index] = *(vaddr_t*)head;
+        memset((void*)head, 0, block_size);
+    }
 
-  return head;
+    return head;
 }
 
 vaddr_t _kheap_get_free_block(size_t block_size) {
-  // Get the first block in the bin
-  vaddr_t ptr = _kheap_bin_pop(block_size);
+    // Get the first block in the bin
+    vaddr_t ptr = _kheap_bin_pop(block_size);
 
-  // If there are no blocks in the bin, find a block from a following bin and split them up, recursively
-  if(ptr == 0) {
-    // If we have reached the last bin and haven't found any blocks, then there is no memory left
-    if(block_size == MAX_BLOCK_SIZE) return 0;
+    // If there are no blocks in the bin, find a block from a following bin and split them up, recursively
+    if(ptr == 0) {
+        // If we have reached the last bin and haven't found any blocks, then there is no memory left
+        if(block_size == MAX_BLOCK_SIZE) return 0;
 
-    // Get a free block from the successor bin, if there are no larger blocks in any successive bin, return 0
-    ptr = _kheap_get_free_block(block_size << 1);
+        // Get a free block from the successor bin, if there are no larger blocks in any successive bin, return 0
+        ptr = _kheap_get_free_block(block_size << 1);
 
-    // If we have found a valid block, split it in half and push the second block into the bin
-    if(ptr != 0) _kheap_bin_insert(ptr+block_size, block_size);
-  }
+        // If we have found a valid block, split it in half and push the second block into the bin
+        if(ptr != 0) _kheap_bin_insert(ptr+block_size, block_size);
+    }
 
-  return ptr;
+    return ptr;
 }
 
 kheap_ublock_t* _kheap_ublock_alloc() {
-  size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(sizeof(kheap_ublock_t)));
-  vaddr_t free = _kheap_get_free_block(block_size);
+    size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(sizeof(kheap_ublock_t)));
+    vaddr_t free = _kheap_get_free_block(block_size);
 
-  // If we haven't found a free block of the specified size, it is time to extend the heap region
-  if(free == 0) {
-    // Let's ask vmm for more heap
-    vaddr_t vstart = vmm_km_heap_extend(PAGESIZE);
-    _kheap_bin_insert(vstart, PAGESIZE);
+    // If we haven't found a free block of the specified size, it is time to extend the heap region
+    if(free == 0) {
+        // Let's ask vmm for more heap
+        vaddr_t vstart = vmm_km_heap_extend(PAGESIZE);
+        _kheap_bin_insert(vstart, PAGESIZE);
 
-    // Now we should be able to find a free block
-    free = _kheap_get_free_block(block_size);
-  }
+        // Now we should be able to find a free block
+        free = _kheap_get_free_block(block_size);
+    }
 
-  // We don't want to create a ublock for this block otherwise we will go into an infinite loop!
-  // We know that this block must be freed whenever the ublock that it represents is freed
-  return (kheap_ublock_t*)free;
+    // We don't want to create a ublock for this block otherwise we will go into an infinite loop!
+    // We know that this block must be freed whenever the ublock that it represents is freed
+    return (kheap_ublock_t*)free;
 }
 
 void _kheap_ublock_free(kheap_ublock_t *ublock) {
-  size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(sizeof(kheap_ublock_t)));
-  vaddr_t ptr = (vaddr_t)ublock;
+    size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(sizeof(kheap_ublock_t)));
+    vaddr_t ptr = (vaddr_t)ublock;
 
-  kassert(ptr != 0);
+    kassert(ptr != 0);
 
-  // Place the ublock back in the free bin
-  _kheap_bin_insert(ptr, block_size);
+    // Place the ublock back in the free bin
+    _kheap_bin_insert(ptr, block_size);
 }
 
 void _kheap_ublock_insert(vaddr_t used, size_t size) {
-  kheap_ublock_t *ublock = _kheap_ublock_alloc();
-  ublock->addr = used;
-  ublock->size = size;
-  ublock->next = ublock->prev = NULL;
+    kheap_ublock_t *ublock = _kheap_ublock_alloc();
+    ublock->addr = used;
+    ublock->size = size;
+    ublock->next = ublock->prev = NULL;
 
-  // If the list is empty
-  if(root == NULL) {
-    root = ublock;
-    return;
-  }
+    // If the list is empty
+    if(root == NULL) {
+        root = ublock;
+        return;
+    }
 
-  // The used block list is sorted by ascending addresses
-  kheap_ublock_t *next;
-  for(next = root; next->next != NULL; next = next->next) {
-    if(ublock->addr < next->addr) break;
-  }
+    // The used block list is sorted by ascending addresses
+    kheap_ublock_t *next;
+    for(next = root; next->next != NULL; next = next->next) {
+        if(ublock->addr < next->addr) break;
+    }
 
-  // Insert the elements in the linked list
-  ublock->next = next;
-  ublock->prev = next->prev;
-  if(next->prev != NULL) next->prev->next = ublock;
-  else root = ublock;
-  next->prev = ublock;
+    // Insert the elements in the linked list
+    ublock->next = next;
+    ublock->prev = next->prev;
+    if(next->prev != NULL) next->prev->next = ublock;
+    else root = ublock;
+    next->prev = ublock;
 
 }
 
 void _kheap_ublock_delete(kheap_ublock_t *ublock) {
-  // Remove the element from the linked list
-  if(ublock->prev != NULL) ublock->prev->next = ublock->next;
-  else root = ublock->next;
-  if(ublock->next != NULL) ublock->next->prev = ublock->prev;
+    // Remove the element from the linked list
+    if(ublock->prev != NULL) ublock->prev->next = ublock->next;
+    else root = ublock->next;
+    if(ublock->next != NULL) ublock->next->prev = ublock->prev;
 
-  // Free the ublock
-  _kheap_ublock_free(ublock);
+    // Free the ublock
+    _kheap_ublock_free(ublock);
 }
 
 void _kheap_free_used_block(vaddr_t free) {
-  // The used block list is sorted by ascending addresses
-  kheap_ublock_t *next;
-  for(next = root; next != NULL; next = next->next) {
-    if(next->addr == free) break;
-  }
+    // The used block list is sorted by ascending addresses
+    kheap_ublock_t *next;
+    for(next = root; next != NULL; next = next->next) {
+        if(next->addr == free) break;
+    }
 
-  // Uh oh, we are trying to free memory that hasn't been allocated...or kheap fucked up somewhere hmmmm
-  kassert(next != NULL);
+    // Uh oh, we are trying to free memory that hasn't been allocated...or kheap fucked up somewhere hmmmm
+    kassert(next != NULL);
 
-  // We have found the used block! Free the ublock & the used block associated with it
-  _kheap_bin_insert(next->addr, next->size);
-  _kheap_ublock_delete(next);
+    // We have found the used block! Free the ublock & the used block associated with it
+    _kheap_bin_insert(next->addr, next->size);
+    _kheap_ublock_delete(next);
 }
 
 void kheap_init() {
-  // Initialize the kernel heap region
-  vmm_km_heap_init();
+    // Initialize the kernel heap region
+    vmm_km_heap_init();
 
-  // Initially start with a heap of PAGESIZE bytes
-  vaddr_t heap_start = vmm_km_heap_extend(PAGESIZE);
-  _kheap_bin_insert(heap_start, PAGESIZE);
+    // Initially start with a heap of PAGESIZE bytes
+    vaddr_t heap_start = vmm_km_heap_extend(PAGESIZE);
+    _kheap_bin_insert(heap_start, PAGESIZE);
 }
 
 void* kheap_alloc(size_t size) {
-  kassert(size != 0 && size <= MAX_BLOCK_SIZE);
+    kassert(size != 0 && size <= MAX_BLOCK_SIZE);
 
-  // Round size to the next power of 2 value and find a free block of that size
-  size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(size));
-  vaddr_t free = _kheap_get_free_block(block_size);
+    // Round size to the next power of 2 value and find a free block of that size
+    size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(size));
+    vaddr_t free = _kheap_get_free_block(block_size);
 
-  // If we haven't found a free block of the specified size, it is time to extend the heap region
-  if(free == 0) {
-    // Let's ask vmm for more heap
-    vaddr_t vstart = vmm_km_heap_extend(block_size);
+    // If we haven't found a free block of the specified size, it is time to extend the heap region
+    if(free == 0) {
+        // Let's ask vmm for more heap
+        vaddr_t vstart = vmm_km_heap_extend(block_size);
 
-    // Since vmm rounds to PAGESIZE
-    _kheap_bin_insert(vstart, ROUND_PAGE(block_size));
+        // Since vmm rounds to PAGESIZE
+        _kheap_bin_insert(vstart, ROUND_PAGE(block_size));
 
-    // Now we should be able to find a free block
-    free = _kheap_get_free_block(block_size);
-  }
+        // Now we should be able to find a free block
+        free = _kheap_get_free_block(block_size);
+    }
 
-  // Now make an entry in the used block list
-  _kheap_ublock_insert(free, block_size);
+    // Now make an entry in the used block list
+    _kheap_ublock_insert(free, block_size);
 
-  return (void*)free;
+    return (void*)free;
 }
 
 void kheap_free(void *free) {
-  // Make sure we aren't freeing an invalid pointer
-  kassert(((vaddr_t)free) >= vmap_kernel()->heap_start || ((vaddr_t)free) < vmap_kernel()->heap_end);
+    // Make sure we aren't freeing an invalid pointer
+    kassert(((vaddr_t)free) >= vmap_kernel()->heap_start || ((vaddr_t)free) < vmap_kernel()->heap_end);
 
- _kheap_free_used_block((vaddr_t)free);
+    _kheap_free_used_block((vaddr_t)free);
 
- // TODO: Shrink heap region?
+// TODO: Shrink heap region?
 }
 
 void kheap_stats(size_t *heap_free, size_t *heap_allocated, size_t *num_free_blocks, size_t *num_used_blocks) {
-  *heap_free = 0, *heap_allocated = 0, *num_used_blocks = 0, *num_free_blocks = 0;
+    *heap_free = 0, *heap_allocated = 0, *num_used_blocks = 0, *num_free_blocks = 0;
 
-  // Calculate size of free memory and # of available blocks
-  for(uint32_t i = 0; i < NUM_BINS; i++) {
-    size_t bin_block_size = (1 << _ctz(MIN_BLOCK_SIZE)) << i;
-    for(vaddr_t v = bins[i]; v != 0; v = *(vaddr_t*)v) {
-      ++(*num_free_blocks);
-      *heap_free += bin_block_size;
+    // Calculate size of free memory and # of available blocks
+    for(uint32_t i = 0; i < NUM_BINS; i++) {
+        size_t bin_block_size = (1 << _ctz(MIN_BLOCK_SIZE)) << i;
+        for(vaddr_t v = bins[i]; v != 0; v = *(vaddr_t*)v) {
+            ++(*num_free_blocks);
+            *heap_free += bin_block_size;
+        }
     }
-  }
 
-  // Calculate size of allocated memory and # of used blocks
-  for(kheap_ublock_t *ub = root; ub != NULL; ub = ub->next) {
-    ++(*num_used_blocks);
-    *heap_allocated += ub->size;
-  }
+    // Calculate size of allocated memory and # of used blocks
+    for(kheap_ublock_t *ub = root; ub != NULL; ub = ub->next) {
+        ++(*num_used_blocks);
+        *heap_allocated += ub->size;
+    }
 }

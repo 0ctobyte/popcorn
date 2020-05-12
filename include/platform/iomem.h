@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 #if defined(REALVIEWPB)
-  #include <platform/realviewpb/iomem.h>
+#include <platform/realviewpb/iomem.h>
 #elif defined(VERSATILEPB)
-  #include <platform/versatilepb/iomem.h>
+#include <platform/versatilepb/iomem.h>
 #elif defined(BBB)
-  #include <platform/beagleboneblack/iomem.h>
+#include <platform/beagleboneblack/iomem.h>
 #else
-  #error "Undefined platform"
+#error "Undefined platform"
 #endif
 
 #define REG_RD32(R) (*((uint32_t*)(R)))

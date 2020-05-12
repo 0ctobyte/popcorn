@@ -2,19 +2,18 @@
 #define __BARRIER_H__
 
 // Data Memory Barrier
-// Use this to make sure memory accesses before the instruction complete before
+// Use this to make sure demand memory accesses (i.e. loads & stores) before the instruction complete before
 // memory accesses after the instruction execute
 void barrier_dmb();
 
 // Data Synchronization Barrier
-// Ensures all instructions before this instruction complete
-// Use this when you need to ensure that memory accesses complete before
-// execution of the code resumes
+// Use this when you need to ensure that all memory accesses complete before
+// execution of the code resumes (this includes MMU, cache maintenance accesses)
 void barrier_dsb();
 
 // Instruction Synchronization Barrier
 // Flushes the instruction pipeline in the processor
-// Use this whenever instructions after the ISB are invalid/changed
+// Use this whenever instructions after the ISB depend on instructions before the ISB to have retired
 void barrier_isb();
 
 #endif // __BARRIER_H__

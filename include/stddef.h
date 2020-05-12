@@ -29,12 +29,12 @@
  */
 
 #if !defined(__STDDEF_H) || defined(__need_ptrdiff_t) ||                       \
-    defined(__need_size_t) || defined(__need_wchar_t) ||                       \
-    defined(__need_NULL) || defined(__need_wint_t)
+      defined(__need_size_t) || defined(__need_wchar_t) ||                       \
+      defined(__need_NULL) || defined(__need_wint_t)
 
 #if !defined(__need_ptrdiff_t) && !defined(__need_size_t) &&                   \
-    !defined(__need_wchar_t) && !defined(__need_NULL) &&                       \
-    !defined(__need_wint_t)
+      !defined(__need_wchar_t) && !defined(__need_NULL) &&                       \
+      !defined(__need_wint_t)
 #define __STDDEF_H
 #define __need_ptrdiff_t
 #define __need_size_t
@@ -69,7 +69,7 @@ typedef __SIZE_TYPE__ size_t;
 /* ISO9899:2011 7.20 (C11 Annex K): Define rsize_t if __STDC_WANT_LIB_EXT1__ is
  * enabled. */
 #if (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1 && \
-     !defined(_RSIZE_T)) || __has_feature(modules)
+       !defined(_RSIZE_T)) || __has_feature(modules)
 /* Always define rsize_t when modules are available. */
 #if !__has_feature(modules)
 #define _RSIZE_T
@@ -107,7 +107,9 @@ typedef __WCHAR_TYPE__ wchar_t;
 #endif
 #ifdef __cplusplus
 #if defined(_MSC_EXTENSIONS) && defined(_NATIVE_NULLPTR_SUPPORTED)
-namespace std { typedef decltype(nullptr) nullptr_t; }
+namespace std {
+typedef decltype(nullptr) nullptr_t;
+}
 using ::std::nullptr_t;
 #endif
 #endif
@@ -121,10 +123,10 @@ using ::std::nullptr_t;
 #if !defined(__CLANG_MAX_ALIGN_T_DEFINED) || __has_feature(modules)
 #ifndef _MSC_VER
 typedef struct {
-  long long __clang_max_align_nonce1
-      __attribute__((__aligned__(__alignof__(long long))));
-  long double __clang_max_align_nonce2
-      __attribute__((__aligned__(__alignof__(long double))));
+    long long __clang_max_align_nonce1
+    __attribute__((__aligned__(__alignof__(long long))));
+    long double __clang_max_align_nonce2
+    __attribute__((__aligned__(__alignof__(long double))));
 } max_align_t;
 #else
 typedef double max_align_t;

@@ -34,26 +34,26 @@ typedef struct pgt_entry pgt_entry_t;
 
 // These should be updated during any pmap function calls if necessary
 typedef struct {
-	size_t wired_count;
-	size_t resident_count;
+    size_t wired_count;
+    size_t resident_count;
 } pmap_statistics_t;
 
 typedef struct {
-	// Page directory is the 1st level translation table on ARMv7
-	pgd_t *pgd;
+    // Page directory is the 1st level translation table on ARMv7
+    pgd_t *pgd;
 
-  // The physical address of the page directory
-  paddr_t pgd_pa;
+    // The physical address of the page directory
+    paddr_t pgd_pa;
 
-  // Reference count on the pmap
-  atomic_t refcount;
+    // Reference count on the pmap
+    atomic_t refcount;
 
-	// Page tables are the 2nd level translation tables on ARMv7
-	// Page tables will be allocated on demand and when a new table is created
-	// it will be added to this list.
-	pgt_entry_t *pgt_entry_head;
+    // Page tables are the 2nd level translation tables on ARMv7
+    // Page tables will be allocated on demand and when a new table is created
+    // it will be added to this list.
+    pgt_entry_t *pgt_entry_head;
 
-	pmap_statistics_t pmap_stats;
+    pmap_statistics_t pmap_stats;
 } pmap_t;
 
 // Declare the kernel's pmap
@@ -155,4 +155,3 @@ vaddr_t pmap_steal_memory(size_t vsize);
 //pmap_update*
 
 #endif // __PMAP_H__
-

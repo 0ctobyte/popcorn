@@ -110,167 +110,166 @@
  */
 
 typedef struct pagemap_t {
-	uint32_t bitmap; // Each bit represents one page
-	struct pagemap_t *next;  // Pointer to next pagemap in the stack
+    uint32_t bitmap; // Each bit represents one page
+    struct pagemap_t *next;  // Pointer to next pagemap in the stack
 } pagemap_t;
 
 typedef struct {
-	spinlock_t lock;
-	pagemap_t *pagemaps; // Array of pagemap_t
-	pagemap_t *top;	     // Top of stack
-	size_t size;         // # of pagemap_t in the pagemap_t array
+    spinlock_t lock;
+    pagemap_t *pagemaps; // Array of pagemap_t
+    pagemap_t *top;	     // Top of stack
+    size_t size;         // # of pagemap_t in the pagemap_t array
 } pagestack_t;
 
 static pagestack_t pagestack = {SPINLOCK_INIT, 0, 0, 0};
 
 // Pushes the given pagemap on the stack
 void _pmm_push(pagestack_t *pstack, pagemap_t *pagemap) {
-	pagemap->next = pstack->top;
-	pstack->top = pagemap;
+    pagemap->next = pstack->top;
+    pstack->top = pagemap;
 }
 
 // Pops the pagemap off the stack
 pagemap_t* _pmm_pop(pagestack_t *pstack) {
-	if(pstack->top == NULL) return(NULL);
-	pagemap_t *next = pstack->top->next;
-	pagemap_t *popped = pstack->top;
-	pstack->top->next = NULL;
-	pstack->top = next;
-	return(popped);
+    if(pstack->top == NULL) return(NULL);
+    pagemap_t *next = pstack->top->next;
+    pagemap_t *popped = pstack->top;
+    pstack->top->next = NULL;
+    pstack->top = next;
+    return(popped);
 }
 
 void pmm_init() {
-	// Allocate memory for the pagemaps
-	// pmap_steal_memory will only work if pmap_init has been called before
-	// Ideally, pmap_init will pmm_init
-	pagestack.size = ((MEMSIZE >> (_ctz(PAGESIZE))) >> (_ctz(BITS)));
-	pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
+    // Allocate memory for the pagemaps
+    // pmap_steal_memory will only work if pmap_init has been called before
+    // Ideally, pmap_init will pmm_init
+    pagestack.size = ((MEMSIZE >> (_ctz(PAGESIZE))) >> (_ctz(BITS)));
+    pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
 
-	// Link the pagemaps together
-	pagestack.top = pagestack.pagemaps;
-	pagemap_t *p = pagestack.pagemaps;
-	for(uint32_t i = 0; i < pagestack.size; ++i) {
-		// Make sure to clear the bitmaps
-		p[i].bitmap = 0;
-		p[i].next = ((i+1) < pagestack.size) ? &p[i+1] : NULL;
-	}
+    // Link the pagemaps together
+    pagestack.top = pagestack.pagemaps;
+    pagemap_t *p = pagestack.pagemaps;
+    for(uint32_t i = 0; i < pagestack.size; ++i) {
+        // Make sure to clear the bitmaps
+        p[i].bitmap = 0;
+        p[i].next = ((i+1) < pagestack.size) ? &p[i+1] : NULL;
+    }
 }
 
 paddr_t pmm_alloc() {
-	// Default value of addr, this indicates that no free frame was found
-	paddr_t addr = UINTPTR_MAX;
+    // Default value of addr, this indicates that no free frame was found
+    paddr_t addr = UINTPTR_MAX;
 
-	spin_irqlock(&pagestack.lock);
+    spin_irqlock(&pagestack.lock);
 
-	pagemap_t *top = pagestack.top;
-	if(top == NULL) return(addr);
+    pagemap_t *top = pagestack.top;
+    if(top == NULL) return(addr);
 
-	// Find first free frame in pagemap and set the bit in the bitmap
-	// Calculate address using location of pagemap in the pagestacks.pagemaps
-	// array and the bit number in the pagemap's bitmap
-	uint32_t frame = bit_find_contiguous_zeros(top->bitmap, 1);
-	SET_FRAME(top->bitmap, frame);
-	addr = (((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE) + MEMBASEADDR;
+    // Find first free frame in pagemap and set the bit in the bitmap
+    // Calculate address using location of pagemap in the pagestacks.pagemaps
+    // array and the bit number in the pagemap's bitmap
+    uint32_t frame = bit_find_contiguous_zeros(top->bitmap, 1);
+    SET_FRAME(top->bitmap, frame);
+    addr = (((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE) + MEMBASEADDR;
 
-	// If pagemap is fully allocated, pop it off the stack
-	if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
-	spin_irqunlock(&pagestack.lock);
-	return(addr);
+    // If pagemap is fully allocated, pop it off the stack
+    if(top->bitmap == UINT32_MAX) _pmm_pop(&pagestack);
+    spin_irqunlock(&pagestack.lock);
+    return(addr);
 }
 
 void pmm_free(paddr_t addr) {
-	// Check to make sure addr is page_aligned and within bounds
-	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
+    // Check to make sure addr is page_aligned and within bounds
+    kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
-	// Calculate the absolute frame number
-	// Get the index into the pagemaps array
-	// Get the frame number relative to the bitmap in the pagemap
-	uint32_t frame_num = ATOP((addr-MEMBASEADDR));
-	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
-	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
+    // Calculate the absolute frame number
+    // Get the index into the pagemaps array
+    // Get the frame number relative to the bitmap in the pagemap
+    uint32_t frame_num = ATOP((addr-MEMBASEADDR));
+    uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
+    uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
-	spin_irqlock(&pagestack.lock);
+    spin_irqlock(&pagestack.lock);
 
-	// Unset the bit and if need be, push the pagemap back onto the stack
-	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
-	if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack, pagemap);
-	CLEAR_FRAME(pagemap->bitmap, rel_frame_num);
-	spin_irqunlock(&pagestack.lock);
+    // Unset the bit and if need be, push the pagemap back onto the stack
+    pagemap_t *pagemap = pagestack.pagemaps + elem_num;
+    if(pagemap->bitmap == UINT32_MAX) _pmm_push(&pagestack, pagemap);
+    CLEAR_FRAME(pagemap->bitmap, rel_frame_num);
+    spin_irqunlock(&pagestack.lock);
 }
 
 paddr_t pmm_alloc_contiguous(size_t frames) {
-	// Unfortunately we can't allocate more than 32 frames contiguously :(
-	kassert(frames < BITS);
+    // Unfortunately we can't allocate more than 32 frames contiguously :(
+    kassert(frames < BITS);
 
-	paddr_t addr = UINTPTR_MAX;
+    paddr_t addr = UINTPTR_MAX;
 
-	pagemap_t *curr, *prev;
-	int32_t frame = 0;
+    pagemap_t *curr, *prev;
+    int32_t frame = 0;
 
-	spin_irqlock(&pagestack.lock);
+    spin_irqlock(&pagestack.lock);
 
-	// Loop through the stack until we find a bitmap that has enough
-	// contiguous frames
-	for(curr = pagestack.top, prev = NULL; curr != NULL; prev = curr, curr = curr->next) {
-		// Find the index of the first frame in the contiguous set
-		frame = bit_find_contiguous_zeros(curr->bitmap, frames);
+    // Loop through the stack until we find a bitmap that has enough
+    // contiguous frames
+    for(curr = pagestack.top, prev = NULL; curr != NULL; prev = curr, curr = curr->next) {
+        // Find the index of the first frame in the contiguous set
+        frame = bit_find_contiguous_zeros(curr->bitmap, frames);
 
-		// If such a contiguous region of frames exists in the bitmap...
-		if(frame >= 0) {
-			// Then set the bits in the bitmap
-			curr->bitmap = bit_field_set(curr->bitmap, frame, frames);
+        // If such a contiguous region of frames exists in the bitmap...
+        if(frame >= 0) {
+            // Then set the bits in the bitmap
+            curr->bitmap = bit_field_set(curr->bitmap, frame, frames);
 
-			// Calculate the page's physical address
-			addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
+            // Calculate the page's physical address
+            addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
 
-			// Now, if the bitmap is fully allocated...
-			if(curr->bitmap == UINT32_MAX) {
-				// Remove the pagemap from the stack
-        if(prev == NULL) pagestack.top = curr->next;
-        else prev->next = curr->next;
-				curr->next = NULL;
-			}
-			break;
-		}
-	}
+            // Now, if the bitmap is fully allocated...
+            if(curr->bitmap == UINT32_MAX) {
+                // Remove the pagemap from the stack
+                if(prev == NULL) pagestack.top = curr->next;
+                else prev->next = curr->next;
+                curr->next = NULL;
+            }
+            break;
+        }
+    }
 
-	spin_irqunlock(&pagestack.lock);
-	return(addr);
+    spin_irqunlock(&pagestack.lock);
+    return(addr);
 }
 
 void pmm_reserve(paddr_t addr) {
-	// Check if the address is page aligned and within bounds
-	kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
+    // Check if the address is page aligned and within bounds
+    kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
-	uint32_t frame_num = ATOP((addr-MEMBASEADDR));
-	uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
-	uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
+    uint32_t frame_num = ATOP((addr-MEMBASEADDR));
+    uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
+    uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
-	spin_irqlock(&pagestack.lock);
+    spin_irqlock(&pagestack.lock);
 
-	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
+    pagemap_t *pagemap = pagestack.pagemaps + elem_num;
 
-	// The bitmap must not already be full
-	kassert(pagemap->bitmap != UINT32_MAX);
+    // The bitmap must not already be full
+    kassert(pagemap->bitmap != UINT32_MAX);
 
-	// Set the bit and if need be, remove the pagemap
-	SET_FRAME(pagemap->bitmap, rel_frame_num);
+    // Set the bit and if need be, remove the pagemap
+    SET_FRAME(pagemap->bitmap, rel_frame_num);
 
-	// Removing the pagemap from the stack is a little more involved...In most
-	// cases we won't need to do this
-	if(pagemap->bitmap == UINT32_MAX) {
-		// If the pagemap isn't the top of the stack then...
-		// Loop through the stack until we find the previous pagemap
-		pagemap_t *curr = pagestack.top;
-		if(curr == pagemap) {
-			_pmm_pop(&pagestack);
-		} else {
-			for(; curr->next != pagemap; curr = curr->next);
-			curr->next = pagemap->next;
-			pagemap->next = NULL;
-		}
-	}
+    // Removing the pagemap from the stack is a little more involved...In most
+    // cases we won't need to do this
+    if(pagemap->bitmap == UINT32_MAX) {
+        // If the pagemap isn't the top of the stack then...
+        // Loop through the stack until we find the previous pagemap
+        pagemap_t *curr = pagestack.top;
+        if(curr == pagemap) {
+            _pmm_pop(&pagestack);
+        } else {
+            for(; curr->next != pagemap; curr = curr->next);
+            curr->next = pagemap->next;
+            pagemap->next = NULL;
+        }
+    }
 
-	spin_irqunlock(&pagestack.lock);
+    spin_irqunlock(&pagestack.lock);
 }
-

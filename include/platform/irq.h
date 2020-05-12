@@ -4,13 +4,13 @@
 #include <sys/types.h>
 
 #if defined(REALVIEWPB)
-  #include <platform/realviewpb/irqtypes.h>
+#include <platform/realviewpb/irqtypes.h>
 #elif defined(VERSATILEPB)
-  #include <platform/versatilepb/irqtypes.h>
+#include <platform/versatilepb/irqtypes.h>
 #elif defined(BBB)
-  #include <platform/beagleboneblack/irqtypes.h>
+#include <platform/beagleboneblack/irqtypes.h>
 #else
-  #error "Undefined platform"
+#error "Undefined platform"
 #endif
 
 typedef void (*isr_t)(void);

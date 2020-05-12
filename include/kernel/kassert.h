@@ -4,7 +4,7 @@
 #include <kernel/panic.h>
 
 #define kassert(b) (b) ? (void)0 : \
-	panic("Assertion failed: %s:%d: '%s'\n", __FILE__, __LINE__, #b)
+    panic("Assertion failed: %s:%d: '%s'\n", __FILE__, __LINE__, #b)
 
 #endif // __KASSERT_H__
 
