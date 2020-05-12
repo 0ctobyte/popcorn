@@ -11,7 +11,7 @@
 #define SET_FRAME(bitmap, rel_frame_num) (bitmap) |= (1 << (rel_frame_num))
 #define CLEAR_FRAME(bitmap, rel_frame_num) (bitmap) &= ~(1 << (rel_frame_num))
 
-// Shift by the # of low order bits that must be zero in order to be 
+// Shift by the # of low order bits that must be zero in order to be
 // page aligned. This gives the absolute frame number.
 // Multiply pagemap array index by BITS and subtract value from absolute
 // frame number to get relative frame number within a bitmap.
@@ -26,16 +26,16 @@
 
 /*
  * So how does this physical memory allocator work?
- * The basic idea is that main memory is split into fixed sized partitions 
+ * The basic idea is that main memory is split into fixed sized partitions
  * called 'page frames' (or just 'frames'...or 'pages'). This allocator then
  * simply hands out such frames and frees them when asked to do so. Also, the
  * allocator should be able to allocate a contiguous range of free frames.
- * 
- * One of the popular ways to do this is to use a bitmap, an array of bits, 
+ *
+ * One of the popular ways to do this is to use a bitmap, an array of bits,
  * where each bit represents a frame in memory. In terms of speed, this method
- * is not very efficient since operations such as allocating a frame, freeing 
+ * is not very efficient since operations such as allocating a frame, freeing
  * a frame and allocating a contiguous range of frames would all take O(n) time
- * (n is the number of frames in memory). 
+ * (n is the number of frames in memory).
  *
  * Another popular method is to use a stack of free frames. The stack will hold
  * the physical addresses to each free frame. Thus, when allocating a frame,
@@ -47,9 +47,9 @@
  * Specifically, memory use and allocating a contiguous range of free frames.
  * Assuming we are on a 32-bit system with the maximum 4 Gb of RAM and a
  * page size of 4 kb, a bitmap would take about 128 kb of memory. A stack on the
- * other hand, where a memory address takes about 4 bytes, would take 4 Mb of 
+ * other hand, where a memory address takes about 4 bytes, would take 4 Mb of
  * memory. Not only that but trying to allocate a continuous range of free
- * frames using the stack method is non-trivial. 
+ * frames using the stack method is non-trivial.
  *
  * So what now? Well, why not combine the best of stacks and bitmaps!!one!1!?
  * So here's the idea on how this physical memory allocator works. We will have
@@ -57,12 +57,12 @@
  * bits and a pointer to the next (in the stack) pagemap. This pagemap will be
  * 8 bytes in size. There will be an array of these pagemaps, the size of the
  * array depending on the size of the memory and the page size. For example, on
- * a 4 Gb system with a page size of 4 kb, there will be 32768 of these 
+ * a 4 Gb system with a page size of 4 kb, there will be 32768 of these
  * pagemaps which means 256 kb will be used for this array. Now, each bit in
  * the bitmaps of each pagemap represents one page. Okay, so initially each of
  * these pagemaps will be linked via the next pointer (the last pagemap in the
  * array of course will have a NULL next pointer). This linked array is our
- * stack, the top of the stack is the first element in the array INITIALLY. 
+ * stack, the top of the stack is the first element in the array INITIALLY.
  * This will change as frames are allocated and freed. Now, when we want to
  * allocate a frame we simple look at the first pagemap in the stack, find
  * a free bit in the 32-bit bitmap and calculate the address using the position
@@ -74,15 +74,15 @@
  * to calculate the position of the pagemap in the array and position of the
  * bit in the bitmap of that pagemap and then unset it. If that bitmap was
  * previously fully allocated then we simply push it on the pagemap stack.
- * 
- * Thus, using this method, which I call the 'bitstack' method :), 
- * allocating and freeing a single frame takes O(1) time. So what about 
+ *
+ * Thus, using this method, which I call the 'bitstack' method :),
+ * allocating and freeing a single frame takes O(1) time. So what about
  * contiguous frame allocation and memory use? Well I mentioned above that
  * this method takes 256 kb of memory max on a 32 bit system with a page size
  * of 4 kb (standard). That's just double the memory use of a bitmap (128 kb)
- * and compared to the stack method (4 Mb), 256 kb looks great! Now for 
+ * and compared to the stack method (4 Mb), 256 kb looks great! Now for
  * contiguous frame allocation. Contiguous frame allocation is still not
- * very efficient using this method as it will take O(n) time where n is 
+ * very efficient using this method as it will take O(n) time where n is
  * the number of PAGEMAPS in the array. The pmm_alloc_contiguous function
  * below uses a function, bit_find_contiguous_zeros, which employs a for loop.
  * However, this for loop NEVER loops more than 32 times MAX. And it would
@@ -103,7 +103,7 @@
  * comparable to the bitmap method and faster contiguous frame allocation
  * than both the bitmap and stack method! However, the only downside of the
  * bitstack method is that only 32 contiguous frames can be allocated at once
- * (since the pagemaps are in a contiguous array, there could be ways to 
+ * (since the pagemaps are in a contiguous array, there could be ways to
  * circumvent this limit).
  * For the purposes of this kernel, this limit on the contiguous frames
  * shouldn't be much of a problem.
@@ -159,7 +159,7 @@ void pmm_init() {
 paddr_t pmm_alloc() {
 	// Default value of addr, this indicates that no free frame was found
 	paddr_t addr = UINTPTR_MAX;
-	
+
 	spin_irqlock(&pagestack.lock);
 
 	pagemap_t *top = pagestack.top;
@@ -209,20 +209,20 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
 
 	spin_irqlock(&pagestack.lock);
 
-	// Loop through the stack until we find a bitmap that has enough 
+	// Loop through the stack until we find a bitmap that has enough
 	// contiguous frames
 	for(curr = pagestack.top, prev = NULL; curr != NULL; prev = curr, curr = curr->next) {
 		// Find the index of the first frame in the contiguous set
 		frame = bit_find_contiguous_zeros(curr->bitmap, frames);
-		
+
 		// If such a contiguous region of frames exists in the bitmap...
 		if(frame >= 0) {
 			// Then set the bits in the bitmap
 			curr->bitmap = bit_field_set(curr->bitmap, frame, frames);
-			
+
 			// Calculate the page's physical address
 			addr = ((curr - pagestack.pagemaps) * BITS + frame) * PAGESIZE;
-			
+
 			// Now, if the bitmap is fully allocated...
 			if(curr->bitmap == UINT32_MAX) {
 				// Remove the pagemap from the stack
@@ -249,13 +249,13 @@ void pmm_reserve(paddr_t addr) {
 	spin_irqlock(&pagestack.lock);
 
 	pagemap_t *pagemap = pagestack.pagemaps + elem_num;
-	
+
 	// The bitmap must not already be full
 	kassert(pagemap->bitmap != UINT32_MAX);
 
 	// Set the bit and if need be, remove the pagemap
 	SET_FRAME(pagemap->bitmap, rel_frame_num);
-	
+
 	// Removing the pagemap from the stack is a little more involved...In most
 	// cases we won't need to do this
 	if(pagemap->bitmap == UINT32_MAX) {
@@ -272,5 +272,5 @@ void pmm_reserve(paddr_t addr) {
 	}
 
 	spin_irqunlock(&pagestack.lock);
-}	
+}
 

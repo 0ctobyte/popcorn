@@ -75,7 +75,7 @@ void kmain(void) {
   // We need to map the GIC in order to set up the IRQ system
   // We need to map UART in order to use kprintf!
   pmap_init();
- 
+
   // TODO: This shouldn't be here! Only temporary
   // Map the UART, VIC/SIC/GIC
   pmap_kenter_pa(R_UART0_VBASE, R_UART0_PBASE, VM_PROT_DEFAULT, PMAP_NOCACHE);
@@ -115,7 +115,7 @@ void kmain(void) {
   // Enable interrupts on the CPU
   kprintf("Kernel: Enabling interrupts on the CPU\n");
   interrupts_enable();
- 
+
   uint32_t s = 5;
   void *ptr[5];
 

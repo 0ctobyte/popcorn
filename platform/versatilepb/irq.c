@@ -78,7 +78,7 @@ irq_type_t irq_get() {
 	}
 
 	if(count >= 64) count = IRQ_NONE;
-	
+
 	return(count);
 }
 

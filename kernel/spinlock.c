@@ -45,7 +45,7 @@
 
 // Attempts to gain lock using the specified bit(s)
 void _spin_lock(spinlock_t *lock, uint32_t bits) {
-	// Continuously attempt to set the bit, the loop will exit only when we 
+	// Continuously attempt to set the bit, the loop will exit only when we
 	// succeed in setting the bit
 	while(atomic_test_and_set_bit(lock, (bits)));
 	// Membar after spinlock has been acquired
@@ -99,7 +99,7 @@ void spin_irqunlock(spinlock_t *lock) {
 	spin_unlock(lock);
 	if(_enabled) interrupts_enable();
 
-	// Ensure previous instructions complete 
+	// Ensure previous instructions complete
 	barrier_dsb();
 }
 

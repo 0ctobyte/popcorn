@@ -1,6 +1,6 @@
 .text
 # Using the ARM instruction set rather than Thumb
-.code 32 
+.code 32
 .global _start
 
 # Setup the stacks in the BSS. I like my stacks page-aligned pls
@@ -23,12 +23,12 @@
 
 # Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
 # order bits
-.align 2 
+.align 2
 _start:
 	# Set the svc stack
 	ldr sp, =__svc_stack_limit+4096
 
-	# Get the program status register	
+	# Get the program status register
 	mrs r0, cpsr
 
 	# Set IRQ mode stack, SP (and LR) is banked in IRQ mode
@@ -42,7 +42,7 @@ _start:
 	orr r1, r1, #0x11
 	msr cpsr, r1
 	ldr sp, =__fiq_stack_limit+4096
-	
+
 	# Set up the Abort mode stack
 	bic r1, r0, #0x1f
 	orr r1, r1, #0x17
@@ -64,7 +64,7 @@ _start:
 	# Go back to supervisor mode
 	msr cpsr, r0
 
-  # CPACR: Allow full (PL0 & PL1) access to coprocessors 10 & 11 (VFPU) 
+  # CPACR: Allow full (PL0 & PL1) access to coprocessors 10 & 11 (VFPU)
   mrc p15, 0, r2, c1, c0, 2
   mov r3, #0xf
   orr r2, r2, r3, lsl #20

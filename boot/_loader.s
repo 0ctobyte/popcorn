@@ -1,8 +1,8 @@
 # This code is the first to run on boot. It sets up the page directory and
 # page tables, maps the kernel (starting at physical address 0x10000) to
-# 0xF0010000, maps the page directory and page tables to the first 16 kb 
+# 0xF0010000, maps the page directory and page tables to the first 16 kb
 # aligned address after the kernel.
-# Identity maps the first 1 Mb. 
+# Identity maps the first 1 Mb.
 # The code then sets up control registers appropriately
 # and enables paging. Then a branch is made kernel/boot/boot.s:_start
 # The kernel is mapped in the top 256 MB of the virtual address space.
@@ -37,26 +37,26 @@ _loader:
   # Disable watchdog timer
   bl _disable_wdt
 #endif
- 
+
   # Reset SCTLR such that the I & D cache, branch predictor and MMU are disabled
   mrc p15, 0, r0, c1, c0, 0
   # Clear bit 12 to disable ICache
-  bic r0, r0, #0x1000   
+  bic r0, r0, #0x1000
   # Clear bit 2 to disable DCache
-  bic r0, r0, #0x4  
+  bic r0, r0, #0x4
   # Clear bit 11 to disable branch predictior
-  bic r0, r0, #0x0800 
+  bic r0, r0, #0x0800
   # Clear bit 0 to disable MMU
-  bic r0, r0, #0x1    
+  bic r0, r0, #0x1
   mcr p15, 0, r0, c1, c0, 0
-  
+
   # Invalidate all caches
   bl _tlb_invalidate_all
   bl _icache_invalidate_all
   bl _dcache_invalidate_all
   bl _bp_invalidate_all
- 
-#ifdef BBB 
+
+#ifdef BBB
   mov r0, #0x1000
   movw r1, #0x0000
   movt r1, #0x2000
@@ -75,22 +75,22 @@ _loader:
   # The kernel virtual address space starts at 0xF0000000
   # The kernel proper doesn't start until 0xF0010000
   mov VIRTUALBASEADDR, r4
-  
+
   ldr r3, =KVIRTUALBASEADDR
   sub r3, r3, VIRTUALBASEADDR
   add r3, r3, MEMBASEADDR
   str r4, [r3]
-  
+
   ldr r3, =PAGESIZE
   sub r3, r3, VIRTUALBASEADDR
   add r3, r3, MEMBASEADDR
   str r0, [r3]
-  
+
   ldr r3, =MEMSIZE
   sub r3, r3, VIRTUALBASEADDR
   add r3, r3, MEMBASEADDR
   str r1, [r3]
-  
+
   ldr r3, =MEMBASEADDR
   sub r3, r3, VIRTUALBASEADDR
   add r3, r3, MEMBASEADDR
@@ -122,7 +122,7 @@ _loader:
   movw r0, #0x4000
   add placement_addr, placement_addr, r0
   add placement_addr, placement_addr, membaseaddr
-  
+
 	# This works because ARM uses PC relative addressing
 	# Create page dir at end of kernel
 	bl _create_page_dir
@@ -241,7 +241,7 @@ _do_mapping:
 	movw r0, #0x45e
 	sub r1, pgd_addr, MEMBASEADDR
   add r1, r1, VIRTUALBASEADDR
-	mov r2, pgd_addr 
+	mov r2, pgd_addr
   movw r3, #0x400
   mul r3, r3, pgt_num
   add r3, r3, pgt_start_addr
@@ -249,8 +249,8 @@ _do_mapping:
   add r3, r3, VIRTUALBASEADDR
 
 	bl _map_page_range
- 
-#ifdef BBB 
+
+#ifdef BBB
   movw r0, #0x142e
   movt r0, #0x1
   movw r1, #0x0000
@@ -259,15 +259,15 @@ _do_mapping:
   bl _map_section
 #endif
 
-	# Identity map the first 1 MiB so when we switch to virtual memory mode we don't 
+	# Identity map the first 1 MiB so when we switch to virtual memory mode we don't
   # encounter instruction prefetch or data aborts
   # The page directory entry represents a section entry with the following attributes:
-  # - Normal Memory 
+  # - Normal Memory
   # - Inner & Outer cacheable
   # - R/W permissions only in PL1
   # - Inner Shareable
   # - Global
-  # - Non-secure memory 
+  # - Non-secure memory
 	movw r0, #0x142e
 	movt r0, #0x1
   mov r1, MEMBASEADDR
@@ -324,7 +324,7 @@ _map_page:
 	movw r2, #0x3ff
 	bic r4, r4, r2
 	orr r3, r4, r3, lsr #10
-	
+
 	# Place the mapping into the entry in the page table overwriting the
 	# entry if one is already present
 	str r0, [r3]
@@ -333,7 +333,7 @@ _map_page:
   bx lr
 
 # Maps a range of continuous physical pages to a range of continuous virtual
-# R0 [in] - Page table entry descriptor 
+# R0 [in] - Page table entry descriptor
 # R1 [in] - Starting virtual address of range
 # R2 [in] - Starting physical address of range
 # R3 [in] - Ending virtual address of range (This address is NOT mapped)
@@ -370,7 +370,7 @@ _setup_page_dir:
 	stmfd sp!, {r4}
 
 	mov r0, pgt_start_addr
-	
+
 	# Number of entries in the page dir is 4096
 	mov r1, #4096
 	mov r2, pgt_num
@@ -400,7 +400,7 @@ _setup_page_dir_loop:
 
 	# Get address of next page table
 	add r0, #1024
-	
+
 	b _setup_page_dir_loop
 
 _setup_page_dir_exit:
@@ -410,12 +410,12 @@ _setup_page_dir_exit:
 # Create a page directory (1st level page table)
 .align 2
 _create_page_dir:
-	stmfd sp!, {lr}	
+	stmfd sp!, {lr}
 
 	# Allocate 16 kb for page directory
-	mov r0, #16	
+	mov r0, #16
 	bl _alloc
-	
+
 	# Put that shit in pgd_addr
 	mov pgd_addr, r0
 
@@ -435,7 +435,7 @@ _create_page_tables:
 
 	# R0 will be overwritten by _alloc
 	mov r4, r0
-	
+
 	# Allocate memory for page tables
 	bl _alloc
 
@@ -542,7 +542,7 @@ _disable_wdt:
   movt r0, #0x44e3
   movw r2, #0xaaaa
 wdt_wpsr_write:
-  # Offset to WSPR register (watchdog timer start/stop register) 
+  # Offset to WSPR register (watchdog timer start/stop register)
   add r1, r0, #0x48
   str r2, [r1]
   # Offset to WWPS register (watchdog timer write posting bits register)

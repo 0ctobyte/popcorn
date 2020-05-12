@@ -10,7 +10,7 @@
 _atagit:
   # ATAGs located at memory address in R2
   # Get the size of the ATAG structure and ATAG structure ID
-  ldr r0, [r2], #4 
+  ldr r0, [r2], #4
   ldr r1, [r2], #4
 
   # Done if we receive the ATAG_NONE ID (0x0)

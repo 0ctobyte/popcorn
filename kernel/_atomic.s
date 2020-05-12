@@ -33,7 +33,7 @@ atomic_test_and_set_bit:
 	orreq r2, r0, r2
 	strexeq r0, r2, [r1]
   clrex
-	
+
   bx lr
 
 # Atomically increment the value

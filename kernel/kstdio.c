@@ -6,7 +6,7 @@
 
 int32_t kputc(const char c) {
 	while(putchar(c) == -1) continue;
-  
+
   // Send a carriage return after a newline
   if(c == '\n') while(putchar('\r') == -1) continue;
 

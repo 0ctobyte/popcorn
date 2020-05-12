@@ -47,7 +47,7 @@
 // be executed
 #define PTE_XN_BIT (0x1)
 
-// Shareability domain - If set, indicates inner shareability (which is the 
+// Shareability domain - If set, indicates inner shareability (which is the
 // usual case)
 #define PTE_TEX0_BIT (0x40)
 
@@ -104,7 +104,7 @@ typedef uint32_t pde_t;
 typedef uint32_t pte_t;
 
 // Page tables are the 2nd level translation table used on ARMv7 CPU's
-// An entry in the page table contains the physical address of the page in 
+// An entry in the page table contains the physical address of the page in
 // memory as well as other info (access permissions etc.)
 typedef struct {
 	pte_t pte[PGTNENTRIES];
@@ -129,7 +129,7 @@ struct pgt_entry {
 	uint32_t offset;
 };
 
-// Offset into kernel page directory of the first kernel page table 
+// Offset into kernel page directory of the first kernel page table
 #define KERNEL_PGD_PGT_INDEX_BASE ((uint32_t)(PGDNENTRIES - (uint32_t)(NUMPAGETABLES)))
 
 // Start address of the kernel's page table array
@@ -164,8 +164,8 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 
 	// Allocate a new page if there is not enough memory
 	if(end >= kernel_vend) {
-		// Loop through and map the pages while incrementing kernel_pend and 
-		// kernel_vend 
+		// Loop through and map the pages while incrementing kernel_pend and
+		// kernel_vend
 		for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
 			pte_t entry = PTE_CREATE(kernel_pend, PTE_AP0_BIT|PTE_XN_BIT|PTE_S_BIT|PTE_TEX0_BIT|PTE_CB3);
 			KERNEL_PGTS_BASE[PGD_GET_INDEX(kernel_vend)-KERNEL_PGD_PGT_INDEX_BASE].pte[PGT_GET_INDEX(kernel_vend)] = entry;
@@ -200,7 +200,7 @@ void _pmap_kernel_init() {
 		// Assign the next pgt_entry
 		pentries[i].next = ((i+1) < n_pgt) ? &pentries[i+1] : NULL;
 
-		// The kernel virtual address space is always the last n MB, thus the page tables will always be the 
+		// The kernel virtual address space is always the last n MB, thus the page tables will always be the
     // mapped to the last n entries in the page directories. Where n == n_pgt
 		pentries[i].offset = KERNEL_PGD_PGT_INDEX_BASE + i;
 	}
@@ -257,7 +257,7 @@ uint32_t pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pma
   kassert(pmap != NULL && pmap->pgd != NULL && IS_WITHIN_BOUNDS(pa) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
 
   // Encode the protection bits in the page table entry
-  // Encode the protection and pmap flags in the page table entry 
+  // Encode the protection and pmap flags in the page table entry
   pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 
   // First check if the page table for the given va exists within the page directory. If not create the page table
@@ -285,7 +285,7 @@ void pmap_destroy(pmap_t *pmap) {
 void pmap_reference(pmap_t *pmap) {
   // Can't be NULL!
   kassert(pmap != NULL);
-  
+
   atomic_inc(&pmap->refcount);
 }
 
@@ -299,7 +299,7 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap
   // The mapping must be in the kernel virtual address space
   kassert(va >= (uintptr_t)(&__kernel_virtual_start) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
 
-	// Encode the protection and pmap flags in the page table entry 
+	// Encode the protection and pmap flags in the page table entry
   pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 
 

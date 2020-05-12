@@ -79,7 +79,7 @@ void pmap_reference(pmap_t *pmap);
 // Returns the # of pages wired in the pmap
 #define pmap_wired_count(pmap) ((pmap)->pmap_stats.wired_count)
 
-// Adds a virtual to physical page mapping to the specified pmap using the 
+// Adds a virtual to physical page mapping to the specified pmap using the
 // specified protection
 uint32_t pmap_enter(pmap_t*, vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
 
@@ -95,7 +95,7 @@ void pmap_protect(pmap_t *pmap, vaddr_t, vaddr_t, vm_prot_t);
 // Clears the wired attribute on the mapping for the specified virtual address
 void pmap_unwire(pmap_t*, vaddr_t);
 
-// Extracts the mapping for the specified virtual address, i.e. it gets the 
+// Extracts the mapping for the specified virtual address, i.e. it gets the
 // physical address associated with a virtual address. Returns false if no such
 // mapping exists
 bool pmap_extract(pmap_t*, vaddr_t, paddr_t*);

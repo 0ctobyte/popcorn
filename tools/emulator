@@ -32,7 +32,7 @@ do
       echo "Usage: $0 [-p <system_emulator>] [-nogdb]"
       exit
     fi
-  else 
+  else
     if [[ $1 == "-nogdb" ]]
     then
       QGDB=""

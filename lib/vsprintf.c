@@ -32,7 +32,7 @@ static char fmt_num[256];
 
 // Count the number of digits in the number represented in the string
 size_t num_digits(const char *s) {
-	size_t num = 0; 
+	size_t num = 0;
 	for(; is_number(*s) && s != '\0'; s++, num++);
 	return(num);
 }
@@ -79,8 +79,8 @@ char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
 		tmp[i++] = (upcase) ? upper[R] : lower[R];
 	}
 
-	while(i-- > 0) *buf++ = tmp[i];	
-	
+	while(i-- > 0) *buf++ = tmp[i];
+
 	*buf = '\0';
 
 	return(str);
@@ -300,7 +300,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
 			case 'u':
 			{
 				specifier = 'u';
-				
+
 				uint32_t num = va_arg(args, uint32_t);
 				char str_num[32];
 
@@ -421,7 +421,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         itoa2(whole, str_num, 10, false);
         size_t len = strlen(str_num);
         for(uint32_t i = 0; i < len; i++) *str++ = str_num[i];
-        
+
 
         uint32_t pow10 = 10;
         for(int32_t i = precision; i > 0; i--) {

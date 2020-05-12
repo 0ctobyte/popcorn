@@ -33,7 +33,7 @@ typedef uint32_t vm_prot_t;
 #define IS_WITHIN_BOUNDS(B) ((((B) >= MEMBASEADDR) && ((B) < (MEMBASEADDR+MEMSIZE))))
 #define TRUNC_PAGE(B) ((B) & ~(PAGESIZE - 1))
 #define ROUND_PAGE(B) ((IS_PAGE_ALIGNED((B))) ? (B) : (TRUNC_PAGE((B)) + PAGESIZE))
-#define ATOP(B) (TRUNC_PAGE((B)) >> _ctz(PAGESIZE)) 
+#define ATOP(B) (TRUNC_PAGE((B)) >> _ctz(PAGESIZE))
 #define PTOA(B) ((B) << _ctz(PAGESIZE))
 
 #endif // __MM_H__

@@ -21,7 +21,7 @@ bool spin_trylock(spinlock_t*);
 void spin_unlock(spinlock_t*);
 
 // Same as spin_lock except this also disables interrupts
-// This should be used if the object to be locked will be accessed in an 
+// This should be used if the object to be locked will be accessed in an
 // interrupt context
 void spin_irqlock(spinlock_t*);
 
@@ -36,7 +36,7 @@ void spin_readlock(spinlock_t*);
 void spin_readunlock(spinlock_t*);
 
 // Write lock, will only allow a single source to access resource and block
-// all other sources regardless of whether they will be reading or writing 
+// all other sources regardless of whether they will be reading or writing
 // resource
 void spin_writelock(spinlock_t*);
 

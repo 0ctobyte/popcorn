@@ -88,10 +88,10 @@ a3:
   add sp, sp, #12
 
 	ldmfd sp!, {r0-r12, lr}
-  
+
   # Drop the PC value off the stack
   add sp, sp, #4
-	
+
   subs pc, lr, #8
 
 .align 2

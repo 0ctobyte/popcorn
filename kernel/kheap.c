@@ -9,7 +9,7 @@
 // Assume all numbers are 32-bit numbers
 #define BITS (32)
 
-// Maximum block size allowed 
+// Maximum block size allowed
 // Minimum block size: 4 bytes
 #define NUM_BINS (20) // 2 MB
 #define MIN_BLOCK_SIZE (0x4)
@@ -33,12 +33,12 @@
 /*
  * TODO: I was tired and weak when I wrote this commentary. Make this better pls.
  * Buddy allocation based heap memory manager.
- * 
+ *
  * This algorithm works by having bins storing free blocks of a certain size (sizes are power of 2s).
- * To allocate a block of size s, s must be rounded up to the next power of 2. Then, the bin for that size 
+ * To allocate a block of size s, s must be rounded up to the next power of 2. Then, the bin for that size
  * is searched for a free block. If one exist, the address of that block is returned. If none exist, then
  * the bin for the next power of 2 size is searched. If one exists, then the block is split in half, with one half
- * inserted into the bin of size s (rounded up to the next power of 2) and the other returned (allocated). If there is 
+ * inserted into the bin of size s (rounded up to the next power of 2) and the other returned (allocated). If there is
  * no block available in the next bin, then this process is repeated until a block is found in a higher up bin and halved
  * recursively until a block of size NEXT_POW2(s) is available.
  *
@@ -76,7 +76,7 @@ void _kheap_bin_insert(vaddr_t free, size_t block_size) {
   }
 
   // Is prev or next a buddy of this block? If so merge them. We can't merge blocks that are MAX_BLOCK_SIZE
-  vaddr_t buddy = ((block_size == MAX_BLOCK_SIZE) ? free : GET_BUDDY(free, block_size)); 
+  vaddr_t buddy = ((block_size == MAX_BLOCK_SIZE) ? free : GET_BUDDY(free, block_size));
   if(buddy == prev) {
     // prev block is a buddy
     if(prev_prev != 0) *((vaddr_t*)prev_prev) = next;
@@ -103,7 +103,7 @@ vaddr_t _kheap_bin_pop(size_t block_size) {
 
   uint32_t index = GET_BIN_INDEX(block_size);
   vaddr_t head = bins[index];
- 
+
   // Unlink it from the bin if the block exists
   if(head != 0) {
     bins[index] = *(vaddr_t*)head;
@@ -117,15 +117,15 @@ vaddr_t _kheap_get_free_block(size_t block_size) {
   // Get the first block in the bin
   vaddr_t ptr = _kheap_bin_pop(block_size);
 
-  // If there are no blocks in the bin, find a block from a following bin and split them up, recursively 
+  // If there are no blocks in the bin, find a block from a following bin and split them up, recursively
   if(ptr == 0) {
     // If we have reached the last bin and haven't found any blocks, then there is no memory left
     if(block_size == MAX_BLOCK_SIZE) return 0;
-    
+
     // Get a free block from the successor bin, if there are no larger blocks in any successive bin, return 0
     ptr = _kheap_get_free_block(block_size << 1);
 
-    // If we have found a valid block, split it in half and push the second block into the bin 
+    // If we have found a valid block, split it in half and push the second block into the bin
     if(ptr != 0) _kheap_bin_insert(ptr+block_size, block_size);
   }
 
@@ -135,7 +135,7 @@ vaddr_t _kheap_get_free_block(size_t block_size) {
 kheap_ublock_t* _kheap_ublock_alloc() {
   size_t block_size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_NEXT_POW2(sizeof(kheap_ublock_t)));
   vaddr_t free = _kheap_get_free_block(block_size);
-  
+
   // If we haven't found a free block of the specified size, it is time to extend the heap region
   if(free == 0) {
     // Let's ask vmm for more heap
@@ -178,7 +178,7 @@ void _kheap_ublock_insert(vaddr_t used, size_t size) {
   for(next = root; next->next != NULL; next = next->next) {
     if(ublock->addr < next->addr) break;
   }
- 
+
   // Insert the elements in the linked list
   ublock->next = next;
   ublock->prev = next->prev;
@@ -192,7 +192,7 @@ void _kheap_ublock_delete(kheap_ublock_t *ublock) {
   // Remove the element from the linked list
   if(ublock->prev != NULL) ublock->prev->next = ublock->next;
   else root = ublock->next;
-  if(ublock->next != NULL) ublock->next->prev = ublock->prev; 
+  if(ublock->next != NULL) ublock->next->prev = ublock->prev;
 
   // Free the ublock
   _kheap_ublock_free(ublock);
@@ -251,7 +251,7 @@ void kheap_free(void *free) {
   // Make sure we aren't freeing an invalid pointer
   kassert(((vaddr_t)free) >= vmap_kernel()->heap_start || ((vaddr_t)free) < vmap_kernel()->heap_end);
 
- _kheap_free_used_block((vaddr_t)free); 
+ _kheap_free_used_block((vaddr_t)free);
 
  // TODO: Shrink heap region?
 }

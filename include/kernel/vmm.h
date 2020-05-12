@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 
-#include <kernel/pmap.h> 
+#include <kernel/pmap.h>
 #include <kernel/spinlock.h>
 
 typedef struct {
@@ -24,7 +24,7 @@ struct vm_anon {
 };
 
 struct vm_amap {
-  // An array of possible anon references associated with this anonymous map 
+  // An array of possible anon references associated with this anonymous map
   vm_anon_t **aslots;
 
   // How many arefs pointing to this amap

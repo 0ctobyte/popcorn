@@ -23,7 +23,7 @@
  *===-----------------------------------------------------------------------===
  */
 
-/* 
+/*
  * Modified 2015 by Sekhar Bhattacharya
  * Added #ifdef __cplusplus on line 118
  */

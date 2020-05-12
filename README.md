@@ -49,10 +49,10 @@ Here is the directory structure to help with navigation of the code.
 Here is a short description of what each code file does:
 
 ##### boot
-The boot (or rather startup) code are the first instructions executed by the CPU on bootup. 
+The boot (or rather startup) code are the first instructions executed by the CPU on bootup.
 
 The boot code consists of `_loader.s` which is located at the beginning of the binary image (thus, executed first), `atags.s` and `boot.s`.
-On startup, the `_loader` function in `_loader.s` is executed. This function jumps to code located in atags.s to parse any ATAGs (ARM tags) in memory to 
+On startup, the `_loader` function in `_loader.s` is executed. This function jumps to code located in atags.s to parse any ATAGs (ARM tags) in memory to
 retrieve useful system info such as memory size and start address (DeviceTrees are a better solution, but this will do for now).
 
 `_loader` then begins setting up the page directory/page tables by mapping the kernel's virtual address space (starting at 0xF0000000). Once this is done, `_loader` then
@@ -60,11 +60,11 @@ enables the MMU and jumps to the `_start` function located in `boot.s`. The `_st
 (vector floating point unit) and branches to `kmain` (located in `kmain.c`).
 
 ##### kernel
-The kernel code consists of several different modules. 
+The kernel code consists of several different modules.
 
-`kmain` is the main entry point of the kernel after the boot up code. The `pmm.c` module contains the 
-physical page frame memory allocator. `pmap.c` contains the code to manage virtual address mappings in the page tables. `spinlock.c` contains a simple spinlock 
-implementation. `_atomic.s` contains the instructions for atomic accesses to memory. `_barrier.s` contains memory/data/instruction barrier instructions. `_evt.s` 
+`kmain` is the main entry point of the kernel after the boot up code. The `pmm.c` module contains the
+physical page frame memory allocator. `pmap.c` contains the code to manage virtual address mappings in the page tables. `spinlock.c` contains a simple spinlock
+implementation. `_atomic.s` contains the instructions for atomic accesses to memory. `_barrier.s` contains memory/data/instruction barrier instructions. `_evt.s`
 contains code to set up the ARM exception vectors and register handlers for each of the ARM exceptions. `_interrupts.s` contains the instructions to enable or
 disable interrupts. `kstdio.c` for an implementation of the printf (`kprintf`) function for use by the kernel (since no standard libraries can be used).
 The `panic.c` module contains the `panic` function which prints an error message and halts the cpu.
@@ -77,8 +77,8 @@ The code is still incomplete. As of now, the kernel boots and runs in virtual me
 
 Next steps:
 * Need a slab allocator to allocate kernel structures (pmaps, pgd, pgts etc.)
-* Managing platform specific IO devices and memory mappings 
-* Initialization of platform specific devices 
+* Managing platform specific IO devices and memory mappings
+* Initialization of platform specific devices
 * Better build system
 * Debugging output on aborts/exceptions (register dump, stack trace)
 * Enabling and modifying functionality of caches, TLBs, and CPU (branch prediction) through the control registers

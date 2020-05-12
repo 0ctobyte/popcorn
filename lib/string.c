@@ -22,10 +22,10 @@ void* memcpy(void *dst, const void *src, size_t num) {
 void* memmove(void *dst, const void *src, size_t num) {
 	// It is only a problem when the dst is at a higher address and overlaps
 	// src
-	if(((uint32_t*)dst > (uint32_t*)src && (uint32_t*)dst < 
+	if(((uint32_t*)dst > (uint32_t*)src && (uint32_t*)dst <
 				((uint32_t*)src+num))) {
 		const uint32_t *s = (uint32_t*)src+num;
-		for(uint32_t i = 0, *buf = (uint32_t*)dst+num; i < num; ++i) 
+		for(uint32_t i = 0, *buf = (uint32_t*)dst+num; i < num; ++i)
 			*buf-- = *s--;
 		return(dst);
 	} else {

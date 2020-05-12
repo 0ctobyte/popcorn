@@ -36,7 +36,7 @@ _umod:
 _ctz:
   rbit r0, r0
   clz r0, r0
-  
+
   bx lr
 
 # Count leading zeros
