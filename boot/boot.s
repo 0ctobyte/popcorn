@@ -13,10 +13,10 @@
 .comm __mon_stack_limit, 4096, 4096
 
 # Setup some boot time variables in the BSS
-.comm KPHYSICALBASEADDR, 4, 4
-.comm NUMPAGETABLES, 4, 4
-.comm PGDPHYSICALBASEADDR, 4, 4
-.comm PGTPHYSICALSTARTADDR, 4, 4
+.comm KPHYSICALBASEADDR, 8, 8
+.comm NUMPAGETABLES, 8, 8
+.comm PGDPHYSICALBASEADDR, 8, 8
+.comm PGTPHYSICALSTARTADDR, 8, 8
 
 # Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
 # order bits

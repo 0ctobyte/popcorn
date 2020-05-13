@@ -20,7 +20,7 @@ struct vm_anon {
     vpage_t *page;
 
     // How many amaps pointing to this anon?
-    uint32_t refcount;
+    int refcount;
 };
 
 struct vm_amap {
@@ -28,19 +28,19 @@ struct vm_amap {
     vm_anon_t **aslots;
 
     // How many arefs pointing to this amap
-    uint32_t refcount;
+    int refcount;
 
     // The max number of 'slots' (or elements) in the anon array
-    uint32_t maxslots;
+    unsigned int maxslots;
 
     // The number of slots currently occupied
-    uint32_t nslots;
+    unsigned int nslots;
 };
 
 typedef struct {
     // A pointer to an amap and the slot offset within the anon array of that amap where this memory region begins
     vm_amap_t *amap;
-    uint32_t slotoff;
+    unsigned int slotoff;
 } vm_aref_t;
 
 typedef struct vregion {

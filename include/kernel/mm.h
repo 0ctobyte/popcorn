@@ -5,9 +5,9 @@
 
 #include <lib/asm.h>
 
-extern uint32_t PAGESIZE;
-extern uint32_t MEMBASEADDR;
-extern uint32_t MEMSIZE;
+extern unsigned int PAGESIZE;
+extern unsigned int MEMBASEADDR;
+extern unsigned int MEMSIZE;
 
 // Virtual address
 typedef uintptr_t vaddr_t;
@@ -16,7 +16,7 @@ typedef uintptr_t vaddr_t;
 typedef uintptr_t paddr_t;
 
 // Protection bits
-typedef uint32_t vm_prot_t;
+typedef unsigned int vm_prot_t;
 
 #define VM_PROT_NONE (0x0)
 #define VM_PROT_READ (0x1)

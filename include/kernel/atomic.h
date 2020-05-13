@@ -3,15 +3,15 @@
 
 #include <sys/types.h>
 
-typedef uint32_t atomic_t;
+typedef int atomic_t;
 
 // Atomically tests if value at ptr is 0 and if so sets it to val
 // Returns 0 on success, otherwise failure to set
-uint32_t atomic_test_and_set(atomic_t *ptr, uint32_t val);
+int atomic_test_and_set(atomic_t *ptr, int val);
 
 // Atomically tests specified bit in the value at ptr is 0 and if so sets it to 1
 // Returns 0 on success, otherwise failure to set
-uint32_t atomic_test_and_set_bit(atomic_t *ptr, uint32_t bit);
+int atomic_test_and_set_bit(atomic_t *ptr, unsigned int bit);
 
 // Atomically increment the value
 void atomic_inc(atomic_t *v);

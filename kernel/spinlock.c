@@ -34,7 +34,7 @@
  * Note: this implementation gives priority to reader threads which may
  * cause writer threads to starve.
  *
- * The spinlock uses only one 32-bit integer where certain bits are used for
+ * The spinlock uses only one integer where certain bits are used for
  * certain purposes. Bit 0 is used as the main lock. Bit 1 is used to hold
  * the state of interrupts, if 1 then interrupts were previously enabled
  * before the call to irqlock. Bit 2 is used as the "lightswitch" lock.
@@ -44,7 +44,7 @@
  */
 
 // Attempts to gain lock using the specified bit(s)
-void _spin_lock(spinlock_t *lock, uint32_t bits) {
+void _spin_lock(spinlock_t *lock, unsigned int bits) {
     // Continuously attempt to set the bit, the loop will exit only when we
     // succeed in setting the bit
     while(atomic_test_and_set_bit(lock, (bits)));
@@ -53,7 +53,7 @@ void _spin_lock(spinlock_t *lock, uint32_t bits) {
 }
 
 // Unlocks using the specified bit(s)
-void _spin_unlock(spinlock_t *lock, uint32_t bits) {
+void _spin_unlock(spinlock_t *lock, unsigned int bits) {
     // Make sure all accesses to resource protected by this spinlock have
     // completed
     barrier_dmb();
@@ -108,7 +108,7 @@ void spin_readlock(spinlock_t *lock) {
     _spin_lock(lock, SPIN_LIGHTSWITCH);
 
     // Once acquired, increment the count
-    uint32_t count = GET_READLOCK_COUNT(lock);
+    unsigned int count = GET_READLOCK_COUNT(lock);
     SET_READLOCK_COUNT(lock, ++count);
 
     // The first reader must wait for lock, subsequent readers will get access
@@ -124,7 +124,7 @@ void spin_readunlock(spinlock_t *lock) {
     _spin_unlock(lock, SPIN_LIGHTSWITCH);
 
     // Once acquired, decrement the count
-    uint32_t count = GET_READLOCK_COUNT(lock);
+    unsigned int count = GET_READLOCK_COUNT(lock);
     SET_READLOCK_COUNT(lock, --count);
 
     // The last reader must release the spinlock

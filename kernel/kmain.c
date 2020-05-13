@@ -26,14 +26,14 @@ void print_heap_stats() {
 }
 
 void data_abort_handler(void *d) {
-    uint32_t *registers = (uint32_t*)d;
+    unsigned int *registers = (unsigned int*)d;
 
     kprintf("\nDATA ABORT EXCEPTION\n");
     kprintf("Fault Address: %#x\n", registers[0]);
     kprintf("Fault Status: %#x\n", registers[1]);
     kprintf("Cache Maintenance Fault? %s\n", (registers[1] & (1 << 13)) ? "yes" : "no");
     kprintf("Fault on Write or Read? %s\n", (registers[1] & (1 << 11)) ? "write" : "read");
-    uint32_t fault_status = ((registers[1] & (1 << 10)) >> 6) | (registers[1] & 0xF);
+    unsigned int fault_status = ((registers[1] & (1 << 10)) >> 6) | (registers[1] & 0xF);
 
     if(fault_status == 0x1) kprintf("Alignment Fault");
     else if(fault_status == 0x4) kprintf("Instruction Cache Maintenance Fault");
@@ -60,7 +60,7 @@ void data_abort_handler(void *d) {
     kprintf("\n");
     kprintf("Register Dump\n");
     kprintf("SPSR: %#x\n", registers[2]);
-    for(uint32_t i = 3; i < 16; ++i) kprintf("R%u: %#x\n", (i-3), registers[i]);
+    for(unsigned int i = 3; i < 16; ++i) kprintf("R%u: %#x\n", (i-3), registers[i]);
     kprintf("LR: %#x\n", registers[16]);
 
     panic("HALTING\n");
@@ -103,8 +103,8 @@ void kmain(void) {
         kprintf("\n");
 
         if(kregions->aref.amap != NULL) {
-            uint32_t nslots = (uint32_t)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
-            for(uint32_t i = 0; i < nslots; i++) {
+            unsigned int nslots = (unsigned int)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
+            for(unsigned int i = 0; i < nslots; i++) {
                 vm_anon_t *anon = kregions->aref.amap->aslots[kregions->aref.slotoff + i];
                 kprintf("Page %u: %#x\n", i, anon->page->vaddr);
             }
@@ -116,15 +116,15 @@ void kmain(void) {
     kprintf("Kernel: Enabling interrupts on the CPU\n");
     interrupts_enable();
 
-    uint32_t s = 5;
+    unsigned int s = 5;
     void *ptr[5];
 
-    for(uint32_t i = 0; i < s; i++) {
+    for(unsigned int i = 0; i < s; i++) {
         ptr[i] = kheap_alloc((1 << 2) << (10-i));
         print_heap_stats();
     }
 
-    for(uint32_t i = 0; i < s; i++) {
+    for(unsigned int i = 0; i < s; i++) {
         kheap_free(ptr[i]);
         print_heap_stats();
     }

@@ -110,7 +110,7 @@
  */
 
 typedef struct pagemap_t {
-    uint32_t bitmap; // Each bit represents one page
+    unsigned int bitmap;     // Each bit represents one page
     struct pagemap_t *next;  // Pointer to next pagemap in the stack
 } pagemap_t;
 
@@ -149,7 +149,7 @@ void pmm_init(void) {
     // Link the pagemaps together
     pagestack.top = pagestack.pagemaps;
     pagemap_t *p = pagestack.pagemaps;
-    for(uint32_t i = 0; i < pagestack.size; ++i) {
+    for(unsigned int i = 0; i < pagestack.size; ++i) {
         // Make sure to clear the bitmaps
         p[i].bitmap = 0;
         p[i].next = ((i+1) < pagestack.size) ? &p[i+1] : NULL;
@@ -168,7 +168,7 @@ paddr_t pmm_alloc(void) {
     // Find first free frame in pagemap and set the bit in the bitmap
     // Calculate address using location of pagemap in the pagestacks.pagemaps
     // array and the bit number in the pagemap's bitmap
-    uint32_t frame = bit_find_contiguous_zeros(top->bitmap, 1);
+    unsigned int frame = bit_find_contiguous_zeros(top->bitmap, 1);
     SET_FRAME(top->bitmap, frame);
     addr = (((top - pagestack.pagemaps) * BITS  + frame) * PAGESIZE) + MEMBASEADDR;
 
@@ -185,9 +185,9 @@ void pmm_free(paddr_t addr) {
     // Calculate the absolute frame number
     // Get the index into the pagemaps array
     // Get the frame number relative to the bitmap in the pagemap
-    uint32_t frame_num = ATOP((addr-MEMBASEADDR));
-    uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
-    uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
+    unsigned int frame_num = ATOP((addr-MEMBASEADDR));
+    unsigned int elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
+    unsigned int rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
     spin_irqlock(&pagestack.lock);
 
@@ -205,7 +205,7 @@ paddr_t pmm_alloc_contiguous(size_t frames) {
     paddr_t addr = UINTPTR_MAX;
 
     pagemap_t *curr, *prev;
-    int32_t frame = 0;
+    int frame = 0;
 
     spin_irqlock(&pagestack.lock);
 
@@ -242,9 +242,9 @@ void pmm_reserve(paddr_t addr) {
     // Check if the address is page aligned and within bounds
     kassert(IS_PAGE_ALIGNED(addr) && IS_WITHIN_BOUNDS(addr));
 
-    uint32_t frame_num = ATOP((addr-MEMBASEADDR));
-    uint32_t elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
-    uint32_t rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
+    unsigned int frame_num = ATOP((addr-MEMBASEADDR));
+    unsigned int elem_num = GET_PAGEMAP_ARRAY_INDEX(frame_num);
+    unsigned int rel_frame_num = GET_REL_FRAME_NUM(frame_num, elem_num);
 
     spin_irqlock(&pagestack.lock);
 

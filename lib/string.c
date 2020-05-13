@@ -9,22 +9,21 @@ size_t strlen(const char *str) {
 
 void* memset(void *ptr, uint8_t value, size_t num) {
     uint8_t *buf = ptr;
-    for(uint32_t i = 0; i < num; ++i) *buf++ = value;
+    for(unsigned int i = 0; i < num; ++i) *buf++ = value;
     return(ptr);
 }
 
 void* memcpy(void *dst, const void *src, size_t num) {
-    const uint32_t *s = src;
-    for(uint32_t i = 0, *buf = dst; i < num; ++i) *buf++ = *s++;
+    const unsigned int *s = src;
+    for(unsigned int i = 0, *buf = dst; i < num; ++i) *buf++ = *s++;
     return(dst);
 }
 
 void* memmove(void *dst, const void *src, size_t num) {
-    // It is only a problem when the dst is at a higher address and overlaps
-    // src
-    if(((uint32_t*)dst > (const uint32_t*)src && (uint32_t*)dst < ((const uint32_t*)src+num))) {
-        const uint32_t *s = (const uint32_t*)src+num;
-        for(uint32_t i = 0, *buf = (uint32_t*)dst+num; i < num; ++i)
+    // It is only a problem when the dst is at a higher address and overlaps src
+    if(((unsigned int*)dst > (const unsigned int*)src && (unsigned int*)dst < ((const unsigned int*)src+num))) {
+        const unsigned int *s = (const unsigned int*)src+num;
+        for(unsigned int i = 0, *buf = (unsigned int*)dst+num; i < num; ++i)
             *buf-- = *s--;
         return(dst);
     } else {

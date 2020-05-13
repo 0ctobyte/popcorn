@@ -38,7 +38,7 @@ size_t num_digits(const char *s) {
 }
 
 // Converts a string into a int
-int32_t atoi(const char *s) {
+int atoi(const char *s) {
     const char *str = s;
     uint8_t negafier = 1;
     if(*str == '-') {
@@ -50,12 +50,12 @@ int32_t atoi(const char *s) {
             ++str;
         }
     }
-    uint32_t digits = num_digits(str);
+    unsigned int digits = num_digits(str);
     if(digits == 0) return(0);
     str += digits-1;
 
-    int32_t integer = 0;
-    for(uint32_t multiplier = 1; digits > 0; str--, digits--, multiplier *= 10) {
+    int integer = 0;
+    for(unsigned int multiplier = 1; digits > 0; str--, digits--, multiplier *= 10) {
         integer += get_number(*str)*multiplier;
     }
 
@@ -65,17 +65,17 @@ int32_t atoi(const char *s) {
 // Converts an int into a string
 static const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
+char* itoa2(unsigned int num, char *str, unsigned int base, bool upcase) {
     char *buf = str;
     char tmp[36];
 
     if(base > 36) return(0);
     if(num == 0) *buf++ = '0';
 
-    uint32_t i = 0;
+    unsigned int i = 0;
     while(num != 0) {
-        uint32_t R = _umod(num, base);
-        num = (uint32_t)((double)num / (double)base);
+        unsigned int R = _umod(num, base);
+        num = (unsigned int)((double)num / (double)base);
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }
 
@@ -86,8 +86,8 @@ char* itoa2(uint32_t num, char *str, uint32_t base, bool upcase) {
     return(str);
 }
 
-char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
-             int32_t precision, bool negative, char specifier) {
+char* number(char *dest, char *str_num, uint8_t flags, unsigned int width,
+             int precision, bool negative, char specifier) {
     char *buf = dest;
     char sign = 0;
     if(flags & SPACE) sign = ' ';
@@ -119,9 +119,9 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
     if(octal != 0) ++working_len;
     if(*hex != '\0') working_len += 2;
     if(precision >= 0) {
-        if(specifier == 's' && len > (uint32_t)precision) {
+        if(specifier == 's' && len > (unsigned int)precision) {
             working_len = len = precision;
-        } else if(len < (uint32_t)precision) {
+        } else if(len < (unsigned int)precision) {
             precision_len = precision - len;
             working_len += precision_len;
         }
@@ -136,7 +136,7 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
             *buf++ = *(hex+1);
         }
 
-        for(uint32_t i = 0; i < precision_len; i++) *buf++ = '0';
+        for(unsigned int i = 0; i < precision_len; i++) *buf++ = '0';
         for(size_t i = 0; i < len; i++) *buf++ = str_num[i];
         for(; working_len < width; working_len++) *buf++ = padding;
     } else if(padding == '0') {
@@ -147,7 +147,7 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
             *buf++ = *(hex+1);
         }
 
-        for(uint32_t i = 0; i < precision_len; i++) *buf++ = '0';
+        for(unsigned int i = 0; i < precision_len; i++) *buf++ = '0';
         for(; working_len < width; working_len++) *buf++ = padding;
         for(size_t i = 0; i < len; i++) *buf++ = str_num[i];
     } else {
@@ -160,7 +160,7 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
             *buf++ = *(hex+1);
         }
 
-        for(uint32_t i = 0; i < precision_len; i++) *buf++ = '0';
+        for(unsigned int i = 0; i < precision_len; i++) *buf++ = '0';
         for(size_t i = 0; i < len; i++) *buf++ = str_num[i];
     }
 
@@ -169,7 +169,7 @@ char* number(char *dest, char *str_num, uint8_t flags, uint32_t width,
     return(buf);
 }
 
-int32_t vsprintf(char *s, const char *fmt, va_list args) {
+int vsprintf(char *s, const char *fmt, va_list args) {
     char *str;
 
     for(str = s; *fmt != '\0'; ++fmt) {
@@ -180,8 +180,8 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         }
 
         uint8_t flags = 0;
-        uint32_t width = 0;
-        int32_t precision = -1;
+        unsigned int width = 0;
+        int precision = -1;
         uint8_t length;
         char specifier = 0;
 
@@ -219,7 +219,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         // Next up is width sub specifier
         if(*fmt == '*') {
             // Next arg is the width sub specifier
-            width = va_arg(args, uint32_t);
+            width = va_arg(args, unsigned int);
             ++fmt;
         } else if(is_number(*fmt)) {
             // Convert the string into a number
@@ -237,7 +237,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             ++fmt;
             if(*fmt == '*') {
                 // Next arg is precision value, set ZEROPAD flag
-                precision = va_arg(args, uint32_t);
+                precision = va_arg(args, unsigned int);
                 ++fmt;
             } else if(is_number(*fmt)) {
                 // Convert string to number, set ZEROPAD flag
@@ -295,7 +295,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'd';
 
-            int32_t num = va_arg(args, int32_t);
+            int num = va_arg(args, int);
             bool negative = false;
             char str_num[32];
 
@@ -310,7 +310,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, str_num, flags, width, precision, negative, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -318,7 +318,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'u';
 
-            uint32_t num = va_arg(args, uint32_t);
+            unsigned int num = va_arg(args, unsigned int);
             char str_num[32];
 
             if(precision == 0 && num == 0) break;
@@ -328,7 +328,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, str_num, flags, width, precision, false, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -336,7 +336,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'o';
 
-            int32_t num = va_arg(args, int32_t);
+            int num = va_arg(args, int);
             bool negative = false;
             char str_num[32];
 
@@ -351,7 +351,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, str_num, flags, width, precision, negative, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -363,7 +363,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             if(specifier == 'x') upcase = false;
             else specifier = 'X';
 
-            uint32_t num = va_arg(args, uint32_t);
+            unsigned int num = va_arg(args, unsigned int);
             bool negative = false;
             char str_num[32];
 
@@ -374,7 +374,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, str_num, flags, width, precision, negative, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -385,7 +385,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             flags &= ~(PLUS | SPACE | SPECIAL | ZEROPAD);
 
             if(specifier == 'c') {
-                uint32_t c_int = va_arg(args, uint32_t);
+                unsigned int c_int = va_arg(args, unsigned int);
                 char c[2];
                 c[0] = (char)c_int;
                 c[1] = '\0';
@@ -398,7 +398,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             }
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -414,7 +414,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, str_num, flags, width, precision, false, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }
@@ -422,9 +422,9 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'n';
 
-            int32_t *n = va_arg(args, int32_t*);
+            int *n = va_arg(args, int*);
 
-            *n = (int32_t)(str-s);
+            *n = (int)(str-s);
             break;
         }
         case 'f':
@@ -434,19 +434,19 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             double num = va_arg(args, double);
             char str_num[32];
 
-            uint32_t whole = (uint32_t)num;
+            unsigned int whole = (unsigned int)num;
             itoa2(whole, str_num, 10, false);
             size_t len = strlen(str_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = str_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = str_num[i];
 
 
-            uint32_t pow10 = 10;
-            for(int32_t i = precision; i > 0; i--) {
+            unsigned int pow10 = 10;
+            for(int i = precision; i > 0; i--) {
                 pow10 *= pow10;
             }
 
-            double frac_part = num - (double)((uint32_t)num);
-            uint32_t frac = (precision > 6) ? (uint32_t)(frac_part * (double)pow10) : (uint32_t)(frac_part * (double)1000000);
+            double frac_part = num - (double)((unsigned int)num);
+            unsigned int frac = (precision > 6) ? (unsigned int)(frac_part * (double)pow10) : (unsigned int)(frac_part * (double)1000000);
             if(frac == 0 && (flags & SPECIAL)) {
                 *str++ = '.';
                 *str++ = '0';
@@ -456,7 +456,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
                 itoa2(frac, str_num, 10, false);
                 number(fmt_num, str_num, flags, width, precision, false, specifier);
                 len = strlen(fmt_num);
-                for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+                for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
             }
 
 
@@ -476,7 +476,7 @@ int32_t vsprintf(char *s, const char *fmt, va_list args) {
             number(fmt_num, c, flags, width, precision, false, specifier);
 
             size_t len = strlen(fmt_num);
-            for(uint32_t i = 0; i < len; i++) *str++ = fmt_num[i];
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
 
             break;
         }

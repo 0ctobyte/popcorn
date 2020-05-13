@@ -7,19 +7,19 @@
 
 // The start of the kernel's virtual and physical address space
 #define KVIRTUALBASEADDR ((uintptr_t)(&__kernel_virtual_start))
-extern uint32_t KPHYSICALBASEADDR;
+extern unsigned int KPHYSICALBASEADDR;
 
 // The physical address of the kernel's page directory
-extern uint32_t PGDPHYSICALBASEADDR;
+extern unsigned int PGDPHYSICALBASEADDR;
 
 // The physical address of the start of kernel's page tables array
-extern uint32_t PGTPHYSICALSTARTADDR;
+extern unsigned int PGTPHYSICALSTARTADDR;
 
 // The number of page tables used for the kernel
-extern uint32_t NUMPAGETABLES;
+extern unsigned int NUMPAGETABLES;
 
 // Flag bits
-typedef uint32_t pmap_flags_t;
+typedef unsigned int pmap_flags_t;
 
 #define PMAP_WIRED (0x8)
 #define PMAP_CANFAIL (0x10)
@@ -81,7 +81,7 @@ void pmap_reference(pmap_t *pmap);
 
 // Adds a virtual to physical page mapping to the specified pmap using the
 // specified protection
-uint32_t pmap_enter(pmap_t*, vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
+int pmap_enter(pmap_t*, vaddr_t, paddr_t, vm_prot_t, pmap_flags_t);
 
 // Removes a range of virtual to physical page mappings from the specified pmap
 void pmap_remove(pmap_t*, vaddr_t, vaddr_t);

@@ -1,5 +1,5 @@
 #include <kernel/mm.h>
 
-uint32_t PAGESIZE = 0x1000;
-uint32_t MEMBASEADDR = 0x80000000;
-uint32_t MEMSIZE = 0x20000000;
+unsigned int PAGESIZE = 0x1000;
+unsigned int MEMBASEADDR = 0x80000000;
+unsigned int MEMSIZE = 0x20000000;
