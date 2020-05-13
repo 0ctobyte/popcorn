@@ -8,6 +8,8 @@
 .global _atagit
 .align 2
 _atagit:
+    stmfd sp!, {r4-r6}
+
     # ATAGs located at memory address in R2
     # Get the size of the ATAG structure and ATAG structure ID
     ldr r0, [r2], #4
@@ -58,5 +60,6 @@ _atagit_done:
     mov r0, r4
     mov r1, r5
     mov r2, r6
-    bx lr
 
+    ldmfd sp!, {r4-r6}
+    bx lr

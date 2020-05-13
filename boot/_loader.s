@@ -56,60 +56,51 @@ _loader:
     bl _dcache_invalidate_all
     bl _bp_invalidate_all
 
-#ifdef BBB
-    mov r0, #0x1000
-    movw r1, #0x0000
-    movt r1, #0x2000
-    movw r2, #0x0000
-    movt r2, #0x8000
-#elif VIRT
-    mov r0, #0x1000
-    movw r1, #0x0000
-    movt r1, #0x2000
-    movw r2, #0x0000
-    movt r2, #0x4000
-#else
-    # Read the ATAGs
-    bl _atagit
-#endif
-
-    # Store the system dependent variables read from the ATAGS
-    mov MEMBASEADDR, r2
+    # The kernel virtual address space starts at 0xF0000000
+    # The kernel proper doesn't start until 0xF0010000
     ldr r4, =__kernel_virtual_start
     ldr r5, =__kernel_physical_start
     sub r4, r4, r5
-    # The kernel virtual address space starts at 0xF0000000
-    # The kernel proper doesn't start until 0xF0010000
     mov VIRTUALBASEADDR, r4
 
-    ldr r3, =KVIRTUALBASEADDR
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    str r4, [r3]
-
-    ldr r3, =PAGESIZE
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    str r0, [r3]
-
-    ldr r3, =MEMSIZE
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    str r1, [r3]
+    # Calculate the memory base address
+    adr r2, _loader
+    sub MEMBASEADDR, r2, r5
 
     ldr r3, =MEMBASEADDR
     sub r3, r3, VIRTUALBASEADDR
     add r3, r3, MEMBASEADDR
-    str r2, [r3]
+    str MEMBASEADDR, [r3]
+
+    ldr r3, =KVIRTUALBASEADDR
+    sub r3, r3, VIRTUALBASEADDR
+    add r3, r3, MEMBASEADDR
+    str VIRTUALBASEADDR, [r3]
+
+    ldr r3, =PAGESIZE
+    sub r3, r3, VIRTUALBASEADDR
+    add r3, r3, MEMBASEADDR
+    mov PAGESIZE, #0x1000
+    str PAGESIZE, [r3]
+
+    # FIXME: This doesn't need to be here. It can be determined from the FDT later
+    ldr r3, =MEMSIZE
+    sub r3, r3, VIRTUALBASEADDR
+    add r3, r3, MEMBASEADDR
+#ifdef BBB
+    movw r0, #0x0000
+    movt r0, #0x2000
+#elif VIRT
+    movw r0, #0x0000
+    movt r0, #0x2000
+#endif
+    str r0, [r3]
 
     # Set the svc stack, remember we need to use the loaded physical address
     # Not the virtual address (R11=MEMBASEADDR)
     ldr sp, =__svc_stack_limit+4096
     sub sp, sp, VIRTUALBASEADDR
     add sp, sp, MEMBASEADDR
-
-    # Set the page size register
-    mov PAGESIZE, r0
 
     # 256 page tables == 256 MiB of kernel memory
     movw pgt_num, #0x100
