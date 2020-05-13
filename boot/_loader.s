@@ -62,6 +62,12 @@ _loader:
     movt r1, #0x2000
     movw r2, #0x0000
     movt r2, #0x8000
+#elif VIRT
+    mov r0, #0x1000
+    movw r1, #0x0000
+    movt r1, #0x2000
+    movw r2, #0x0000
+    movt r2, #0x4000
 #else
     # Read the ATAGs
     bl _atagit

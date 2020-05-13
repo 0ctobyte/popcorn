@@ -8,10 +8,8 @@ PLATFORM := beagleboneblack
 
 ifeq ($(PLATFORM), beagleboneblack)
 DEFINES := -DBBB
-else ifeq ($(PLATFORM), realviewpb)
-DEFINES := -DREALVIEWPB
-else ifeq ($(PLATFORM), versatilepb)
-DEFINES := -DVERSATILEPB
+else ifeq ($(PLATFORM), virt)
+DEFINES := -DVIRT
 else
 $(error Invalid platform)
 endif
@@ -29,7 +27,7 @@ BASEFLAGS := -g -target armv7-none-eabi -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=v
 WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
-ASFLAGS := $(BASEFLAGS) $(WARNFLAGS) -x assembler-with-cpp
+ASFLAGS := $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) -x assembler-with-cpp
 OCFLAGS := --target elf32-littlearm --set-section-flags .bss=contents,alloc,load -O binary
 
 kernel.img: kernel.elf

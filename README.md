@@ -4,16 +4,15 @@ This is (or will be) a 32-bit micro-kernel targeting ARMv7-A based systems
 
 Currently the kernel is able to boot and run in virtual memory mode on the following systems:
 
-|System                       | CPU          | Memory | Emulated? |
-|---------------------------- |--------------|--------|-----------|
-|Beaglebone Black             |ARM Cortex-A8 |512 MiB |No         |
-|Realview Platform Baseboard  |ARM Cortex-A8 |512 MiB |Yes (QEMU) |
-|Versatile Platform Baseboard |ARM Cortex-A8 |128 MiB |Yes (QEMU) |
+|System                       | CPU           | Memory      | Emulated? |
+|---------------------------- |---------------|-------------|-----------|
+|Beaglebone Black             |ARM Cortex-A8  |512 MiB      |No         |
+|QEMU ARM Virt Platform       |ARM Cortex-A15 |Configurable |Yes (QEMU) |
 
 Documentation to load and run the kernel image on the Beaglebone Black will be coming soon
 
 ## Build
-You will need to have the arm-none-eabi-gcc toolchain for the arm-none-eabi-ld (linker) tool and binutils for the objcopy tool. Clang is used for compilation.
+You will need to have the arm-none-eabi-gcc toolchain for the arm-none-eabi-ld (linker) and arm-none-eabi-objcopy tools . Clang is used for compilation.
 For MacOS, you can install the gcc-arm-embedded toolchain from [ARM](https://developer.arm.com/open-source/gnu-toolchain/gnu-rm) using homebrew:
 `brew cask install gcc-arm-embedded`
 
@@ -22,14 +21,14 @@ To compile:
 
 This should produce `kernel.img` which is a flat binary image of the kernel.
 
-To run on the QEMU emulator simply run the `emulator` script in the `tools` directory (See the `README.md` in the tools folder for usage info).
+To run on the QEMU emulator simply run the `run-qemu.py` script in the `tools` directory with the path to kernel.img (See the `README.md` in the tools folder for usage info).
 QEMU must already be installed for the script to work.
 
 To debug the kernel with GDB:
 
-1. Run the `emulator` script
+1. Run the `run-qemu.py` script
 2. Run `arm-none-eabi-gdb` in the terminal
-3. Type `target remote localhost:1234` in the GDB prompt to connect to the QEMU debugger
+3. If GDB does not automatically connect to the QEMU debugger. Type `target remote localhost:1234` in the GDB prompt to connect to the QEMU debugger
 
 ## Code Structure
 Here is the directory structure to help with navigation of the code.

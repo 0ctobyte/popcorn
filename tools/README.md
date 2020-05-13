@@ -1,9 +1,14 @@
-# How To Debug
+# GDB/QEMU How To
 
-1. `emulator`
-2. `arm-none-eabi-gdb -tui`
+Run the QEMU emulator:
 
-This should bring up a GDB prompt. To connect to the QEMU debugger, enter into the GDB prompt:
+`./run-qemu.py <kernel.img> -debug`
+
+And then run GDB:
+
+`arm-none-eabi-gdb -tui`
+
+This should bring up a GDB prompt and should already be connected to QEMU. If not, run this command in the GDB prompt:
 
 `target remote localhost:1234`
 
@@ -24,4 +29,3 @@ If you want to display a different register set in the register window:
 * `tui reg system` Display the system registers in the register window
 * `tui reg next` Display the next register group. You can cycle through register groups with this command
 * `tui reg general` Display the general purpose registers
-

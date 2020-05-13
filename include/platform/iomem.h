@@ -3,12 +3,10 @@
 
 #include <stdint.h>
 
-#if defined(REALVIEWPB)
-#include <platform/realviewpb/iomem.h>
-#elif defined(VERSATILEPB)
-#include <platform/versatilepb/iomem.h>
-#elif defined(BBB)
+#if defined(BBB)
 #include <platform/beagleboneblack/iomem.h>
+#elif defined(VIRT)
+#include <platform/virt/iomem.h>
 #else
 #error "Undefined platform"
 #endif

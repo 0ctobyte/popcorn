@@ -3,12 +3,10 @@
 
 #include <sys/types.h>
 
-#if defined(REALVIEWPB)
-#include <platform/realviewpb/irqtypes.h>
-#elif defined(VERSATILEPB)
-#include <platform/versatilepb/irqtypes.h>
-#elif defined(BBB)
+#if defined(BBB)
 #include <platform/beagleboneblack/irqtypes.h>
+#elif defined(VIRT)
+#include <platform/virt/irqtypes.h>
 #else
 #error "Undefined platform"
 #endif
