@@ -4,7 +4,7 @@ LD := arm-none-eabi-ld
 OBJCOPY := arm-none-eabi-objcopy
 
 # TODO: Need a more flexible build system
-PLATFORM := beagleboneblack
+PLATFORM := virt
 
 ifeq ($(PLATFORM), beagleboneblack)
 DEFINES := -DBBB
