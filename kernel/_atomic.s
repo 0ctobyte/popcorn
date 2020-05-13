@@ -6,7 +6,6 @@
 # R1 [in] - Value to set
 # R0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set
-.type atomic_test_and_set, %function
 .align 2
 atomic_test_and_set:
     mov r2, r1
@@ -23,7 +22,6 @@ atomic_test_and_set:
 # R1 [in] - Bit to set
 # R0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set_bit
-.type atomic_test_and_set_bit, %function
 .align 2
 atomic_test_and_set_bit:
     mov r2, r1
@@ -39,7 +37,6 @@ atomic_test_and_set_bit:
 # Atomically increment the value
 # R0 [in] - Memory location of atomic value
 .global atomic_inc
-.type atomic_inc, %function
 .align 2
 atomic_inc:
     ldrex r1, [r0]
@@ -53,7 +50,6 @@ atomic_inc:
 # Atomically decrement the value
 # R0 [in] - Memory location of atomic value
 .global atomic_dec
-.type atomic_dec, %function
 .align 2
 atomic_dec:
     ldrex r1, [r0]

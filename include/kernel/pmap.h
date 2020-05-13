@@ -5,9 +5,9 @@
 #include <kernel/mm.h>
 #include <kernel/atomic.h>
 
-// The start of the kernel's virtual address space (not necessarily the start of the
-// kernel's .text section)
-extern uint32_t KVIRTUALBASEADDR;
+// The start of the kernel's virtual and physical address space
+#define KVIRTUALBASEADDR ((uintptr_t)(&__kernel_virtual_start))
+extern uint32_t KPHYSICALBASEADDR;
 
 // The physical address of the kernel's page directory
 extern uint32_t PGDPHYSICALBASEADDR;
@@ -60,11 +60,11 @@ typedef struct {
 extern pmap_t kernel_pmap;
 
 // Initializes the pmap system
-void pmap_init();
+void pmap_init(void);
 
 // Creates a pmap_t struct and returns it. The reference count on the pmap
 // will be set to 1
-pmap_t* pmap_create();
+pmap_t* pmap_create(void);
 
 // Drops the reference count on the pmap. If it becomes 0, then all resources
 // allocated for the pmap are destroyed

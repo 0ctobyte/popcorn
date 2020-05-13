@@ -139,7 +139,7 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
     return(popped);
 }
 
-void pmm_init() {
+void pmm_init(void) {
     // Allocate memory for the pagemaps
     // pmap_steal_memory will only work if pmap_init has been called before
     // Ideally, pmap_init will pmm_init
@@ -156,7 +156,7 @@ void pmm_init() {
     }
 }
 
-paddr_t pmm_alloc() {
+paddr_t pmm_alloc(void) {
     // Default value of addr, this indicates that no free frame was found
     paddr_t addr = UINTPTR_MAX;
 

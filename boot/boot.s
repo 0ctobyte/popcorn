@@ -12,12 +12,9 @@
 .comm __und_stack_limit, 4096, 4096
 .comm __mon_stack_limit, 4096, 4096
 
-# Setup the system dependent variables in the BSS
-.comm PAGESIZE, 4, 4
-.comm MEMSIZE, 4, 4
-.comm MEMBASEADDR, 4, 4
+# Setup some boot time variables in the BSS
+.comm KPHYSICALBASEADDR, 4, 4
 .comm NUMPAGETABLES, 4, 4
-.comm KVIRTUALBASEADDR, 4, 4
 .comm PGDPHYSICALBASEADDR, 4, 4
 .comm PGTPHYSICALSTARTADDR, 4, 4
 

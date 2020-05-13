@@ -80,7 +80,7 @@ void _vmap_kernel_init() {
     }
 }
 
-void vmm_init() {
+void vmm_init(void) {
     // Initialize the kernel vmap
     _vmap_kernel_init();
 }
@@ -118,7 +118,7 @@ vaddr_t vmm_km_zalloc(size_t size) {
 }
 
 // TODO: This function shouldn't need to exist. Find another way
-void vmm_km_heap_init() {
+void vmm_km_heap_init(void) {
     // Now lets set up the (empty) heap region
     // So what is happening here? Initially the kernel heap is empty, meaning there are no pages in the heap region.
     // Okay, thats great. So when kheap_init is called, it wants to extend the heap region to a certain size and the function vmm_km_heap_extend should do that.

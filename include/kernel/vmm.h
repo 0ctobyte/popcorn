@@ -78,13 +78,13 @@ typedef struct {
 extern vmap_t kernel_vmap;
 
 // Initialize the VMM system and initializes the kernel's vmap
-void vmm_init();
+void vmm_init(void);
 
 // Initial kernel memory allocator used by vmm before the heap is initialized
 vaddr_t vmm_km_zalloc(size_t size);
 
 // Initializes the kernel heap region
-void vmm_km_heap_init();
+void vmm_km_heap_init(void);
 
 // Extends by size bytes (rounded to a page) the kernel heap region specified
 // Returns the address to the start of the block of the specified size

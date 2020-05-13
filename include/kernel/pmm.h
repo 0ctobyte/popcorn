@@ -6,12 +6,12 @@
 
 // Initializes the pmm
 // NOTE: pmap_init should be called before this function
-void pmm_init();
+void pmm_init(void);
 
 // Finds a free page frame and returns the physical address to the beginning of
 // the frame
 // Returns UINTPTR_MAX if no free page frame is found
-paddr_t pmm_alloc();
+paddr_t pmm_alloc(void);
 
 // Frees the allocated page frame.
 void pmm_free(paddr_t);

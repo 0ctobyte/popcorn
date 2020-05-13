@@ -20,13 +20,13 @@
 # r8 holds physical address to first page table
 # r7 holds number of page tables
 # r6 holds the page size in bytes
-VIRTUALBASEADDR .req r12
-MEMBASEADDR .req r11
+virtualbaseaddr .req r12
+physicalbaseaddr .req r11
 placement_addr .req r10
 pgd_addr .req r9
 pgt_start_addr .req r8
 pgt_num .req r7
-PAGESIZE .req r6
+pagesize .req r6
 
 .align 2
 _loader:
@@ -56,57 +56,28 @@ _loader:
     bl _dcache_invalidate_all
     bl _bp_invalidate_all
 
-    # The kernel virtual address space starts at 0xF0000000
-    # The kernel proper doesn't start until 0xF0010000
-    ldr r4, =__kernel_virtual_start
-    ldr r5, =__kernel_physical_start
-    sub r4, r4, r5
-    mov VIRTUALBASEADDR, r4
+    ldr r0, =__kernel_virtual_start
+    mov virtualbaseaddr, r0
+    adr physicalbaseaddr, _loader
+    mov pagesize, #0x1000
 
-    # Calculate the memory base address
-    adr r2, _loader
-    sub MEMBASEADDR, r2, r5
-
-    ldr r3, =MEMBASEADDR
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    str MEMBASEADDR, [r3]
-
-    ldr r3, =KVIRTUALBASEADDR
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    str VIRTUALBASEADDR, [r3]
-
-    ldr r3, =PAGESIZE
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-    mov PAGESIZE, #0x1000
-    str PAGESIZE, [r3]
-
-    # FIXME: This doesn't need to be here. It can be determined from the FDT later
-    ldr r3, =MEMSIZE
-    sub r3, r3, VIRTUALBASEADDR
-    add r3, r3, MEMBASEADDR
-#ifdef BBB
-    movw r0, #0x0000
-    movt r0, #0x2000
-#elif VIRT
-    movw r0, #0x0000
-    movt r0, #0x2000
-#endif
-    str r0, [r3]
+    # Store the physical base address of where the kernel was loaded in memory
+    ldr r0, =KPHYSICALBASEADDR
+    sub r0, r0, virtualbaseaddr
+    add r0, r0, physicalbaseaddr
+    str physicalbaseaddr, [r0]
 
     # Set the svc stack, remember we need to use the loaded physical address
-    # Not the virtual address (R11=MEMBASEADDR)
+    # Not the virtual address (R11=physicalbaseaddr)
     ldr sp, =__svc_stack_limit+4096
-    sub sp, sp, VIRTUALBASEADDR
-    add sp, sp, MEMBASEADDR
+    sub sp, sp, virtualbaseaddr
+    add sp, sp, physicalbaseaddr
 
     # 256 page tables == 256 MiB of kernel memory
     movw pgt_num, #0x100
     ldr r0, =NUMPAGETABLES
-    sub r0, r0, VIRTUALBASEADDR
-    add r0, r0, MEMBASEADDR
+    sub r0, r0, virtualbaseaddr
+    add r0, r0, physicalbaseaddr
     str pgt_num, [r0]
 
     # Set placement_addr to a 16 KiB boundary after __kernel_physical_end so we can place
@@ -118,22 +89,22 @@ _loader:
     # Now add 0x4000 (16384) to get address of next 16 KiB boundary
     movw r0, #0x4000
     add placement_addr, placement_addr, r0
-    add placement_addr, placement_addr, membaseaddr
+    add placement_addr, placement_addr, physicalbaseaddr
 
     # This works because ARM uses PC relative addressing
     # Create page dir at end of kernel
     bl _create_page_dir
     ldr r0, =PGDPHYSICALBASEADDR
-    sub r0, r0, VIRTUALBASEADDR
-    add r0, r0, MEMBASEADDR
+    sub r0, r0, virtualbaseaddr
+    add r0, r0, physicalbaseaddr
     str pgd_addr, [r0]
 
     # Page tables will be created right after the page directory
     mov r0, pgt_num
     bl _create_page_tables
     ldr r0, =PGTPHYSICALSTARTADDR
-    sub r0, r0, VIRTUALBASEADDR
-    add r0, r0, MEMBASEADDR
+    sub r0, r0, virtualbaseaddr
+    add r0, r0, physicalbaseaddr
     str pgt_start_addr, [r0]
 
     bl _setup_page_dir
@@ -229,21 +200,21 @@ _do_mapping:
     # Now map the kernel (.text & .data section)
     ldr r1, =__kernel_virtual_start
     ldr r2, =__kernel_physical_start
-    add r2, r2, MEMBASEADDR
+    add r2, r2, physicalbaseaddr
     ldr r3, =__kernel_virtual_end
 
     bl _map_page_range
 
     # Now map the page directory and page tables
     movw r0, #0x45e
-    sub r1, pgd_addr, MEMBASEADDR
-    add r1, r1, VIRTUALBASEADDR
+    sub r1, pgd_addr, physicalbaseaddr
+    add r1, r1, virtualbaseaddr
     mov r2, pgd_addr
     movw r3, #0x400
     mul r3, r3, pgt_num
     add r3, r3, pgt_start_addr
-    sub r3, r3, MEMBASEADDR
-    add r3, r3, VIRTUALBASEADDR
+    sub r3, r3, physicalbaseaddr
+    add r3, r3, virtualbaseaddr
 
     bl _map_page_range
 
@@ -267,7 +238,7 @@ _do_mapping:
     # - Non-secure memory
     movw r0, #0x142e
     movt r0, #0x1
-    mov r1, MEMBASEADDR
+    mov r1, physicalbaseaddr
     mov r2, r1
 
     bl _map_section
@@ -352,8 +323,8 @@ _map_page_range_loop:
     ldmfd sp!, {r0, r1, r2, r3}
 
     # Increment by page size
-    add r1, r1, PAGESIZE
-    add r2, r2, PAGESIZE
+    add r1, r1, pagesize
+    add r2, r2, pagesize
 
     b _map_page_range_loop
 

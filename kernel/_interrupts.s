@@ -3,7 +3,6 @@
 
 # Enable interrupts on the processor
 .global interrupts_enable
-.type interrupts_enable, %function
 .align 2
 interrupts_enable:
     mrs r0, cpsr
@@ -15,7 +14,6 @@ interrupts_enable:
 
 # Disable interrupts on the processor
 .global interrupts_disable
-.type interrupts_disable, %function
 .align 2
 interrupts_disable:
     mrs r0, cpsr
@@ -27,7 +25,6 @@ interrupts_disable:
 
 # True if interrupts enabled, false otherwise
 .global interrupts_enabled
-.type interrupts_enabled, %function
 .align 2
 interrupts_enabled:
     mrs r0, cpsr

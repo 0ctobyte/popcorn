@@ -1,16 +1,13 @@
-#ifndef __MM_H__
-#define __MM_H__
+#ifndef __KERNEL_MM_H__
+#define __KERNEL_MM_H__
 
 #include <sys/types.h>
 
 #include <lib/asm.h>
 
-// The page size is platform dependent and determined at boot time
 extern uint32_t PAGESIZE;
-
-// The size and start address of memory is system dependent and determined at boot time
-extern uint32_t MEMSIZE;
 extern uint32_t MEMBASEADDR;
+extern uint32_t MEMSIZE;
 
 // Virtual address
 typedef uintptr_t vaddr_t;
@@ -36,5 +33,4 @@ typedef uint32_t vm_prot_t;
 #define ATOP(B) (TRUNC_PAGE((B)) >> _ctz(PAGESIZE))
 #define PTOA(B) ((B) << _ctz(PAGESIZE))
 
-#endif // __MM_H__
-
+#endif // __KERNEL_MM_H__

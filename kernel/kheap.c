@@ -213,7 +213,7 @@ void _kheap_free_used_block(vaddr_t free) {
     _kheap_ublock_delete(next);
 }
 
-void kheap_init() {
+void kheap_init(void) {
     // Initialize the kernel heap region
     vmm_km_heap_init();
 

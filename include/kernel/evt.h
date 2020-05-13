@@ -13,7 +13,7 @@ typedef enum {
 typedef void (*evt_handler_t)(void*);
 
 // Sets the vector base address register
-void evt_init();
+void evt_init(void);
 
 // Register the function specified by evt_handler_t to the
 // exception type specified by evt_type_t

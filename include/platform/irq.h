@@ -14,7 +14,7 @@
 typedef void (*isr_t)(void);
 
 // Initialize IRQ systems, VIC, SIC...
-void irq_init();
+void irq_init(void);
 
 // This function enables IRQ for the specified source on the VIC and SIC
 void irq_enable(irq_type_t);
@@ -24,7 +24,7 @@ void irq_disable(irq_type_t);
 
 // This function should be called whenever an IRQ exception occurs
 // It will return the irq type that caused the exception
-irq_type_t irq_get();
+irq_type_t irq_get(void);
 
 // Returns the ISR function associated with the IRQ type
 isr_t irq_get_isr(irq_type_t);

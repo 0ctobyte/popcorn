@@ -442,6 +442,9 @@ typedef __UINTMAX_TYPE__ uintmax_t;
 
 #ifdef __INT32_TYPE__
 # ifdef __INT32_C_SUFFIX__
+#  undef __int32_c_suffix
+#  undef __int16_c_suffix
+#  undef __int8_c_suffix
 #  define __int32_c_suffix __INT32_C_SUFFIX__
 #  define __int16_c_suffix __INT32_C_SUFFIX__
 #  define __int8_c_suffix  __INT32_C_SUFFIX__
@@ -480,6 +483,8 @@ typedef __UINTMAX_TYPE__ uintmax_t;
 
 #ifdef __INT16_TYPE__
 # ifdef __INT16_C_SUFFIX__
+#  undef __int16_c_suffix
+#  undef __int8_c_suffix
 #  define __int16_c_suffix __INT16_C_SUFFIX__
 #  define __int8_c_suffix  __INT16_C_SUFFIX__
 #else
@@ -501,6 +506,7 @@ typedef __UINTMAX_TYPE__ uintmax_t;
 
 #ifdef __INT8_TYPE__
 # ifdef __INT8_C_SUFFIX__
+#  undef __int8_c_suffix
 #  define __int8_c_suffix __INT8_C_SUFFIX__
 #else
 #  undef  __int8_c_suffix

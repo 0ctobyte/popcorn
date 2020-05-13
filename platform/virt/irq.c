@@ -3,7 +3,7 @@
 
 static isr_t isr_table[64];
 
-void irq_init() {
+void irq_init(void) {
 }
 
 void irq_enable(irq_type_t type) {

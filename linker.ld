@@ -2,7 +2,7 @@ ENTRY(_loader)
 SECTIONS
 {
     __virtual_base = 0xF0000000;
-    . = __virtual_base + 0x10000;
+    . = __virtual_base;
     __kernel_virtual_start = .;
     __kernel_physical_start = . - __virtual_base;
 

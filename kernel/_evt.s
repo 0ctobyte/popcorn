@@ -119,7 +119,6 @@ a5:
     subs pc, lr, #4
 
 .global evt_init
-.type evt_init, %function
 .align 2
 evt_init:
     # Setup the vector base address register
@@ -131,7 +130,6 @@ evt_init:
 # R0 [in] - Exception type
 # R1 [in] - Exception handler address
 .global evt_register_handler
-.type evt_register_handler, %function
 .align 2
 evt_register_handler:
     ldr r2, =evt_table

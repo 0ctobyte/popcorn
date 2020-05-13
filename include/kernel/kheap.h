@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 // Initialize the kernel heap
-void kheap_init();
+void kheap_init(void);
 
 // Allocate a block of the requested size
 void* kheap_alloc(size_t size);

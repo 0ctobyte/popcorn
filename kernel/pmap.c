@@ -133,7 +133,7 @@ struct pgt_entry {
 #define KERNEL_PGD_PGT_INDEX_BASE ((uint32_t)(PGDNENTRIES - (uint32_t)(NUMPAGETABLES)))
 
 // Start address of the kernel's page table array
-#define KERNEL_PGTS_BASE ((pgt_t*)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR))
+#define KERNEL_PGTS_BASE ((pgt_t*)(PGTPHYSICALSTARTADDR-KPHYSICALBASEADDR+KVIRTUALBASEADDR))
 
 // Kernel pmap
 pmap_t kernel_pmap;
@@ -184,7 +184,7 @@ vaddr_t _pmap_bootstrap_memory(size_t size) {
 // Setup the kernel's pmap
 void _pmap_kernel_init() {
     // The kernel's pgd has already been set up and we know where it is via the linker script symbols
-    kernel_pmap.pgd = (pgd_t*)(PGDPHYSICALBASEADDR-MEMBASEADDR+KVIRTUALBASEADDR);
+    kernel_pmap.pgd = (pgd_t*)(PGDPHYSICALBASEADDR-KPHYSICALBASEADDR+KVIRTUALBASEADDR);
     kernel_pmap.pgd_pa = (paddr_t)(PGDPHYSICALBASEADDR);
 
     // Need to allocate memory for the pgt_entry structs
@@ -206,15 +206,15 @@ void _pmap_kernel_init() {
     }
 
     // Remove the identity mapped section
-    kernel_pmap.pgd->pde[PGD_GET_INDEX(MEMBASEADDR)] = 0x0;
+    kernel_pmap.pgd->pde[PGD_GET_INDEX(KPHYSICALBASEADDR)] = 0x0;
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
     pmap_reference(pmap_kernel());
 }
 
-void pmap_init() {
+void pmap_init(void) {
     // Set the end of the kernel's virtual and physical address space
-    kernel_vend = ROUND_PAGE((vaddr_t)(PGTPHYSICALSTARTADDR-MEMBASEADDR+KVIRTUALBASEADDR) + sizeof(pgt_t) * (vaddr_t)(NUMPAGETABLES));
+    kernel_vend = ROUND_PAGE((vaddr_t)(PGTPHYSICALSTARTADDR-KPHYSICALBASEADDR+KVIRTUALBASEADDR) + sizeof(pgt_t) * (vaddr_t)(NUMPAGETABLES));
     kernel_pend = ROUND_PAGE((paddr_t)(PGTPHYSICALSTARTADDR) + sizeof(pgt_t) * (paddr_t)(NUMPAGETABLES));
 
     // Initialize the kernel pmap
@@ -235,7 +235,7 @@ void pmap_init() {
     }
 }
 
-pmap_t* pmap_create() {
+pmap_t* pmap_create(void) {
     pmap_t *pmap = (pmap_t*)kheap_alloc(sizeof(pmap_t));
     memset(pmap, 0, sizeof(pmap_t));
 

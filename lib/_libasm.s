@@ -10,7 +10,6 @@
 # r1 [in] - operand2
 # r0 [out] - The modulo value
 .global _umod
-.type _umod, %function
 .align 2
 _umod:
     vmov s0, r0
@@ -31,7 +30,6 @@ _umod:
 # Takes a 32-bit integer in R0
 # Returns the number of trailing zeros
 .global _ctz
-.type _ctz, %function
 .align 2
 _ctz:
     rbit r0, r0
@@ -43,7 +41,6 @@ _ctz:
 # Takes a 32-bit integer in R0
 # Returns the number of leading zeros
 .global _clz
-.type _clz, %function
 .align 2
 _clz:
     clz r0, r0
@@ -54,7 +51,6 @@ _clz:
 # Takes a 32-bit integer in R0
 # Returns the 32-bit integer in reversed bit order
 .global _rbit
-.type _rbit, %function
 .align 2
 _rbit:
     rbit r0, r0
