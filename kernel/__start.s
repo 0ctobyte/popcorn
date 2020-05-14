@@ -1,4 +1,4 @@
-.section ".text.boot"
+.text
 
 virtualbaseaddr .req x6
 physicalbaseaddr .req x7

@@ -44,22 +44,22 @@
 #endif
 
 #if defined(__need_ptrdiff_t)
-#if !defined(_PTRDIFF_T) || __has_feature(modules)
+#if !defined(_PTRDIFF_T) /* || __has_feature(modules) */
 /* Always define ptrdiff_t when modules are available. */
-#if !__has_feature(modules)
-#define _PTRDIFF_T
-#endif
+// #if !__has_feature(modules)
+// #define _PTRDIFF_T
+// #endif
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #endif
 #undef __need_ptrdiff_t
 #endif /* defined(__need_ptrdiff_t) */
 
 #if defined(__need_size_t)
-#if !defined(_SIZE_T) || __has_feature(modules)
+#if !defined(_SIZE_T) /* || __has_feature(modules) */
 /* Always define size_t when modules are available. */
-#if !__has_feature(modules)
-#define _SIZE_T
-#endif
+// #if !__has_feature(modules)
+// #define _SIZE_T
+// #endif
 typedef __SIZE_TYPE__ size_t;
 #endif
 #undef __need_size_t
@@ -69,11 +69,11 @@ typedef __SIZE_TYPE__ size_t;
 /* ISO9899:2011 7.20 (C11 Annex K): Define rsize_t if __STDC_WANT_LIB_EXT1__ is
  * enabled. */
 #if (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1 && \
-       !defined(_RSIZE_T)) || __has_feature(modules)
+       !defined(_RSIZE_T)) /* || __has_feature(modules) */
 /* Always define rsize_t when modules are available. */
-#if !__has_feature(modules)
-#define _RSIZE_T
-#endif
+// #if !__has_feature(modules)
+// #define _RSIZE_T
+// #endif
 typedef __SIZE_TYPE__ rsize_t;
 #endif
 #endif /* defined(__STDDEF_H) */
@@ -81,13 +81,13 @@ typedef __SIZE_TYPE__ rsize_t;
 #if defined(__need_wchar_t)
 #ifndef __cplusplus
 /* Always define wchar_t when modules are available. */
-#if !defined(_WCHAR_T) || __has_feature(modules)
-#if !__has_feature(modules)
-#define _WCHAR_T
-#if defined(_MSC_EXTENSIONS)
-#define _WCHAR_T_DEFINED
-#endif
-#endif
+#if !defined(_WCHAR_T) /* || __has_feature(modules) */
+// #if !__has_feature(modules)
+// #define _WCHAR_T
+// #if defined(_MSC_EXTENSIONS)
+//#define _WCHAR_T_DEFINED
+//#endif
+//#endif
 typedef __WCHAR_TYPE__ wchar_t;
 #endif
 #endif
@@ -120,7 +120,7 @@ using ::std::nullptr_t;
 
 #ifdef __cplusplus
 #if __STDC_VERSION__ >= 201112L || __cplusplus >= 201103L
-#if !defined(__CLANG_MAX_ALIGN_T_DEFINED) || __has_feature(modules)
+#if !defined(__CLANG_MAX_ALIGN_T_DEFINED) /* || __has_feature(modules) */
 #ifndef _MSC_VER
 typedef struct {
     long long __clang_max_align_nonce1
@@ -143,10 +143,10 @@ typedef double max_align_t;
 __WINT_TYPE__ directly; accommodate both by requiring __need_wint_t */
 #if defined(__need_wint_t)
 /* Always define wint_t when modules are available. */
-#if !defined(_WINT_T) || __has_feature(modules)
-#if !__has_feature(modules)
-#define _WINT_T
-#endif
+#if !defined(_WINT_T) /* || __has_feature(modules) */
+// #if !__has_feature(modules)
+// #define _WINT_T
+// #endif
 typedef __WINT_TYPE__ wint_t;
 #endif
 #undef __need_wint_t

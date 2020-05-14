@@ -1,5 +1,5 @@
-AS := clang
-CC := clang
+AS := aarch64-none-elf-gcc
+CC := aarch64-none-elf-gcc
 LD := aarch64-none-elf-ld
 OBJCOPY := aarch64-none-elf-objcopy
 
@@ -21,8 +21,8 @@ OBJS += $(patsubst %.c,%.o,$(C_SRCS))
 INCLUDE := -Iinclude
 LSCRIPT := linker.ld
 
-BASEFLAGS := -g -target aarch64
-WARNFLAGS := -Weverything -Werror -Wno-reserved-id-macro -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
+BASEFLAGS := -g -march=armv8-a
+WARNFLAGS := -Werror
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
 ASFLAGS := $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) -x assembler-with-cpp

@@ -33,7 +33,7 @@ static char fmt_num[256];
 // Count the number of digits in the number represented in the string
 unsigned int num_digits(const char *s) {
     unsigned int num = 0;
-    for(; is_number(*s) && s != '\0'; s++, num++);
+    for(; is_number(*s) && *s != '\0'; s++, num++);
     return(num);
 }
 
