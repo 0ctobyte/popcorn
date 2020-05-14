@@ -3,9 +3,7 @@
 
 #include <stdint.h>
 
-#if defined(BBB)
-#include <platform/beagleboneblack/iomem.h>
-#elif defined(VIRT)
+#if defined(VIRT)
 #include <platform/virt/iomem.h>
 #else
 #error "Undefined platform"

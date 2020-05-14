@@ -3,9 +3,7 @@
 
 #include <sys/types.h>
 
-#if defined(BBB)
-#include <platform/beagleboneblack/irqtypes.h>
-#elif defined(VIRT)
+#if defined(VIRT)
 #include <platform/virt/irqtypes.h>
 #else
 #error "Undefined platform"

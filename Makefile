@@ -6,9 +6,7 @@ OBJCOPY := arm-none-eabi-objcopy
 # TODO: Need a more flexible build system
 PLATFORM := virt
 
-ifeq ($(PLATFORM), beagleboneblack)
-DEFINES := -DBBB
-else ifeq ($(PLATFORM), virt)
+ifeq ($(PLATFORM), virt)
 DEFINES := -DVIRT
 else
 $(error Invalid platform)
