@@ -13,7 +13,7 @@
 // Minimum block size: 4 bytes
 #define NUM_BINS (20) // 2 MB
 #define MIN_BLOCK_SIZE (0x4)
-#define MAX_BLOCK_SIZE ((unsigned int)((1 << _ctz(MIN_BLOCK_SIZE)) << (NUM_BINS-1)))
+#define MAX_BLOCK_SIZE ((unsigned long)((1 << _ctz(MIN_BLOCK_SIZE)) << (NUM_BINS-1)))
 
 // True if n is a power of 2, else false
 #define IS_POW2(n) (((n) & ((n)-1)) == 0)
@@ -64,7 +64,7 @@ static kheap_ublock_t *root;
 void _kheap_bin_insert(vaddr_t free, size_t block_size) {
     kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
 
-    unsigned int index = GET_BIN_INDEX(block_size);
+    unsigned long index = GET_BIN_INDEX(block_size);
     vaddr_t head = bins[index];
 
     // The list of free blocks is sorted by increasing address
@@ -101,7 +101,7 @@ void _kheap_bin_insert(vaddr_t free, size_t block_size) {
 vaddr_t _kheap_bin_pop(size_t block_size) {
     kassert(IS_POW2(block_size) && (block_size <= MAX_BLOCK_SIZE) && (block_size >= MIN_BLOCK_SIZE));
 
-    unsigned int index = GET_BIN_INDEX(block_size);
+    unsigned long index = GET_BIN_INDEX(block_size);
     vaddr_t head = bins[index];
 
     // Unlink it from the bin if the block exists
@@ -260,7 +260,7 @@ void kheap_stats(size_t *heap_free, size_t *heap_allocated, size_t *num_free_blo
     *heap_free = *heap_allocated = *num_used_blocks = *num_free_blocks = 0;
 
     // Calculate size of free memory and # of available blocks
-    for(unsigned int i = 0; i < NUM_BINS; i++) {
+    for(unsigned long i = 0; i < NUM_BINS; i++) {
         size_t bin_block_size = (1 << _ctz(MIN_BLOCK_SIZE)) << i;
         for(vaddr_t v = bins[i]; v != 0; v = *(vaddr_t*)v) {
             ++(*num_free_blocks);

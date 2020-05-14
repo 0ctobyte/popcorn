@@ -1,17 +1,15 @@
 #ifndef __ATOMIC_H__
 #define __ATOMIC_H__
 
-#include <sys/types.h>
-
-typedef int atomic_t;
+typedef long atomic_t;
 
 // Atomically tests if value at ptr is 0 and if so sets it to val
 // Returns 0 on success, otherwise failure to set
-int atomic_test_and_set(atomic_t *ptr, int val);
+long atomic_test_and_set(atomic_t *ptr, long val);
 
 // Atomically tests specified bit in the value at ptr is 0 and if so sets it to 1
 // Returns 0 on success, otherwise failure to set
-int atomic_test_and_set_bit(atomic_t *ptr, unsigned int bit);
+long atomic_test_and_set_bit(atomic_t *ptr, unsigned long bit);
 
 // Atomically increment the value
 void atomic_inc(atomic_t *v);

@@ -1,6 +1,5 @@
 # Memory and instruction barriers, these can be called in C code
 .text
-.code 32
 
 # Data Memory Barrier
 # Use this to make sure demand memory accesses (i.e. loads & stores) before the instruction complete before
@@ -8,9 +7,8 @@
 .global barrier_dmb
 .align 2
 barrier_dmb:
-    dmb
-
-    bx lr
+    dmb sy
+    ret lr
 
 # Data Synchronization Barrier
 # Use this when you need to ensure that all memory accesses complete before
@@ -18,9 +16,8 @@ barrier_dmb:
 .global barrier_dsb
 .align 2
 barrier_dsb:
-        dsb
-
-    bx lr
+    dsb sy
+    ret lr
 
 # Instruction Synchronization Barrier
 # Flushes the instruction pipeline in the processor
@@ -28,6 +25,5 @@ barrier_dsb:
 .global barrier_isb
 .align 2
 barrier_isb:
-        isb
-
-    bx lr
+    isb sy
+    ret lr

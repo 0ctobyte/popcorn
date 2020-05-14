@@ -4,9 +4,9 @@
 #include <stdarg.h>
 #include <sys/types.h>
 
-int putchar(char c);
-int sprintf(char *s, const char *fmt, ...);
-int vsprintf(char *buf, const char *fmt, va_list args);
+long putchar(char c);
+long sprintf(char *s, const char *fmt, ...);
+long vsprintf(char *buf, const char *fmt, va_list args);
 
 #endif // __STDIO_H__
 

@@ -26,14 +26,14 @@ void print_heap_stats() {
 }
 
 void data_abort_handler(void *d) {
-    unsigned int *registers = (unsigned int*)d;
+    unsigned long *registers = (unsigned long*)d;
 
     kprintf("\nDATA ABORT EXCEPTION\n");
     kprintf("Fault Address: %#x\n", registers[0]);
     kprintf("Fault Status: %#x\n", registers[1]);
     kprintf("Cache Maintenance Fault? %s\n", (registers[1] & (1 << 13)) ? "yes" : "no");
     kprintf("Fault on Write or Read? %s\n", (registers[1] & (1 << 11)) ? "write" : "read");
-    unsigned int fault_status = ((registers[1] & (1 << 10)) >> 6) | (registers[1] & 0xF);
+    unsigned long fault_status = ((registers[1] & (1 << 10)) >> 6) | (registers[1] & 0xF);
 
     if(fault_status == 0x1) kprintf("Alignment Fault");
     else if(fault_status == 0x4) kprintf("Instruction Cache Maintenance Fault");
@@ -60,7 +60,7 @@ void data_abort_handler(void *d) {
     kprintf("\n");
     kprintf("Register Dump\n");
     kprintf("SPSR: %#x\n", registers[2]);
-    for(unsigned int i = 3; i < 16; ++i) kprintf("R%u: %#x\n", (i-3), registers[i]);
+    for(unsigned long i = 3; i < 16; ++i) kprintf("R%u: %#x\n", (i-3), registers[i]);
     kprintf("LR: %#x\n", registers[16]);
 
     panic("HALTING\n");
@@ -81,7 +81,7 @@ void kmain(void) {
     pmap_kenter_pa(R_UART0_VBASE, R_UART0_PBASE, VM_PROT_DEFAULT, PMAP_NOCACHE);
     if(IS_WITHIN_BOUNDS(R_UART0_PBASE)) pmm_reserve(R_UART0_PBASE);
 
-    evt_register_handler(EVT_DATA_ABORT, data_abort_handler);
+    evt_register_handler(EVT_SYNC_SP_ELX, data_abort_handler);
 
     kprintf("Kernel: Initializing...\n");
     kprintf("Kernel: Mem base addr = %#x, Mem size = %u MB (%#x), Page size = %u bytes (%#x)\n", MEMBASEADDR, (MEMSIZE >> 20), MEMSIZE, PAGESIZE, PAGESIZE);
@@ -103,8 +103,8 @@ void kmain(void) {
         kprintf("\n");
 
         if(kregions->aref.amap != NULL) {
-            unsigned int nslots = (unsigned int)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
-            for(unsigned int i = 0; i < nslots; i++) {
+            unsigned long nslots = (unsigned long)((double)(kregions->vend - kregions->vstart) / (double)PAGESIZE);
+            for(unsigned long i = 0; i < nslots; i++) {
                 vm_anon_t *anon = kregions->aref.amap->aslots[kregions->aref.slotoff + i];
                 kprintf("Page %u: %#x\n", i, anon->page->vaddr);
             }
@@ -116,15 +116,15 @@ void kmain(void) {
     kprintf("Kernel: Enabling interrupts on the CPU\n");
     interrupts_enable();
 
-    unsigned int s = 5;
+    unsigned long s = 5;
     void *ptr[5];
 
-    for(unsigned int i = 0; i < s; i++) {
+    for(unsigned long i = 0; i < s; i++) {
         ptr[i] = kheap_alloc((1 << 2) << (10-i));
         print_heap_stats();
     }
 
-    for(unsigned int i = 0; i < s; i++) {
+    for(unsigned long i = 0; i < s; i++) {
         kheap_free(ptr[i]);
         print_heap_stats();
     }

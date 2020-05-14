@@ -44,7 +44,7 @@
  */
 
 // Attempts to gain lock using the specified bit(s)
-void _spin_lock(spinlock_t *lock, unsigned int bits) {
+void _spin_lock(spinlock_t *lock, unsigned long bits) {
     // Continuously attempt to set the bit, the loop will exit only when we
     // succeed in setting the bit
     while(atomic_test_and_set_bit(lock, (bits)));
@@ -53,7 +53,7 @@ void _spin_lock(spinlock_t *lock, unsigned int bits) {
 }
 
 // Unlocks using the specified bit(s)
-void _spin_unlock(spinlock_t *lock, unsigned int bits) {
+void _spin_unlock(spinlock_t *lock, unsigned long bits) {
     // Make sure all accesses to resource protected by this spinlock have
     // completed
     barrier_dmb();
@@ -108,7 +108,7 @@ void spin_readlock(spinlock_t *lock) {
     _spin_lock(lock, SPIN_LIGHTSWITCH);
 
     // Once acquired, increment the count
-    unsigned int count = GET_READLOCK_COUNT(lock);
+    unsigned long count = GET_READLOCK_COUNT(lock);
     SET_READLOCK_COUNT(lock, ++count);
 
     // The first reader must wait for lock, subsequent readers will get access
@@ -124,7 +124,7 @@ void spin_readunlock(spinlock_t *lock) {
     _spin_unlock(lock, SPIN_LIGHTSWITCH);
 
     // Once acquired, decrement the count
-    unsigned int count = GET_READLOCK_COUNT(lock);
+    unsigned long count = GET_READLOCK_COUNT(lock);
     SET_READLOCK_COUNT(lock, --count);
 
     // The last reader must release the spinlock

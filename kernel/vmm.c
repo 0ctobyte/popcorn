@@ -10,7 +10,7 @@ extern uintptr_t __kernel_virtual_start;
 extern uintptr_t __kernel_virtual_end;
 
 // SVC stack location
-extern uintptr_t __svc_stack_limit;
+extern uintptr_t __el1_stack_limit;
 
 // Kernel vmap
 vmap_t kernel_vmap;
@@ -28,7 +28,7 @@ void _vmap_kernel_init() {
     kernel_vmap.regions = (vregion_t*)vmm_km_zalloc(sizeof(vregion_t) * 3);
 
     // We need to get the start and end addresses of the virtual memory regions of the kernel
-    vaddr_t vas[6] = {(uintptr_t)(&__kernel_virtual_start), (uintptr_t)(&__kernel_virtual_end), 0, 0, (uintptr_t)(&__svc_stack_limit), 0};
+    vaddr_t vas[6] = {(uintptr_t)(&__kernel_virtual_start), (uintptr_t)(&__kernel_virtual_end), 0, 0, (uintptr_t)(&__el1_stack_limit), 0};
 
     // The address of the start of the stack is in vas[5] (This address represents the end of the virtual memory region however).
     // Since the stack grows downward, the end of stack (or start of the virtual memory region) is vas[5]-0x1000 (since we have defined the stacks
@@ -50,14 +50,14 @@ void _vmap_kernel_init() {
     // Now lets populate each of the vregion structs
     // Note the indexing operator only works here because we have allocated the vregions contiguously. Usually a linked list.
     vm_prot_t prots[3] = {VM_PROT_ALL, VM_PROT_DEFAULT, VM_PROT_DEFAULT};
-    for(unsigned int i = 0, num_regions = 3; i < num_regions; i++) {
+    for(unsigned long i = 0, num_regions = 3; i < num_regions; i++) {
         kernel_vmap.regions[i].vstart = vas[(i*2)];
         kernel_vmap.regions[i].vend = ROUND_PAGE(vas[(i*2)+1]);
         kernel_vmap.regions[i].vm_prot = prots[i];
         kernel_vmap.regions[i].needs_copy = kernel_vmap.regions[i].copy_on_write = 0;
 
         // Populate the amaps
-        unsigned int num_pages = (unsigned int)((double)(kernel_vmap.regions[i].vend - kernel_vmap.regions[i].vstart) / (double)PAGESIZE);
+        unsigned long num_pages = (unsigned long)((double)(kernel_vmap.regions[i].vend - kernel_vmap.regions[i].vstart) / (double)PAGESIZE);
         if(num_pages > 0) {
             kernel_vmap.regions[i].aref.amap = (vm_amap_t*)vmm_km_zalloc(sizeof(vm_amap_t));
             kernel_vmap.regions[i].aref.slotoff = 0;
@@ -66,7 +66,7 @@ void _vmap_kernel_init() {
             kernel_vmap.regions[i].aref.amap->aslots = (vm_anon_t**)vmm_km_zalloc(sizeof(vm_anon_t*) * num_pages);
 
             // Populate the anon structs and put them in amap.aslots
-            for(unsigned int j = 0; j < num_pages; j++) {
+            for(unsigned long j = 0; j < num_pages; j++) {
                 vm_anon_t *anon = (vm_anon_t*)vmm_km_zalloc(sizeof(vm_anon_t));
                 anon->page = (vpage_t*)vmm_km_zalloc(sizeof(vpage_t));
                 anon->page->vaddr = kernel_vmap.regions[i].vstart + (j * PAGESIZE);
@@ -139,7 +139,7 @@ void vmm_km_heap_init(void) {
     // needed to store the vmm structures that will eat some of the heap space.
     // TODO: 0xFFFF0000? What value should this be? UINT32_MAX?
     size_t max_heap_size = ROUND_PAGE(0xFFFF0000 - kernel_vmap.heap_start);
-    unsigned int num_pages_needed = (unsigned int)((double)max_heap_size/(double)PAGESIZE);
+    unsigned long num_pages_needed = (unsigned long)((double)max_heap_size/(double)PAGESIZE);
 
     // Set up the vmm data structures needed to store the all the information about the heap
     kernel_vmap.regions[2].aref.amap = (vm_amap_t*)vmm_km_zalloc(sizeof(vm_amap_t));
@@ -148,7 +148,7 @@ void vmm_km_heap_init(void) {
     kernel_vmap.regions[2].aref.amap->refcount = 1;
     kernel_vmap.regions[2].aref.amap->aslots = (vm_anon_t**)vmm_km_zalloc(sizeof(vm_anon_t*) * num_pages_needed);
 
-    for(unsigned int i = 0; i < num_pages_needed; i++) {
+    for(unsigned long i = 0; i < num_pages_needed; i++) {
         vm_anon_t *anon = (vm_anon_t*)vmm_km_zalloc(sizeof(vm_anon_t));
         anon->page = (vpage_t*)vmm_km_zalloc(sizeof(vpage_t));
         anon->page->vaddr = UINT32_MAX;
@@ -179,14 +179,14 @@ vaddr_t vmm_km_heap_extend(size_t size) {
         pmap_kenter_pa(va, pa, region->vm_prot, PMAP_WIRED | PMAP_WRITE_COMBINE);
 
         // Enter the information into the amap
-        region->aref.amap->aslots[(unsigned int)((double)(va-region->vstart)/(double)PAGESIZE)]->page->vaddr = va;
+        region->aref.amap->aslots[(unsigned long)((double)(va-region->vstart)/(double)PAGESIZE)]->page->vaddr = va;
     }
 
     memset((vaddr_t*)prev_vend, 0, PAGESIZE);
     vmap_kernel()->heap_end = region->vend;
 
-    unsigned int new_size = region->vend - region->vstart;
-    region->aref.amap->maxslots = region->aref.amap->nslots = (unsigned int)((double)new_size/(double)PAGESIZE);
+    unsigned long new_size = region->vend - region->vstart;
+    region->aref.amap->maxslots = region->aref.amap->nslots = (unsigned long)((double)new_size/(double)PAGESIZE);
 
     return prev_vend;
 }

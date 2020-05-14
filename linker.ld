@@ -1,4 +1,4 @@
-ENTRY(_loader)
+ENTRY(_start)
 SECTIONS
 {
     __virtual_base = 0xF0000000;
@@ -7,6 +7,9 @@ SECTIONS
     __kernel_physical_start = . - __virtual_base;
 
     /* Align to page (4 kb) boundary */
+    .text.boot ALIGN(0x1000) : AT(ADDR(.text.boot) - __virtual_base) {
+        *(.text.boot)
+    }
     .text ALIGN(0x1000) : AT(ADDR(.text) - __virtual_base) {
         *(.text)
     }

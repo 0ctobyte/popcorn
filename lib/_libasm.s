@@ -1,8 +1,5 @@
-# This file implements some basic functions that can only be implemented
-# through assembly
-
+# This file implements some basic functions that can only be implemented through assembly
 .text
-.code 32
 
 # Unsigned integer modulo
 # operand1 % operand2
@@ -12,19 +9,9 @@
 .global _umod
 .align 2
 _umod:
-    vmov s0, r0
-    vcvt.f64.u32 d0, s0
-    vmov s2, r1
-    vcvt.f64.u32 d1, s2
-
-    vdiv.f64 d0, d0, d1
-    vcvt.u32.f64 s0, d0
-
-    vmov r2, s0
-
-    mls r0, r1, r2, r0
-
-    bx lr
+    udiv x2, x0, x1
+    msub x0, x2, x1, x0
+    ret lr
 
 # Count trailing zeros
 # Takes a 32-bit integer in R0
@@ -32,10 +19,9 @@ _umod:
 .global _ctz
 .align 2
 _ctz:
-    rbit r0, r0
-    clz r0, r0
-
-    bx lr
+    rbit x0, x0
+    clz x0, x0
+    ret lr
 
 # Count leading zeros
 # Takes a 32-bit integer in R0
@@ -43,9 +29,8 @@ _ctz:
 .global _clz
 .align 2
 _clz:
-    clz r0, r0
-
-    bx lr
+    clz x0, x0
+    ret lr
 
 # Reverse bit order
 # Takes a 32-bit integer in R0
@@ -53,6 +38,5 @@ _clz:
 .global _rbit
 .align 2
 _rbit:
-    rbit r0, r0
-
-    bx lr
+    rbit x0, x0
+    ret lr

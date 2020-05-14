@@ -5,7 +5,7 @@
 
 #define SPINLOCK_INIT (0)
 
-typedef int spinlock_t;
+typedef long spinlock_t;
 
 // Initializes a spinlock, MUST always be called on a newly declared spinlock
 void spin_init(spinlock_t*);

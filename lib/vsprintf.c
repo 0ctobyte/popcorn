@@ -31,14 +31,14 @@
 static char fmt_num[256];
 
 // Count the number of digits in the number represented in the string
-size_t num_digits(const char *s) {
-    size_t num = 0;
+unsigned int num_digits(const char *s) {
+    unsigned int num = 0;
     for(; is_number(*s) && s != '\0'; s++, num++);
     return(num);
 }
 
-// Converts a string into a int
-int atoi(const char *s) {
+// Converts a string into a long
+long atoi(const char *s) {
     const char *str = s;
     uint8_t negafier = 1;
     if(*str == '-') {
@@ -54,7 +54,7 @@ int atoi(const char *s) {
     if(digits == 0) return(0);
     str += digits-1;
 
-    int integer = 0;
+    long integer = 0;
     for(unsigned int multiplier = 1; digits > 0; str--, digits--, multiplier *= 10) {
         integer += get_number(*str)*multiplier;
     }
@@ -62,10 +62,10 @@ int atoi(const char *s) {
     return(integer*negafier);
 }
 
-// Converts an int into a string
+// Converts an long into a string
 static const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-char* itoa2(unsigned int num, char *str, unsigned int base, bool upcase) {
+char* itoa2(unsigned long num, char *str, unsigned int base, bool upcase) {
     char *buf = str;
     char tmp[36];
 
@@ -74,8 +74,8 @@ char* itoa2(unsigned int num, char *str, unsigned int base, bool upcase) {
 
     unsigned int i = 0;
     while(num != 0) {
-        unsigned int R = _umod(num, base);
-        num = (unsigned int)((double)num / (double)base);
+        unsigned long R = _umod(num, base);
+        num = (unsigned long)((double)num / (double)base);
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }
 
@@ -86,8 +86,8 @@ char* itoa2(unsigned int num, char *str, unsigned int base, bool upcase) {
     return(str);
 }
 
-char* number(char *dest, char *str_num, uint8_t flags, unsigned int width,
-             int precision, bool negative, char specifier) {
+char* number(char *dest, char *str_num, uint8_t flags, unsigned long width,
+             long precision, bool negative, char specifier) {
     char *buf = dest;
     char sign = 0;
     if(flags & SPACE) sign = ' ';
@@ -180,8 +180,8 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         }
 
         uint8_t flags = 0;
-        unsigned int width = 0;
-        int precision = -1;
+        unsigned long width = 0;
+        long precision = -1;
         uint8_t length;
         char specifier = 0;
 
@@ -219,7 +219,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         // Next up is width sub specifier
         if(*fmt == '*') {
             // Next arg is the width sub specifier
-            width = va_arg(args, unsigned int);
+            width = va_arg(args, unsigned long);
             ++fmt;
         } else if(is_number(*fmt)) {
             // Convert the string into a number
@@ -237,7 +237,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             ++fmt;
             if(*fmt == '*') {
                 // Next arg is precision value, set ZEROPAD flag
-                precision = va_arg(args, unsigned int);
+                precision = va_arg(args, unsigned long);
                 ++fmt;
             } else if(is_number(*fmt)) {
                 // Convert string to number, set ZEROPAD flag
@@ -441,7 +441,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
 
 
             unsigned int pow10 = 10;
-            for(int i = precision; i > 0; i--) {
+            for(long i = precision; i > 0; i--) {
                 pow10 *= pow10;
             }
 
@@ -487,5 +487,5 @@ int vsprintf(char *s, const char *fmt, va_list args) {
 
     *str = '\0';
 
-    return(str-s);
+    return (int)(str-s);
 }

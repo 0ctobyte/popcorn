@@ -1,61 +1,59 @@
 .text
-.code 32
 
 # Atomic test and set, test fails if value is NOT zero
-# R0 [in] - Memory location of value to atomically test and set
-# R1 [in] - Value to set
-# R0 [out] - 0 on success, otherwise failure
+# x0 [in] - Memory location of value to atomically test and set
+# x1 [in] - Value to set
+# x0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set
 .align 2
 atomic_test_and_set:
-    mov r2, r1
-    mov r1, r0
-    ldrex r0, [r1]
-    teq r0, #0
-    strexeq r0, r2, [r1]
-    clrex
+    mov x2, x1
+    mov x1, x0
+    ldxr x0, [x1]
+    cbnz x0, _atomic_test_and_set_exit
+    stxr w0, x2, [x1]
 
-    bx lr
+_atomic_test_and_set_exit:
+    ret lr
 
 # Atomically test and set specified bit, test fails if bit is not zero
-# R0 [in] - Memory location of value to atomically test and set
-# R1 [in] - Bit to set
-# R0 [out] - 0 on success, otherwise failure
+# x0 [in] - Memory location of value to atomically test and set
+# x1 [in] - Bit to set
+# x0 [out] - 0 on success, otherwise failure
 .global atomic_test_and_set_bit
 .align 2
 atomic_test_and_set_bit:
-    mov r2, r1
-    mov r1, r0
-    ldrex r0, [r1]
-    tst r0, r2
-    orreq r2, r0, r2
-    strexeq r0, r2, [r1]
-    clrex
+    mov x2, x1
+    mov x1, x0
+    ldxr x0, [x1]
+    tst x0, x2
+    bne _atomic_test_and_set_bit_exit
+    orr x2, x0, x2
+    stxr w0, x2, [x1]
 
-    bx lr
+_atomic_test_and_set_bit_exit:
+    ret lr
 
 # Atomically increment the value
-# R0 [in] - Memory location of atomic value
+# x0 [in] - Memory location of atomic value
 .global atomic_inc
 .align 2
 atomic_inc:
-    ldrex r1, [r0]
-    add r1, r1, #1
-    strex r2, r1, [r0]
-    teq r2, #0
-    bne atomic_inc
+    ldxr x1, [x0]
+    add x1, x1, #1
+    stxr w2, x1, [x0]
+    cbnz w2, atomic_inc
 
-    bx lr
+    ret lr
 
 # Atomically decrement the value
-# R0 [in] - Memory location of atomic value
+# x0 [in] - Memory location of atomic value
 .global atomic_dec
 .align 2
 atomic_dec:
-    ldrex r1, [r0]
-    sub r1, r1, #1
-    strex r2, r1, [r0]
-    teq r2, #0
-    bne atomic_dec
+    ldxr x1, [x0]
+    add x1, x1, #1
+    stxr w2, x1, [x0]
+    cbnz w2, atomic_inc
 
-    bx lr
+    ret lr

@@ -20,7 +20,7 @@ parser.add_argument("-graphics", help="Enable graphical mode (i.e. display)", de
 
 args = parser.parse_args()
 
-qemu = ["qemu-system-arm", "-M", "virt"]
+qemu = ["qemu-system-aarch64", "-M", "virt"]
 qemu += ["-m", args.memsize]
 qemu += ["-cpu", args.cpu]
 qemu += ["-smp", "cores="+ str(args.cores)]

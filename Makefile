@@ -1,7 +1,7 @@
 AS := clang
 CC := clang
-LD := arm-none-eabi-ld
-OBJCOPY := arm-none-eabi-objcopy
+LD := aarch64-none-elf-ld
+OBJCOPY := aarch64-none-elf-objcopy
 
 # TODO: Need a more flexible build system
 PLATFORM := virt
@@ -21,8 +21,8 @@ OBJS += $(patsubst %.c,%.o,$(C_SRCS))
 INCLUDE := -Iinclude
 LSCRIPT := linker.ld
 
-BASEFLAGS := -g -target armv7-none-eabi -mfloat-abi=hard -mfpu=vfpv3
-WARNFLAGS := -Weverything -Werror -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
+BASEFLAGS := -g -target aarch64
+WARNFLAGS := -Weverything -Werror -Wno-reserved-id-macro -Wno-missing-prototypes -Wno-unused-macros -Wno-bad-function-cast -Wno-sign-conversion
 CFLAGS := -std=c99 -fno-builtin -ffreestanding -fomit-frame-pointer $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) $(INCLUDE)
 LDFLAGS := -nostdlib -nostdinc -nodefaultlibs -nostartfiles -T $(LSCRIPT)
 ASFLAGS := $(DEFINES) $(BASEFLAGS) $(WARNFLAGS) -x assembler-with-cpp

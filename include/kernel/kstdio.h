@@ -3,9 +3,9 @@
 
 #include <sys/types.h>
 
-int kputc(const char c);
-int kputs(const char *s);
-int kprintf(const char *fmt, ...);
+long kputc(const char c);
+long kputs(const char *s);
+long kprintf(const char *fmt, ...);
 
 #endif // __KSTDIO_H__
 
