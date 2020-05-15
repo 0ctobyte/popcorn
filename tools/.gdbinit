@@ -1,5 +1,5 @@
 target remote localhost:1234
-file ../kernel.elf
+file ../build/kernel.elf
 layout asm
 layout reg
 tui reg general

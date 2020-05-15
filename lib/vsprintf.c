@@ -67,12 +67,12 @@ static const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char* itoa2(unsigned long num, char *str, unsigned int base, bool upcase) {
     char *buf = str;
-    char tmp[36];
+    char tmp[68];
 
     if(base > 36) return(0);
     if(num == 0) *buf++ = '0';
 
-    unsigned int i = 0;
+    int i = 0;
     while(num != 0) {
         unsigned long R = _umod(num, base);
         num = (unsigned long)((double)num / (double)base);
@@ -86,8 +86,7 @@ char* itoa2(unsigned long num, char *str, unsigned int base, bool upcase) {
     return(str);
 }
 
-char* number(char *dest, char *str_num, uint8_t flags, unsigned long width,
-             long precision, bool negative, char specifier) {
+char* number(char *dest, char *str_num, uint8_t flags, unsigned long width, long precision, bool negative, char specifier) {
     char *buf = dest;
     char sign = 0;
     if(flags & SPACE) sign = ' ';
