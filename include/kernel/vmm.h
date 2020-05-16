@@ -6,18 +6,13 @@
 #include <kernel/pmap.h>
 #include <kernel/spinlock.h>
 
-typedef struct {
-    // The starting virtual address of the page
-    vaddr_t vaddr;
-} vpage_t;
-
 // Opaque types
 typedef struct vm_anon vm_anon_t;
 typedef struct vm_amap vm_amap_t;
 
 struct vm_anon {
     // The page associated with this anon
-    vpage_t *page;
+    vmm_page_t *page;
 
     // How many amaps pointing to this anon?
     long refcount;
@@ -50,7 +45,7 @@ typedef struct vregion {
     vaddr_t vstart, vend;
 
     // The region's attributes
-    vm_prot_t vm_prot;
+    vmm_prot_t vm_prot;
 
     // The anonymous memory associated with this region
     vm_aref_t aref;

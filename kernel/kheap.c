@@ -139,8 +139,8 @@ kheap_ublock_t* _kheap_ublock_alloc() {
     // If we haven't found a free block of the specified size, it is time to extend the heap region
     if(free == 0) {
         // Let's ask vmm for more heap
-        vaddr_t vstart = vmm_km_heap_extend(PAGESIZE);
-        _kheap_bin_insert(vstart, PAGESIZE);
+        //vaddr_t vstart = vmm_km_heap_extend(PAGESIZE);
+        //_kheap_bin_insert(vstart, PAGESIZE);
 
         // Now we should be able to find a free block
         free = _kheap_get_free_block(block_size);
@@ -218,8 +218,8 @@ void kheap_init(void) {
     vmm_km_heap_init();
 
     // Initially start with a heap of PAGESIZE bytes
-    vaddr_t heap_start = vmm_km_heap_extend(PAGESIZE);
-    _kheap_bin_insert(heap_start, PAGESIZE);
+    //vaddr_t heap_start = vmm_km_heap_extend(PAGESIZE);
+    //_kheap_bin_insert(heap_start, PAGESIZE);
 }
 
 void* kheap_alloc(size_t size) {
@@ -235,7 +235,8 @@ void* kheap_alloc(size_t size) {
         vaddr_t vstart = vmm_km_heap_extend(block_size);
 
         // Since vmm rounds to PAGESIZE
-        _kheap_bin_insert(vstart, ROUND_PAGE(block_size));
+        //_kheap_bin_insert(vstart, ROUND_PAGE(block_size));
+        _kheap_bin_insert(vstart, block_size);
 
         // Now we should be able to find a free block
         free = _kheap_get_free_block(block_size);

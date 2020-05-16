@@ -3,8 +3,6 @@
 virtualbaseaddr .req x6
 physicalbaseaddr .req x7
 
-# Align to 4 byte (word) boundary, the 2 specifies the # of zeros in the low
-# order bits
 .global _start
 .align 2
 _start:
@@ -19,7 +17,7 @@ _start:
     adr physicalbaseaddr, _start
 
     # Store the physical base address of where the kernel was loaded in memory
-    ldr x0, =KPHYSICALBASEADDR
+    ldr x0, =kernel_physical_start
     sub x0, x0, virtualbaseaddr
     add x0, x0, physicalbaseaddr
     str physicalbaseaddr, [x0]
@@ -46,7 +44,4 @@ _start:
 .comm __el1_stack_limit, 4096, 4096
 
 # Setup some boot time variables in the BSS
-.comm KPHYSICALBASEADDR, 8, 8
-.comm NUMPAGETABLES, 8, 8
-.comm PGDPHYSICALBASEADDR, 8, 8
-.comm PGTPHYSICALSTARTADDR, 8, 8
+.comm kernel_physical_start, 8, 8

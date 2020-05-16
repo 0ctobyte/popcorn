@@ -4,19 +4,22 @@
 #include <stdint.h>
 
 // Unsigned integer modulo
-unsigned long _umod(unsigned long, unsigned long);
+unsigned long _umod(unsigned long n, unsigned long m);
 
 // Count trailing zeros
 // Returns the # of continuous zeroes from the least significant bit
-unsigned long _ctz(unsigned long);
+unsigned long _ctz(unsigned long n);
 
 // Count leading zeros
 // Returns the # of continuous zeros from the most significant bit
-unsigned long _clz(unsigned long);
+unsigned long _clz(unsigned long n);
 
 // Reverse bits
 // Reverses the bit order on the 32-bit integer
-unsigned long _rbit(unsigned long);
+unsigned long _rbit(unsigned long n);
+
+// Counts the number of bits set
+unsigned long _popcnt(unsigned long n);
 
 #endif // __ASM_H__
 
