@@ -14,6 +14,7 @@
 #define _j (0x10)
 #define _z (0x20)
 #define _t (0x40)
+#define _L (0x80)
 
 // Flags sub specifiers
 #define LEFTJUSTIFY (0x1)
@@ -27,8 +28,26 @@
 #define is_number(c) ((c) >= '0' && (c) <= '9')
 #define get_number(c) (uint8_t)((c) - '0')
 
-// Holds the formatted number
-static char fmt_num[256];
+#define VA_ARG_SIGNED_LENGTH_SWITCH(num, length, args)\
+    switch(length) {\
+        case _l: num = va_arg(args, long); break;\
+        case _ll: num = va_arg(args, long long); break;\
+        case _j: num = va_arg(args, intmax_t); break;\
+        case _z: num = va_arg(args, size_t); break;\
+        case _t: num = va_arg(args, ptrdiff_t); break;\
+        default: num = va_arg(args, int); break;\
+    }\
+
+#define VA_ARG_UNSIGNED_LENGTH_SWITCH(num, length, args)\
+    switch(length) {\
+        case _l: num = va_arg(args, unsigned long); break;\
+        case _ll: num = va_arg(args, unsigned long long); break;\
+        case _j: num = va_arg(args, uintmax_t); break;\
+        case _z: num = va_arg(args, size_t); break;\
+        case _t: num = va_arg(args, ptrdiff_t); break;\
+        default: num = va_arg(args, unsigned int); break;\
+    }\
+
 
 // Count the number of digits in the number represented in the string
 unsigned int num_digits(const char *s) {
@@ -63,11 +82,12 @@ long atoi(const char *s) {
 }
 
 // Converts an long into a string
-static const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
-static const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-char* itoa2(unsigned long num, char *str, unsigned int base, bool upcase) {
+char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
+    const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+    const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
     char *buf = str;
-    char tmp[68];
+    char tmp[sizeof(long long)+4];
 
     if(base > 36) return(0);
     if(num == 0) *buf++ = '0';
@@ -75,7 +95,7 @@ char* itoa2(unsigned long num, char *str, unsigned int base, bool upcase) {
     int i = 0;
     while(num != 0) {
         unsigned long R = _umod(num, base);
-        num = (unsigned long)((double)num / (double)base);
+        num = (unsigned long long)((double)num / (double)base);
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }
 
@@ -169,8 +189,10 @@ char* number(char *dest, char *str_num, uint8_t flags, unsigned long width, long
 }
 
 int vsprintf(char *s, const char *fmt, va_list args) {
-    char *str;
+    // Holds the formatted number
+    char fmt_num[1024];
 
+    char *str;
     for(str = s; *fmt != '\0'; ++fmt) {
         // Simply copy character to buffer if not a format specifier
         if(*fmt != '%') {
@@ -181,7 +203,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         uint8_t flags = 0;
         unsigned long width = 0;
         long precision = -1;
-        uint8_t length;
+        uint8_t length = 0;
         char specifier = 0;
 
 
@@ -294,9 +316,11 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'd';
 
-            int num = va_arg(args, int);
+            long long num;
             bool negative = false;
-            char str_num[32];
+            char str_num[sizeof(long long)];
+
+            VA_ARG_SIGNED_LENGTH_SWITCH(num, length, args);
 
             if(precision == 0 && num == 0) break;
 
@@ -317,8 +341,10 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'u';
 
-            unsigned int num = va_arg(args, unsigned int);
-            char str_num[32];
+            unsigned long long num;
+            char str_num[sizeof(long long)];
+
+            VA_ARG_UNSIGNED_LENGTH_SWITCH(num, length, args);
 
             if(precision == 0 && num == 0) break;
 
@@ -335,9 +361,11 @@ int vsprintf(char *s, const char *fmt, va_list args) {
         {
             specifier = 'o';
 
-            int num = va_arg(args, int);
             bool negative = false;
-            char str_num[32];
+            unsigned long long num;
+            char str_num[sizeof(long long)];
+
+            VA_ARG_UNSIGNED_LENGTH_SWITCH(num, length, args);
 
             if(precision == 0 && num == 0) break;
 
@@ -362,9 +390,11 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             if(specifier == 'x') upcase = false;
             else specifier = 'X';
 
-            unsigned int num = va_arg(args, unsigned int);
             bool negative = false;
-            char str_num[32];
+            unsigned long long num;
+            char str_num[sizeof(long long)];
+
+            VA_ARG_UNSIGNED_LENGTH_SWITCH(num, length, args);
 
             if(precision == 0 && num == 0) break;
 
@@ -378,23 +408,29 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             break;
         }
         case 'c':
+        {
+            flags &= ~(PLUS | SPACE | SPECIAL | ZEROPAD);
+
             specifier = 'c';
+            long long c_int = va_arg(args, int);
+            char c[2];
+            c[0] = (char)c_int;
+            c[1] = '\0';
+            precision = -1;
+            number(fmt_num, c, flags, width, precision, false, specifier);
+
+            size_t len = strlen(fmt_num);
+            for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
+
+            break;
+        }
         case 's':
         {
             flags &= ~(PLUS | SPACE | SPECIAL | ZEROPAD);
 
-            if(specifier == 'c') {
-                unsigned int c_int = va_arg(args, unsigned int);
-                char c[2];
-                c[0] = (char)c_int;
-                c[1] = '\0';
-                precision = -1;
-                number(fmt_num, c, flags, width, precision, false, specifier);
-            } else {
-                specifier = 's';
-                char *string = va_arg(args, char*);
-                number(fmt_num, string, flags, width, precision, false, specifier);
-            }
+            specifier = 's';
+            char *string = va_arg(args, char*);
+            number(fmt_num, string, flags, width, precision, false, specifier);
 
             size_t len = strlen(fmt_num);
             for(unsigned int i = 0; i < len; i++) *str++ = fmt_num[i];
@@ -406,7 +442,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             specifier = 'p';
 
             uintptr_t num = va_arg(args, uintptr_t);
-            char str_num[32];
+            char str_num[sizeof(uintptr_t)];
 
             itoa2(num, str_num, 16, false);
 
@@ -431,13 +467,12 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             specifier = 'f';
 
             double num = va_arg(args, double);
-            char str_num[32];
+            char str_num[sizeof(long double)];
 
             unsigned int whole = (unsigned int)num;
             itoa2(whole, str_num, 10, false);
             size_t len = strlen(str_num);
             for(unsigned int i = 0; i < len; i++) *str++ = str_num[i];
-
 
             unsigned int pow10 = 10;
             for(long i = precision; i > 0; i--) {

@@ -9,12 +9,10 @@ parser.add_argument("-debug", help="Enable QEMU GDB mode and halt execution afte
 parser.add_argument("-memsize", help="RAM size", default="512M")
 parser.add_argument("-cpu", help='''
                                 Type of CPU. Select from:
-                                - cortex-a7
-                                - cortex-a15
                                 - cortex-a53
                                 - cortex-a57
                                 - cortex-a72
-                                ''', default="cortex-a15")
+                                ''', default="cortex-a53")
 parser.add_argument("-cores", help="Number of cores to emulate", default=1)
 parser.add_argument("-graphics", help="Enable graphical mode (i.e. display)", default=False, action="store_true")
 
