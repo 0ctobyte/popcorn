@@ -117,7 +117,7 @@ mmu_enable:
     isb sy
 
     # Invalidate the TLB
-    # bl tlb_invalidate_all
+    bl tlb_invalidate_all
 
 mmu_enable_exit:
     ldp lr, fp, [sp], #16

@@ -1,9 +1,6 @@
 # This file handles the exception vector table
 .text
 
-# The functions to call on an exception
-.comm exception_table, 15*8, 8
-
 # The vector base register requires that the base address is aligned to 2KB
 .global exception_vector_table
 .align 11
@@ -115,64 +112,73 @@ _15:
 # x0 - Exception vector address
 .align 2
 _exception_entry:
-    mov x1, sp
-    # Assuming x0 & x1 have already been saved on the stack
-    # Save state of previous execution
-    stp x2, x3, [sp, #-16]!
-    stp x4, x5, [sp, #-16]!
-    stp x6, x7, [sp, #-16]!
-    stp x8, x9, [sp, #-16]!
-    stp x10, x11, [sp, #-16]!
-    stp x12, x13, [sp, #-16]!
-    stp x14, x15, [sp, #-16]!
-    stp x16, x17, [sp, #-16]!
-    stp x18, x19, [sp, #-16]!
-    stp x20, x21, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    stp x24, x25, [sp, #-16]!
-    stp x26, x27, [sp, #-16]!
+    # x0 & x1 have already been saved on the stack. Save state of previous execution
+    stp xzr, xzr, [sp, #-16]!   // Make some room for the PC and SPSR. FAR and ESR will overwrite x0 & x1 locations on the stack after they are moved to the top of stack
+    add x1, sp, #32             // Stack pointer at time of exception
+    stp x30, x1, [sp, #-16]!
     stp x28, x29, [sp, #-16]!
+    stp x26, x27, [sp, #-16]!
+    stp x24, x25, [sp, #-16]!
+    stp x22, x23, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
+    stp x18, x19, [sp, #-16]!
+    stp x16, x17, [sp, #-16]!
+    stp x14, x15, [sp, #-16]!
+    stp x12, x13, [sp, #-16]!
+    stp x10, x11, [sp, #-16]!
+    stp x8, x9, [sp, #-16]!
+    stp x6, x7, [sp, #-16]!
+    stp x4, x5, [sp, #-16]!
+    stp x2, x3, [sp, #-16]!
 
-    # Get exception PC from ELR
+    # Move x0, x1 from bottom of stack to top of stack
+    ldp x2, x3, [x1, #-16]
+    stp x2, x3, [sp, #-16]!
+
+    # Get exception PC from ELR and SPSR
     mrs x2, ELR_EL1
-    stp x30, x2, [sp, #-16]!
+    mrs x3, SPSR_EL1
+    stp x2, x3, [x1, #-32]
+
+    # Get the FAR and ESR
+    mrs x2, FAR_EL1
+    mrs x3, ESR_EL1
+    stp x2, x3, [x1, #-16]
 
     # Calculate index into exception_table
     mrs x2, VBAR_EL1
     sub x0, x0, x2
-
-    # Get the function pointer from the exception vector table
-    ldr x2, =exception_table
-    ldr x2, [x2, x0, lsl #3]
+    lsr x0, x0, #7
 
     # Make sure the function pointer is not NULL
-    # x0 holds the pointer to the saved registers on the stack
-    # x1 holds the vector base exception offset
+    # x0 holds the vector base exception index
+    # x1 holds the pointer to the saved registers on the stack
     cbz x2, _exception_return
-    stp x0, x1, [sp, #-16]
-    ldp x1, x0, [sp, #-16]
+    mov x1, sp
+    adr x2, exception_handler
     blr x2
 
     b _exception_return
 
 .align 2
 _exception_return:
-    ldp x30, xzr, [sp], #16
-    ldp x28, x29, [sp], #16
-    ldp x26, x27, [sp], #16
-    ldp x24, x25, [sp], #16
-    ldp x22, x23, [sp], #16
-    ldp x20, x21, [sp], #16
-    ldp x18, x19, [sp], #16
-    ldp x16, x17, [sp], #16
-    ldp x14, x15, [sp], #16
-    ldp x12, x13, [sp], #16
-    ldp x10, x11, [sp], #16
-    ldp x8, x9, [sp], #16
-    ldp x6, x7, [sp], #16
-    ldp x4, x5, [sp], #16
-    ldp x2, x3, [sp], #16
     ldp x0, x1, [sp], #16
+    ldp x2, x3, [sp], #16
+    ldp x4, x5, [sp], #16
+    ldp x6, x7, [sp], #16
+    ldp x8, x9, [sp], #16
+    ldp x10, x11, [sp], #16
+    ldp x12, x13, [sp], #16
+    ldp x14, x15, [sp], #16
+    ldp x16, x17, [sp], #16
+    ldp x18, x19, [sp], #16
+    ldp x20, x21, [sp], #16
+    ldp x22, x23, [sp], #16
+    ldp x24, x25, [sp], #16
+    ldp x26, x27, [sp], #16
+    ldp x28, x29, [sp], #16
+    ldp x30, xzr, [sp], #16
+    add sp, sp, #32          // Throw away pc, spsr, far and esr values
 
     eret
 
@@ -186,13 +192,4 @@ exceptions_init:
     # Enable data and asynchronous aborts
     msr DAIFclr, #0xc
 
-    ret lr
-
-# x0 [in] - Exception type
-# x1 [in] - Exception handler address
-.global exceptions_register_handler
-.align 2
-exceptions_register_handler:
-    ldr x2, =exception_table
-    str x1, [x2, x0, lsl #3]
     ret lr

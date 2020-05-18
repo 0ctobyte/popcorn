@@ -1,7 +1,7 @@
 .global tlb_invalidate_all
 .align 2
 tlb_invalidate_all:
-    tlbi alle1
+    tlbi alle1is
     dsb sy
     isb sy
     ret lr
@@ -9,7 +9,7 @@ tlb_invalidate_all:
 .global icache_invalidate_all
 .align 2
 icache_invalidate_all:
-    ic iallu
+    ic ialluis
     dsb sy
     isb sy
     ret lr

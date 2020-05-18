@@ -20,13 +20,12 @@ typedef enum {
     EXCEPTION_SERR_LL_AARCH32 = 15, // SError exception from lower exception level using aarch632
 } exception_type_t;
 
-typedef void (*exception_handler_t)(void*);
+typedef struct {
+    unsigned long x[31], sp;
+    unsigned long pc, spsr, far, esr;
+} exception_state_t;
 
 // Sets the vector base address register
 void exceptions_init(void);
-
-// Register the function specified by exception_handler_t to the
-// exception type specified by exception_type_t
-void exceptions_register_handler(exception_type_t exc_type, exception_handler_t exc_handler);
 
 #endif // __EXCEPTION_H__
