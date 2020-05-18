@@ -70,11 +70,11 @@ void kmain(void) {
 
     kprintf("Hello World\n");
 
-    //// Initializes the pmap and pmm systems
-    //// We need to also map device memory here (like the GIC and UART)
-    //// We need to map the GIC in order to set up the IRQ system
-    //// We need to map UART in order to use kprintf!
-    //pmap_init();
+    // Initializes the pmap and pmm systems
+    // We need to also map device memory here (like the GIC and UART)
+    // We need to map the GIC in order to set up the IRQ system
+    // We need to map UART in order to use kprintf!
+    pmap_init();
 
     //// TODO: This shouldn't be here! Only temporary
     //// Map the UART, VIC/SIC/GIC

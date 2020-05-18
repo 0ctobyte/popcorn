@@ -11,7 +11,7 @@
 
 // Initializes the pmm
 // NOTE: pmap_init should be called before this function
-void pmm_init(uintptr_t mem_base_addr, size_t mem_size);
+void pmm_init();
 
 // Finds a free page page and returns the physical address to the beginning of the page in addr
 // Returns false if it failed to find a free page

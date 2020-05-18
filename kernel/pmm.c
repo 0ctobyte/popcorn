@@ -1,4 +1,5 @@
 #include <kernel/pmm.h>
+#include <kernel/mm.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
 
@@ -150,11 +151,11 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
     return popped;
 }
 
-void pmm_init(uintptr_t mem_base_addr, size_t mem_size) {
+void pmm_init() {
     // Allocate memory for the pagemaps
     // pmap_steal_memory will only work if pmap_init has been called
-    pagestack.mem_base_addr = mem_base_addr;
-    pagestack.mem_size = mem_size;
+    pagestack.mem_base_addr = MEMBASEADDR;
+    pagestack.mem_size = MEMSIZE;
     pagestack.size = ((pagestack.mem_size >> (_ctz(PMM_PAGE_SIZE))) >> (_ctz(BITS)));
     pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
 

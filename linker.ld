@@ -1,7 +1,7 @@
 ENTRY(_start)
 SECTIONS
 {
-    __virtual_base = 0xFFFF00000000000;
+    __virtual_base = 0xFFFF000000000000;
     . = __virtual_base;
     __kernel_virtual_start = .;
     __kernel_physical_start = . - __virtual_base;

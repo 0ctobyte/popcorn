@@ -20,15 +20,6 @@ typedef unsigned long pmap_flags_t;
 #define PMAP_WRITE_BACK    (0x80)
 #define PMAP_NOCACHE_OVR   (0x100)
 
-// MMU context. The registers needed to program the MMU and some other info
-typedef struct {
-    paddr_t ttb;             // Translation table base address
-    long tcr;                // Translation control register
-    long mair;               // Memory attribute index register
-    unsigned int page_size;  // The size of a single page, cane be 4KB, 16KB or 64KB
-    unsigned int page_shift; // The shift value to convert between page frame #'s to addresses and vice versa
-} pmap_mmu_t;
-
 // These should be updated during any pmap function calls if necessary
 typedef struct {
     size_t wired_count;
@@ -36,12 +27,12 @@ typedef struct {
 } pmap_statistics_t;
 
 typedef struct {
-    // MMU context
-    pmap_mmu_t mmu;
-
-    // Reference count on the pmap
-    atomic_t refcount;
-
+    paddr_t ttb;             // Translation table base address
+    vaddr_t ttb_va;          // Translation table base virtual address
+    unsigned int page_size;  // The size of a single page, cane be 4KB, 16KB or 64KB
+    unsigned int page_shift; // The shift value to convert between page frame #'s to addresses and vice versa
+    bool is_kernel;          // Is the kernel's pmap?
+    atomic_t refcount;       // Reference count on the pmap
     pmap_statistics_t stats;
 } pmap_t;
 
