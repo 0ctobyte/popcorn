@@ -2,11 +2,11 @@
 .text
 
 # The functions to call on an exception
-.comm evt_table, 15*8, 8
+.comm exception_table, 15*8, 8
 
 # The vector base register requires that the base address is aligned to 2KB
 .global exception_vector_table
-.align 10
+.align 11
 exception_vector_table:
     # Current exception level with SP_EL0
     # Synchronous
@@ -137,12 +137,12 @@ _exception_entry:
     mrs x2, ELR_EL1
     stp x30, x2, [sp, #-16]!
 
-    # Calculate index into evt_table
+    # Calculate index into exception_table
     mrs x2, VBAR_EL1
     sub x0, x0, x2
 
     # Get the function pointer from the exception vector table
-    ldr x2, =evt_table
+    ldr x2, =exception_table
     ldr x2, [x2, x0, lsl #3]
 
     # Make sure the function pointer is not NULL
@@ -176,9 +176,9 @@ _exception_return:
 
     eret
 
-.global evt_init
+.global exceptions_init
 .align 2
-evt_init:
+exceptions_init:
     # Setup the vector base address register
     ldr x0, =exception_vector_table
     msr VBAR_EL1, x0
@@ -190,9 +190,9 @@ evt_init:
 
 # x0 [in] - Exception type
 # x1 [in] - Exception handler address
-.global evt_register_handler
+.global exceptions_register_handler
 .align 2
-evt_register_handler:
-    ldr x2, =evt_table
+exceptions_register_handler:
+    ldr x2, =exception_table
     str x1, [x2, x0, lsl #3]
     ret lr

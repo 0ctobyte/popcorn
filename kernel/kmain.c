@@ -1,7 +1,7 @@
 #include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
-#include <kernel/evt.h>
+#include <kernel/exceptions.h>
 #include <kernel/interrupts.h>
 #include <kernel/pmap.h>
 #include <kernel/vmm.h>
@@ -66,7 +66,7 @@ void data_abort_handler(void *d) {
 
 void kmain(void) {
     // Setup the exception vector table
-    evt_init();
+    exceptions_init();
 
     kprintf("Hello World\n");
 
