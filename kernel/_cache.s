@@ -1,7 +1,7 @@
 .global tlb_invalidate_all
 .align 2
 tlb_invalidate_all:
-    tlbi alle1is
+    tlbi vmalle1is
     dsb sy
     isb sy
     ret lr

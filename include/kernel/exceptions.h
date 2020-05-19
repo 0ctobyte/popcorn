@@ -28,4 +28,7 @@ typedef struct {
 // Sets the vector base address register
 void exceptions_init(void);
 
+// Given a pointer to an exception_state_t struct, it will pretty print the contents
+void exceptions_dump_state(exception_state_t *exc_state);
+
 #endif // __EXCEPTION_H__
