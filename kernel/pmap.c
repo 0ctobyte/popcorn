@@ -22,17 +22,26 @@
 #define MAX_NUM_PTES_TTB_16KB (2)
 #define MAX_NUM_PTES_TTB_64KB (64)
 
-#define GET_TABLE_IDX_LSB(level, page_shift)  ((page_shift) + ((3l-(level)) * ((page_shift) - 3l)))
-#define GET_TABLE_IDX_WIDTH(level, page_shift)\
+#define GET_TABLE_IDX_WIDTH(page_shift)                 ((page_shift) - 3l)
+#define GET_TABLE_IDX_MASK(idx_width)                   ((1l << (width)) - 1l)
+#define GET_TABLE_IDX_LSB(level, idx_width, page_shift) ((page_shift) + ((3l-(level)) * (idx_width)))
+#define GET_TABLE_IDX(va, lsb, mask)                    (((va) >> (lsb)) & (mask))
+#define GET_TABLE_IDX_AT_LEVEL(va, level, page_shift)\
 ({\
-    unsigned long bits_per_index = ((page_shift) - 3);\
-    unsigned long lsb = GET_TABLE_IDX_LSB(level, page_shift);\
-    unsigned long msb = lsb + bits_per_index;\
-    msb < 48 ? bits_per_index : 48 - lsb;\
+    vaddr_t vaddr = (va) & ~(0xFFFF000000000000);\
+    unsigned int width = GET_TABLE_IDX_WIDTH(page_shift);\
+    unsigned int mask = GET_TABLE_IDX_MASK(width);\
+    unsigned int lsb = GET_TABLE_IDX_LSB(level, width, page_shift);\
+    GET_TABLE_IDX(va, lsb, mask);\
 })
-#define GET_TABLE_IDX(va, level, page_shift) (((va) >> GET_TABLE_IDX_LSB(level, page_shift)) & ((1l << GET_TABLE_IDX_WIDTH(level, page_shift)) - 1l))
+#define GET_TABLE_IDX_WIDTH_TTB(page_shift)\
+({\
+    unsigned int width = GET_TABLE_IDX_WIDTH(page_shift);\
+    unsigned int lsb = GET_TABLE_IDX_LSB(page_shift == 16 ? 1 : 0, width, page_shift);\
+    (lsb + width) < 48 ? width : (48 - lsb);\
+})
 
-#define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH((pmap).page_size == _64KB ? 1 : 0, (pmap).page_shift))
+#define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH_TTB((pmap).page_shift))
 #define MAX_NUM_PTES_LL(pmap)  ((pmap).page_size >> 3)
 #define BLOCK_SIZE(pmap)       (1 << ((pmap).page_shift + (pmap).page_shift - 3))
 
@@ -267,13 +276,16 @@ paddr_t _pmap_init_map_range(vaddr_t vaddr, paddr_t paddr, size_t size, paddr_t 
     // Now we need to map the kernel's virtual address space
     for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(kernel_pmap); page_offset < size;) {
         pte_t *table = (pte_t*)kernel_pmap.ttb;
-        vaddr_t va = vaddr + page_offset;
-        vaddr_t pa = paddr + page_offset;
+
+        // Get rid of extraneous VA bits not used in translation
+        vaddr_t va = (vaddr + page_offset) & ~(0xFFFF000000000000);
+        paddr_t pa = paddr + page_offset;
 
         // Walk the page tables checking if a table is missing at an intermediate level and if so allocate one using next_unused_pa
         unsigned int level = kernel_pmap.page_size == _64KB ? 1 : 0;
-        for (; level < 3; level++) {
-            unsigned int index = GET_TABLE_IDX(va, level, kernel_pmap.page_shift);
+        unsigned int width = GET_TABLE_IDX_WIDTH(kernel_pmap.page_shift), mask = GET_TABLE_IDX_MASK(width), lsb = GET_TABLE_IDX_LSB(level, width, kernel_pmap.page_shift);
+        for (; level < 3; level++, lsb -= width) {
+            unsigned int index = GET_TABLE_IDX(va, lsb, mask);
             pte_t pte = table[index];
 
             // Check if we can make a block entry at level 2. We need to make sure the PA is block aligned and we have enough to map
@@ -295,7 +307,7 @@ paddr_t _pmap_init_map_range(vaddr_t vaddr, paddr_t paddr, size_t size, paddr_t 
         }
 
         pte_t pte = level == 2 ? MAKE_BDE(kernel_pmap, pa, bp_uattr_page, bp_lattr_page) : MAKE_PDE(kernel_pmap, pa, bp_uattr_page, bp_lattr_page);
-        table[GET_TABLE_IDX(va, level, kernel_pmap.page_shift)] = pte;
+        table[GET_TABLE_IDX(va, lsb, mask)] = pte;
         page_offset += level == 2 ? block_size : kernel_pmap.page_size;
     }
 
