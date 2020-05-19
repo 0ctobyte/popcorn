@@ -95,7 +95,7 @@ char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
     int i = 0;
     while(num != 0) {
         unsigned long R = _umod(num, base);
-        num = (unsigned long long)((double)num / (double)base);
+        num = num / base;
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }
 

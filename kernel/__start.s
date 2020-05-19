@@ -9,12 +9,10 @@ _start:
     # Mask exceptions and interrupts for now
     msr DAIFSet, #0xf
 
-    # Disable the MMU, enable the icache, dcache
+    # Disable the MMU
     mrs x0, SCTLR_EL1
     mov x1, #1
     bic x0, x0, x1
-    mov x1, #0x1004
-    orr x0, x0, x1
     msr SCTLR_EL1, x0
 
     ldr virtualbaseaddr, =__kernel_virtual_start
@@ -36,6 +34,17 @@ _start:
     mov lr, xzr
     stp fp, lr, [sp, #-16]!
     mov fp, sp
+
+    # Flush and invalidate the dcache and icache and TLB
+    bl dcache_flush_all
+    bl icache_invalidate_all
+    bl tlb_invalidate_all
+
+    # Enable the icache, dcache
+    mrs x0, SCTLR_EL1
+    mov x1, #0x1004
+    orr x0, x0, x1
+    msr SCTLR_EL1, x0
 
     # Store the physical base address of where the kernel was loaded in memory
     ldr x0, =kernel_physical_start

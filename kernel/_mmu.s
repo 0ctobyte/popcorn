@@ -96,14 +96,6 @@ mmu_enable:
     msr SCTLR_EL1, x5
     isb sy
 
-    # Flush the dcache and invalidate the icache
-    stp x4, x5, [sp, #16]
-    bl dcache_flush_all
-    bl icache_invalidate_all
-    ldp x4, x5, [sp, #16]
-    ldp x2, x3, [sp, #32]
-    ldp x0, x1, [sp, #48]
-
     # Program the MMU registers
     msr TTBR0_EL1, x0
     msr TTBR1_EL1, x1
