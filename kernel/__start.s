@@ -31,6 +31,12 @@ _start:
     sub x0, x0, virtualbaseaddr
     add sp, x0, physicalbaseaddr
 
+    # Create a the first frame record, this should be 0
+    mov fp, xzr
+    mov lr, xzr
+    stp fp, lr, [sp, #-16]!
+    mov fp, sp
+
     # Store the physical base address of where the kernel was loaded in memory
     ldr x0, =kernel_physical_start
     sub x0, x0, virtualbaseaddr
@@ -47,6 +53,7 @@ _start:
     bl kmain
 
     # In case kmain returns
+    ldp fp, lr, [sp], #16
     b .
 
 # x0 - Kernel physical base address

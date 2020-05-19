@@ -47,6 +47,7 @@ mmu_enable:
     stp x2, x3, [sp, #-16]!
     stp x4, x5, [sp, #-16]!
     stp lr, fp, [sp, #-16]!
+    mov fp, sp
 
     # Check if mmu is enabled and exit if so
     bl mmu_is_enabled
@@ -121,7 +122,5 @@ mmu_enable:
 
 mmu_enable_exit:
     ldp lr, fp, [sp], #16
-    ldp x4, x5, [sp], #16
-    ldp x2, x3, [sp], #16
-    ldp x0, x1, [sp], #16
+    add sp, sp, #48
     ret lr

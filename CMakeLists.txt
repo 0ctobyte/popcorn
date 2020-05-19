@@ -26,7 +26,6 @@ target_compile_options(${target} PRIVATE
     -Werror
     -fno-builtin
     -ffreestanding
-    -fomit-frame-pointer
 )
 target_link_options(${target} PRIVATE
     -nostdlib

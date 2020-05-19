@@ -42,6 +42,9 @@ _rbit:
 .global _popcnt
 .align 2
 _popcnt:
+    stp fp, lr, [sp, #-16]!
+    mov fp, sp
+
     mov x1, x0
     mov x0, #0
 
@@ -69,4 +72,5 @@ _popcnt_loop:
     cbnz x1, _popcnt_loop
 
 _popcnt_done:
+    ldp fp, lr, [sp], #16
     ret lr
