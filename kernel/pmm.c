@@ -6,7 +6,7 @@
 #include <limits.h>
 
 // The number of bits in each bitmap
-#define BITS (64)
+#define BITS (sizeof(unsigned long))
 
 // Set a bit and clear a bit in the bitmap
 #define SET_PAGE(bitmap, rel_page_num)   (bitmap) |= (1 << (rel_page_num))
@@ -14,7 +14,7 @@
 
 // Multiply pagemap array index by BITS and subtract value from absolute page number to get relative page number within a bitmap.
 #define ABS_TO_REL_PAGE_NUM(abs_page_num, elem_num)   ((abs_page_num) - ((elem_num) * BITS))
-#define ABS_PAGE_NUM_TO_PADDR(abs_page_num)           ((abs_page_num) * PMM_PAGE_SIZE + pagestack.mem_base_addr)
+#define ABS_PAGE_NUM_TO_PADDR(abs_page_num)           ((abs_page_num) * pagestack.page_size + pagestack.mem_base_addr)
 #define REL_TO_ABS_PAGE_NUM(rel_page_num, elem_num)   (((elem_num) * BITS) + (rel_page_num))
 #define REL_PAGE_NUM_TO_PADDR(rel_page_num, elem_num) (ABS_PAGE_NUM_TO_PADDR((REL_TO_ABS_PAGE_NUM(rel_page_num, elem_num))))
 
@@ -22,10 +22,10 @@
 #define GET_PAGEMAP_ARRAY_INDEX(abs_page_num) ((abs_page_num) >> (_ctz(BITS)))
 
 #define IS_WITHIN_MEM_BOUNDS(addr) ((((addr) >= pagestack.mem_base_addr) && ((addr) < (pagestack.mem_base_addr + pagestack.mem_size))))
-#define IS_PAGE_ALIGNED(addr)      (((addr) & (PMM_PAGE_SIZE - 1)) == 0)
-#define ROUND_PAGE_DOWN(addr)      ((addr) & ~(PMM_PAGE_SIZE - 1))
-#define ATOP(addr)                 (((addr) - pagestack.mem_base_addr) >> PMM_PAGE_SHIFT)
-#define PTOA(addr)                 (((addr) << PMM_PAGE_SHIFT) + pagestack.mem_base_addr)
+#define IS_PAGE_ALIGNED(addr)      (((addr) & (pagestack.page_size - 1)) == 0)
+#define ROUND_PAGE_DOWN(addr)      ((addr) & ~(pagestack.page_size - 1))
+#define ATOP(addr)                 (((addr) - pagestack.mem_base_addr) >> pagestack.page_shift)
+#define PTOA(addr)                 (((addr) << pagestack.page_shift) + pagestack.mem_base_addr)
 
 /*
  * So how does this physical memory allocator work?
@@ -121,11 +121,13 @@ typedef struct pagemap_t {
 
 typedef struct {
     spinlock_t lock;
-    pagemap_t *pagemaps;     // Array of pagemap_t
-    pagemap_t *top;	         // Top of stack
-    size_t size;             // # of pagemap_t in the pagemap_t array
-    uintptr_t mem_base_addr; // Base address of memory
-    size_t mem_size;         // Size of memory in bytes
+    pagemap_t *pagemaps;      // Array of pagemap_t
+    pagemap_t *top;	          // Top of stack
+    size_t size;              // # of pagemap_t in the pagemap_t array
+    paddr_t mem_base_addr;    // Base address of memory
+    size_t mem_size;          // Size of memory in bytes
+    unsigned long page_size;
+    unsigned long page_shift;
 } pagestack_t;
 
 static pagestack_t pagestack = {SPINLOCK_INIT, 0, 0, 0};
@@ -148,17 +150,23 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
     return popped;
 }
 
-size_t pmm_get_size_requirement() {
-    return ((MEMSIZE >> (_ctz(PMM_PAGE_SIZE))) >> (_ctz(BITS))) * sizeof(pagemap_t);
+size_t pmm_get_size_requirement(size_t mem_size, size_t page_size) {
+    return ((mem_size >> (_ctz(page_size))) >> (_ctz(BITS))) * sizeof(pagemap_t);
 }
 
-void pmm_init(vaddr_t va) {
+void pmm_set_va(vaddr_t va) {
+    pagestack.pagemaps = (pagemap_t*)va;
+}
+
+void pmm_init(paddr_t pa_alloc, paddr_t mem_base_addr, size_t mem_size, size_t page_size) {
     // Allocate memory for the pagemaps
     // pmap_steal_memory will only work if pmap_init has been called
-    pagestack.mem_base_addr = MEMBASEADDR;
-    pagestack.mem_size = MEMSIZE;
-    pagestack.size = ((pagestack.mem_size >> (_ctz(PMM_PAGE_SIZE))) >> (_ctz(BITS)));
-    pagestack.pagemaps = (pagemap_t*)va;
+    pagestack.mem_base_addr = mem_base_addr;
+    pagestack.mem_size = mem_size;
+    pagestack.page_size = page_size;
+    pagestack.page_shift = _ctz(pagestack.page_size);
+    pagestack.size = ((pagestack.mem_size >> (_ctz(pagestack.page_size))) >> (_ctz(BITS)));
+    pagestack.pagemaps = (pagemap_t*)pa_alloc;
 
     // Link the pagemaps together
     pagestack.top = pagestack.pagemaps;

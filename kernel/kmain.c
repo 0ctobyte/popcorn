@@ -32,6 +32,7 @@ void kmain(void) {
     // We need to map the GIC in order to set up the IRQ system
     // We need to map UART in order to use kprintf!
     pmap_init();
+    kprintf("pmap_init() - done!\n");
 
     //// TODO: This shouldn't be here! Only temporary
     //// Map the UART, VIC/SIC/GIC

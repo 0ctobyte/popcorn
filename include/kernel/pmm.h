@@ -4,17 +4,16 @@
 #include <sys/types.h>
 #include <kernel/mm.h>
 
-// Assume PAGESIZE is 4KB, the smallest ARMv8 page granule.
-// pmap will have to allocate and free the right amount of 4KB pages when using larger page granules
-#define PMM_PAGE_SIZE  (4096)
-#define PMM_PAGE_SHIFT (12)
-
 // Returns the maximum amount of memory needed to allocate all pagemaps
-size_t pmm_get_size_requirement(void);
+size_t pmm_get_size_requirement(size_t mem_size, size_t page_size);
 
-// Initializes the pmm. va is the virtual address where PMM will allocate the pagemaps since the heap may not be initialized
-// when pmm_init is called
-void pmm_init(vaddr_t va);
+// Set the pagemaps location in the virtual address space. This should be called after the MMU is enabled.
+void pmm_set_va(vaddr_t va);
+
+// Initializes the pmm. va is the virtual address where PMM will allocate the pagemaps since the heap may not be initialized when pmm_init is called
+// Before the MMU is enabled pmm_init will be called with the physical address region to allocate it's data structures. pmm_set_va is called after the
+// mmu is enabled to switch to using the virtual address space
+void pmm_init(paddr_t pa_alloc, paddr_t mem_base_addr, size_t mem_size, size_t page_size);
 
 // Finds a free page page and returns the physical address to the beginning of the page in addr
 // Returns false if it failed to find a free page
@@ -28,7 +27,7 @@ void pmm_free(paddr_t addr);
 // Returns false if it failed to find free pages
 bool pmm_alloc_contiguous(paddr_t *addr, size_t pages);
 
-// Finds a contiguous range of free page pages aligned to a multiple of 4KB. The multiple is specified by alignment
+// Finds a contiguous range of free page pages aligned to a multiple of page_size. The multiple is specified by alignment
 // Ex. so an alignment of 4 means 16KB alignmed
 // Frames cannot be greater than #BITS per pagemap
 // Returns false if it failed to find the required free pages

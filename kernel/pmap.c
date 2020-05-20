@@ -40,7 +40,7 @@
     unsigned int lsb = GET_TABLE_IDX_LSB(page_shift == 16 ? 1 : 0, width, page_shift);\
     (lsb + width) < 48 ? width : (48 - lsb);\
 })
-#define GET_TABLE_VA(level, index, width) ((((-1 << (width)) | (index)) << (48 - ((4 - (level)) * (width)))) & ~0xFFFF000000000000);\
+#define GET_TTB_VA(page_shift) ((-1 << (page_shift)) & ~0xFFFF000000000000);\
 
 #define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH_TTB((pmap).page_shift))
 #define MAX_NUM_PTES_LL(pmap)  ((pmap).page_size >> 3)
@@ -226,23 +226,6 @@ typedef struct {
 // Convert an ma_index_t to an 8 byte value that can be programmed into the MAIR
 #define MAIR(mair) ((long)(mair).attrs[0] | ((long)(mair).attrs[1] << 8) | ((long)(mair).attrs[2] << 16) | ((long)(mair).attrs[3] << 24) | ((long)(mair).attrs[4] << 32) | ((long)(mair).attrs[5] << 40) | ((long)(mair).attrs[6] << 48) | ((long)(mair).attrs[7] << 56))
 
-
-// Get the base virtual address of where the page tables are mapped
-// This depends on the page size: 4KB - last 512GB of the virtual address space, 16KB - last 64GB, 64KB - last 512MB
-// For non-kernel page tables, clear the high-order 16 bits
-#define PT_VA_BASE(pmap) (((pmap).page_size == _4KB ? -(512l << 30) : ((pmap).page_size == _16KB ? -(64l << 30) : -(512l << 20))) & ~((pmap).is_kernel ? 0 : 0xffff000000000000))
-
-// This macro takes a page table index and converts it into a VA that addresses that page table
-// This works assuming the last virtual address region corresponding to a level 0/1/2 aperture for 4KB/16KB/64KB page granules
-// is mapped to point the first page table in that level.
-// So for a 4KB page granule. The last entry in the level 0 table (TTB) is mapped as a table entry that points back to the level 0 table.
-// The page tables in this virtual address region can be accessed linearly by page starting with the level 3 page tables and then level 2
-// and then level 1 and finally level 0.
-// 16KB and 64KB page granules are kind of messy since the level 0, or level 1 for 64KB, tables do not hold the same number of entries
-// as the lower level tables. To get around this, the last entry in the last table one level down is mapped to itself. We lose access
-// to the TTB VA with this method however which is why the pmap struct holds the TTB va.
-#define PT_IDX_TO_VA(pmap, pt_idx) (PT_VA_BASE(pmap) + (pt_idx) << (pmap).page_shift)
-
 // Page table entries are 8 bytes
 typedef uint64_t pte_t;
 
@@ -265,55 +248,55 @@ vaddr_t kernel_virtual_end = 0;
 
 #include <kernel/kstdio.h>
 
-paddr_t _pmap_init_map_range(vaddr_t vaddr, paddr_t paddr, size_t size, paddr_t next_unused_pa) {
-    // Attributes for the kernel's table descriptors
+bool _pmap_alloc_table(pmap_t *pmap, pte_t *table_pte) {
+    // Attributes for the table descriptors
     t_attr_t t_attr_table = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NO_EL0, .uxn = T_UXN, .pxn = T_NON_PXN};
     bp_lattr_t bp_lattr_table = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
 
-    // Attributes for the Kernel's page table mappings
-    bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .contiguous = BP_NON_CONTIGUOUS};
-    bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
+    // Allocate a page for this new table and zero it out
+    pte_t new_table;
+    if (!pmm_alloc((paddr_t*)&new_table)) return false;
+    memset((void*)new_table, 0, pmap->page_size);
 
-    // Now we need to map the kernel's virtual address space
-    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(kernel_pmap); page_offset < size;) {
-        pte_t *table = (pte_t*)kernel_pmap.ttb;
+    // Make a table descriptor entry
+    *table_pte = MAKE_TDE(*pmap, (paddr_t)new_table, t_attr_table, bp_lattr_table);
+    return true;
+}
+
+bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
+    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(*pmap); page_offset < size;) {
+        pte_t *table = (pte_t*)pmap->ttb;
 
         // Get rid of extraneous VA bits not used in translation
         vaddr_t va = (vaddr + page_offset) & ~(0xFFFF000000000000);
         paddr_t pa = paddr + page_offset;
 
-        // Walk the page tables checking if a table is missing at an intermediate level and if so allocate one using next_unused_pa
-        unsigned int level = kernel_pmap.page_size == _64KB ? 1 : 0;
-        unsigned int width = GET_TABLE_IDX_WIDTH(kernel_pmap.page_shift), mask = GET_TABLE_IDX_MASK(width), lsb = GET_TABLE_IDX_LSB(level, width, kernel_pmap.page_shift);
+        // Walk the page tables checking if a table is missing at an intermediate level and if so allocate one
+        unsigned int level = pmap->page_size == _64KB ? 1 : 0;
+        unsigned int width = GET_TABLE_IDX_WIDTH(pmap->page_shift), mask = GET_TABLE_IDX_MASK(width), lsb = GET_TABLE_IDX_LSB(level, width, pmap->page_shift);
         for (; level < 3; level++, lsb -= width) {
             unsigned int index = GET_TABLE_IDX(va, lsb, mask);
             pte_t pte = table[index];
 
             // Check if we can make a block entry at level 2. We need to make sure the PA is block aligned and we have enough to map
-            if (level == 2 && IS_BLOCK_ALIGNED(kernel_pmap, pa) && (size - page_offset) > block_size) break;
+            if (level == 2 && IS_BLOCK_ALIGNED(*pmap, pa) && (size - page_offset) > block_size) break;
 
+            // Allocate a table if it doesn't exist at the current level
             if (!IS_TDE_VALID(pte)) {
-                // Allocate a page for this new table and zero it out
-                pte_t *next_table = (pte_t*)next_unused_pa;
-                next_unused_pa += kernel_pmap.page_size;
-                memset((void*)next_table, 0, kernel_pmap.page_size);
-
-                // Add the TDE to the current table
-                pte = MAKE_TDE(kernel_pmap, (paddr_t)next_table, t_attr_table, bp_lattr_table);
+                if (!_pmap_alloc_table(pmap, &pte)) return false;
                 table[index] = pte;
             }
 
             // Update table pointer to the next table
-            table = (pte_t*)PTE_TO_PA(kernel_pmap, pte);
+            table = (pte_t*)PTE_TO_PA(*pmap, pte);
         }
 
-        pte_t pte = level == 2 ? MAKE_BDE(kernel_pmap, pa, bp_uattr_page, bp_lattr_page) : MAKE_PDE(kernel_pmap, pa, bp_uattr_page, bp_lattr_page);
+        pte_t pte = level == 2 ? MAKE_BDE(*pmap, pa, bpu, bpl) : MAKE_PDE(*pmap, pa, bpu, bpl);
         table[GET_TABLE_IDX(va, lsb, mask)] = pte;
-        page_offset += level == 2 ? block_size : kernel_pmap.page_size;
+        page_offset += level == 2 ? block_size : pmap->page_size;
     }
 
-    // Return the updated next_unused_pa;
-    return next_unused_pa;
+    return true;
 }
 
 void pmap_init(void) {
@@ -330,68 +313,64 @@ void pmap_init(void) {
     kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap, kernel_virtual_start + kernel_size);
 
     // pmm_init won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
-    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap, pmm_get_size_requirement());
+    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap, pmm_get_size_requirement(MEMSIZE, kernel_pmap.page_size));
     vaddr_t pmm_va = kernel_virtual_end;
+    pmm_init(kernel_physical_end, MEMBASEADDR, MEMSIZE, kernel_pmap.page_size);
     kernel_physical_end += pmm_size;
     kernel_virtual_end += pmm_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
-    // Let's grab a page for the base translation table. This will need to mapped so bump up the physical and virtual end address
-    // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
-    kernel_pmap.ttb = kernel_physical_end;
-    kernel_pmap.ttb_va = kernel_virtual_end;
-    kernel_physical_end += kernel_pmap.page_size;
-    kernel_virtual_end += kernel_pmap.page_size;
-    kernel_size = kernel_virtual_end - kernel_virtual_start;
+    // Reserve the physical pages used by the kernel
+    for(unsigned long i = 0, num_pages = kernel_size >> kernel_pmap.page_shift; i < num_pages; i++) {
+        pmm_reserve(kernel_physical_start + (i << kernel_pmap.page_shift));
+    }
 
-    // Zero the TTB
+    // Let's grab a page for the base translation table
+    // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
+    kassert(pmm_alloc(&kernel_pmap.ttb));
     memset((void*)kernel_pmap.ttb, 0, kernel_pmap.page_size);
 
-    // We also need 1 L1/L2 table for the 16KB and 64KB page granules so we can use the recursive page mapping trick to
-    // get access to the page tables through a known VA region (except for the TTB)
-    // 4KB page granules can just add the recursive page table in the TTB and will be able to access the TTB through this region
     size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB(kernel_pmap);
     size_t max_num_ptes_ll = MAX_NUM_PTES_LL(kernel_pmap);
     pte_t *ttb = (pte_t*)kernel_pmap.ttb;
-
-    // This is used to keep track of physical pages allocated for page tables that we need to later mark off as being used via pmm_reserve
-    paddr_t next_unused_pa = kernel_physical_end;
 
     // Attributes for the kernel's table descriptors
     t_attr_t t_attr_table = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NO_EL0, .uxn = T_UXN, .pxn = T_NON_PXN};
     bp_lattr_t bp_lattr_table = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
 
+    // Point the last entry in the TTB to itself. For 16KB and 64KB page granules we need to fill the rest of the TTB page with the last entry
+    // This recursive page mapping allows us to access any page table in a fixed VA aperture
+    ttb[max_num_ptes_ttb - 1] = MAKE_TDE(kernel_pmap, kernel_pmap.ttb, t_attr_table, bp_lattr_table);
     if (kernel_pmap.page_size == _16KB || kernel_pmap.page_size == _64KB) {
-        // Zero out the table
-        memset((void*)next_unused_pa, 0, kernel_pmap.page_size);
-
-        // Point the last entry in the TTB to this new table and then point the last entry in that table to itself
-        ttb[max_num_ptes_ttb - 1] = MAKE_TDE(kernel_pmap, next_unused_pa, t_attr_table, bp_lattr_table);
-        ((pte_t*)next_unused_pa)[max_num_ptes_ll - 1] = MAKE_TDE(kernel_pmap, next_unused_pa, t_attr_table, bp_lattr_table);
-
-        next_unused_pa += kernel_pmap.page_size;
-    } else {
-        ttb[max_num_ptes_ttb - 1] = MAKE_TDE(kernel_pmap, kernel_pmap.ttb, t_attr_table, bp_lattr_table);
+        pte_t last_ttb_pte = ttb[max_num_ptes_ttb - 1];
+        for(unsigned long idx = max_num_ptes_ttb; idx < max_num_ptes_ll; idx++) {
+            ttb[idx] = last_ttb_pte;
+        }
     }
 
-    // Map the kernel's virtual address space to it's physical location. next_unused_pa is used by this routine to allocate page tables
-    next_unused_pa = _pmap_init_map_range(kernel_virtual_start, kernel_physical_start, kernel_size, next_unused_pa);
+    // Attributes for the Kernel's page table mappings
+    bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .contiguous = BP_NON_CONTIGUOUS};
+    bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
+
+    // Map the kernel's virtual address space to it's physical location
+    kassert(_pmap_map_range(&kernel_pmap, kernel_virtual_start, kernel_physical_start, kernel_size, bp_uattr_page, bp_lattr_page));
 
     // FIXME: temporary mapping of UART
     extern uintptr_t uart_base_addr;
+    bp_uattr_t bp_uattr_dev = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
+    bp_lattr_t bp_lattr_dev = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_DEVICE_NGNRNE};
     vaddr_t kernel_devices_virtual_start = 0xFFFFFC0000000000;
-    next_unused_pa = _pmap_init_map_range(kernel_devices_virtual_start, uart_base_addr, kernel_pmap.page_size, next_unused_pa);
+    kassert(_pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr, kernel_pmap.page_size, bp_uattr_dev, bp_lattr_dev));
     uart_base_addr = kernel_devices_virtual_start;
     kernel_devices_virtual_start += kernel_pmap.page_size;
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
-    // Don't update next_unused_pa because we are going to throw away these tables after the MMU is enabled
-    paddr_t ttb0 = next_unused_pa;
-    paddr_t ttb1 = kernel_pmap.ttb;
+    paddr_t ttb0, ttb1 = kernel_pmap.ttb;
+    kassert(pmm_alloc(&ttb0));
     kernel_pmap.ttb = ttb0;
 
-    paddr_t _next_unused_pa = _pmap_init_map_range(kernel_physical_start, kernel_physical_start, kernel_size, next_unused_pa + kernel_pmap.page_size);
+    kassert(_pmap_map_range(&kernel_pmap, kernel_physical_start, kernel_physical_start, kernel_size, bp_uattr_page, bp_lattr_page));
 
     // Restore TTBR1 in the kernel's pmap and Create MAIR
     kernel_pmap.ttb = ttb1;
@@ -401,13 +380,8 @@ void pmap_init(void) {
     mmu_enable(ttb0, ttb1, MAIR(ma_index), kernel_pmap.page_size);
     mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
-    // Initialize pmm
-    pmm_init(pmm_va);
-
-    // Reserve the pages used by the kernel. The PMM works on the assumption of 4KB pages so we need to make sure we reserve the correct amount of pages
-    for(unsigned long i = 0, num_pages = (next_unused_pa - kernel_physical_start) >> PMM_PAGE_SHIFT; i < num_pages; i++) {
-        pmm_reserve(kernel_physical_start + (i << PMM_PAGE_SHIFT));
-    }
+    // Tell pmm to switch to using the virtual address space to access it's data structures
+    pmm_set_va(pmm_va);
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
     pmap_reference(pmap_kernel());
