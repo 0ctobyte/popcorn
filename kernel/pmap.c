@@ -1,6 +1,8 @@
 #include <kernel/pmap.h>
 #include <kernel/pmm.h>
 #include <kernel/mmu.h>
+#include <kernel/barrier.h>
+#include <kernel/cache.h>
 #include <kernel/kassert.h>
 #include <lib/asm.h>
 #include <string.h>
@@ -40,17 +42,18 @@
     unsigned int lsb = GET_TABLE_IDX_LSB(page_shift == 16 ? 1 : 0, width, page_shift);\
     (lsb + width) < 48 ? width : (48 - lsb);\
 })
-#define GET_TTB_VA(page_shift) ((-1 << (page_shift)) & ~0xFFFF000000000000);\
+#define GET_TTB_VA(page_shift)  ((-1l << (page_shift)) & ~0xFFFF000000000000)
+#define GET_TABLE_VA_BASE(pmap) ((-1l << ((pmap).page_shift + ((3l - (((pmap).page_size == _64KB) ? 1l : 0l)) * ((pmap).page_shift - 3l)))) & ((pmap).is_kernel ? -1l : ~0xFFFF000000000000))
 
 #define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH_TTB((pmap).page_shift))
 #define MAX_NUM_PTES_LL(pmap)  ((pmap).page_size >> 3)
-#define BLOCK_SIZE(pmap)       (1 << ((pmap).page_shift + (pmap).page_shift - 3))
+#define BLOCK_SIZE(pmap)       (1l << ((pmap).page_shift + (pmap).page_shift - 3l))
 
-#define ROUND_PAGE_DOWN(pmap, addr)  ((long)(addr) & ~((long)(pmap).page_size - 1))
+#define ROUND_PAGE_DOWN(pmap, addr)  ((long)(addr) & ~((long)(pmap).page_size - 1l))
 #define ROUND_PAGE_UP(pmap, addr)    ((IS_PAGE_ALIGNED((pmap), (addr))) ? (long)(addr) : (ROUND_PAGE_DOWN((pmap), (addr)) + (long)(pmap).page_size))
 
-#define IS_PAGE_ALIGNED(pmap, addr)  (((long)(addr) & ((long)(pmap).page_size - 1)) == 0)
-#define IS_BLOCK_ALIGNED(pmap, addr) (((long)(addr) & (BLOCK_SIZE(pmap) - 1)) == 0)
+#define IS_PAGE_ALIGNED(pmap, addr)  (((long)(addr) & ((long)(pmap).page_size - 1l)) == 0)
+#define IS_BLOCK_ALIGNED(pmap, addr) (((long)(addr) & (BLOCK_SIZE(pmap) - 1l)) == 0)
 
 // Upper attributes for page table descriptors
 
@@ -196,11 +199,11 @@ typedef struct {
     .ma = (bp_ma_attr_t)((pte) & BP_MA_NORMAL_WTWNRN)\
 })
 
-#define PTE_TO_PA(pmap, pte)  (((pte) & 0xffffffffffff) & -((pmap).page_size))
-#define PA_TO_PTE(pmap, pa) PTE_TO_PA(pmap, pa)
-#define MAKE_TDE(pmap, pa, t_attr, bp_lattr)   (PA_TO_PTE(pmap, pa) | T_ATTR(t_attr) | BP_LATTR(bp_lattr) | 0x3)
-#define MAKE_BDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE(pmap, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x1)
-#define MAKE_PDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE(pmap, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x3)
+#define PTE_TO_PA(page_size, pte)  (((pte) & 0xffffffffffff) & -(page_size))
+#define PA_TO_PTE(page_size, pa) PTE_TO_PA(page_size, pa)
+#define MAKE_TDE(pmap, pa, t_attr, bp_lattr)   (PA_TO_PTE((pmap).page_size, pa) | T_ATTR(t_attr) | BP_LATTR(bp_lattr) | 0x3)
+#define MAKE_BDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE((pmap).page_size, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x1)
+#define MAKE_PDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE((pmap).page_size, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x3)
 
 #define IS_PTE_VALID(pte) ((pte) & 0x1)
 #define IS_PDE_VALID(pte) (((pte) & 0x3) == 0x3)
@@ -263,13 +266,59 @@ bool _pmap_alloc_table(pmap_t *pmap, pte_t *table_pte) {
     return true;
 }
 
+void _pmap_update_pte(pmap_t *pmap, vaddr_t va, pte_t *old_pte, pte_t new_pte) {
+    // Use break-before-make rule if the old PTE was valid. We must do this in the following cases:
+    // - Changing memory type
+    // - Changing cacheability
+    // - Changing output address
+    // - Changing block size in either direction (page to block or block to page)
+    // - Creating a global entry from a non-global entry
+    if (!IS_PTE_VALID(*old_pte)) {
+        *old_pte = new_pte;
+        return;
+    }
+
+    // Check for block descriptors
+    size_t va_range = IS_BDE_VALID(*old_pte) ? BLOCK_SIZE(*pmap) : pmap->page_size;
+
+    // The break-before-make procedure:
+    // 1. Replace old PTE with invalid entry and issue DSB
+    *old_pte = 0;
+    barrier_dsb();
+
+    // 2. Invalidate the TLB entry by VA range
+    tlb_invalidate_range(va, va_range);
+
+    // 3. Write new pte and issue DSB
+    *old_pte = new_pte;
+    barrier_dsb();
+}
+
+void _pmap_clear_pte(pmap_t *pmap, vaddr_t va, pte_t *old_pte) {
+    if (!IS_PTE_VALID(*old_pte)) {
+        *old_pte = 0;
+        return;
+    }
+
+    // Check for block descriptors
+    size_t va_range = IS_BDE_VALID(*old_pte) ? BLOCK_SIZE(*pmap) : pmap->page_size;
+    *old_pte = 0;
+    barrier_dsb();
+    tlb_invalidate_range(va, va_range);
+}
+
 bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
+    kassert(IS_PAGE_ALIGNED(*pmap, vaddr) && IS_PAGE_ALIGNED(*pmap, paddr));
+
+    unsigned long block_size = BLOCK_SIZE(*pmap);
+    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(*pmap);
+
+    // Get rid of extraneous VA bits not used in translation
+    vaddr_t va = vaddr & ~(0xFFFF000000000000);
+    paddr_t pa = paddr;
+
     for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(*pmap); page_offset < size;) {
         pte_t *table = (pte_t*)pmap->ttb;
-
-        // Get rid of extraneous VA bits not used in translation
-        vaddr_t va = (vaddr + page_offset) & ~(0xFFFF000000000000);
-        paddr_t pa = paddr + page_offset;
 
         // Walk the page tables checking if a table is missing at an intermediate level and if so allocate one
         unsigned int level = pmap->page_size == _64KB ? 1 : 0;
@@ -284,16 +333,83 @@ bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
             // Allocate a table if it doesn't exist at the current level
             if (!IS_TDE_VALID(pte)) {
                 if (!_pmap_alloc_table(pmap, &pte)) return false;
-                table[index] = pte;
+                _pmap_update_pte(pmap, va, &table[index], pte);
             }
 
             // Update table pointer to the next table
-            table = (pte_t*)PTE_TO_PA(*pmap, pte);
+            table = (pte_t*)PTE_TO_PA(pmap->page_size, pte);
         }
 
-        pte_t pte = level == 2 ? MAKE_BDE(*pmap, pa, bpu, bpl) : MAKE_PDE(*pmap, pa, bpu, bpl);
-        table[GET_TABLE_IDX(va, lsb, mask)] = pte;
-        page_offset += level == 2 ? block_size : pmap->page_size;
+        // Now map pages or blocks in a loop until we either run out of room in the table, completely mapped the specified size, or a block mapping needs to be broken down into page mappings
+        // In those cases, start the table walk again to get the next table pointer
+        size_t mapped_size = (level == 2) ? block_size : pmap->page_size;
+        for (unsigned int index = GET_TABLE_IDX(va, lsb, mask); (page_offset < size) && (index < max_num_ptes_ll) && ((level == 2) ? ((size - page_offset) > block_size) : true); index++) {
+            _pmap_update_pte(pmap, va, &table[index], (level == 2) ? MAKE_BDE(*pmap, pa, bpu, bpl) : MAKE_PDE(*pmap, pa, bpu, bpl));
+            page_offset += mapped_size;
+            pa += mapped_size;
+            va += mapped_size;
+        }
+    }
+
+    return true;
+}
+
+bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
+    kassert(IS_PAGE_ALIGNED(*pmap, vaddr));
+
+    unsigned long block_size = BLOCK_SIZE(*pmap);
+    unsigned long block_mask = block_size - 1;
+    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(*pmap);
+
+    // Get rid of extraneous VA bits not used in translation
+    vaddr_t va = vaddr & ~(0xFFFF000000000000);
+
+    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(*pmap); page_offset < size;) {
+        pte_t *table = (pte_t*)pmap->ttb;
+
+        // Walk the page tables. If a page table does not exist where it should then the supplied VA range is too large for whatever reason
+        unsigned int level = pmap->page_size == _64KB ? 1 : 0;
+        unsigned int width = GET_TABLE_IDX_WIDTH(pmap->page_shift), mask = GET_TABLE_IDX_MASK(width), lsb = GET_TABLE_IDX_LSB(level, width, pmap->page_shift);
+        for (; level < 3; level++, lsb -= width) {
+            unsigned int index = GET_TABLE_IDX(va, lsb, mask);
+            pte_t pte = table[index];
+
+            // Check if there is a block entry in the way that is not going to be completely unmapped
+            // If so, unmap the whole block and then map it as pages
+            if(level == 2 && IS_BDE_VALID(pte)) {
+                size_t remaining_size = size - page_offset;
+                if (remaining_size > block_size && IS_BLOCK_ALIGNED(*pmap, va)) break;
+
+                bp_uattr_t bpu = BP_UATTR_EXTRACT(pte);
+                bp_lattr_t bpl = BP_LATTR_EXTRACT(pte);
+
+                vaddr_t va_block = va & ~block_mask;
+                paddr_t pa = PTE_TO_PA(pmap->page_size, pte);
+                size_t va_size = block_size >> 1;
+
+                _pmap_clear_pte(pmap, va_block, &table[index]);
+                _pmap_map_range(pmap, va_block, pa, va_size, bpu, bpl);
+                _pmap_map_range(pmap, va_block + va_size, pa + va_size, va_size, bpu, bpl);
+
+                // This should now hold a table descriptor
+                pte = table[index];
+            }
+
+            // We expect there to be a page table
+            if (!IS_TDE_VALID(pte)) return false;
+
+            // Update table pointer to the next table
+            table = (pte_t*)PTE_TO_PA(pmap->page_size, pte);
+        }
+
+        // Now unmap pages or blocks in a loop until we either run out of room in the table, completely unmapped the specified size, or a block unmapping needs to be broken down into page unmappings
+        // In those cases, start the table walk again to get the next table pointer
+        size_t mapped_size = (level == 2) ? block_size : pmap->page_size;
+        for (unsigned int index = GET_TABLE_IDX(va, lsb, mask); (page_offset < size) && (index < max_num_ptes_ll) && ((level == 2) ? ((size - page_offset) > block_size) : true); index++) {
+            _pmap_clear_pte(pmap, va, &table[index]);
+            page_offset += mapped_size;
+            va += mapped_size;
+        }
     }
 
     return true;
@@ -390,7 +506,7 @@ void pmap_init(void) {
 void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
     // The kernel's virtual address space ends where the page table VA space starts
     if(vstartp != NULL) *vstartp = kernel_virtual_start;
-    if(vendp != NULL) *vendp = PT_IDX_TO_VA(kernel_pmap, 0);
+    if(vendp != NULL) *vendp = GET_TABLE_VA_BASE(kernel_pmap);
 }
 
 vaddr_t pmap_steal_memory(size_t vsize) {

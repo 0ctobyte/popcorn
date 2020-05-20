@@ -1,6 +1,19 @@
+.text
+
 .global tlb_invalidate_all
 .align 2
 tlb_invalidate_all:
+    tlbi vmalle1is
+    dsb sy
+    isb sy
+    ret lr
+
+# x0 - va_start
+# x1 - va_range
+# FIXME: This should use a TLBI by va instruction!
+.global tlb_invalidate_range
+.align 2
+tlb_invalidate_range:
     tlbi vmalle1is
     dsb sy
     isb sy
