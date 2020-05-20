@@ -40,6 +40,7 @@
     unsigned int lsb = GET_TABLE_IDX_LSB(page_shift == 16 ? 1 : 0, width, page_shift);\
     (lsb + width) < 48 ? width : (48 - lsb);\
 })
+#define GET_TABLE_VA(level, index, width) ((((-1 << (width)) | (index)) << (48 - ((4 - (level)) * (width)))) & ~0xFFFF000000000000);\
 
 #define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH_TTB((pmap).page_shift))
 #define MAX_NUM_PTES_LL(pmap)  ((pmap).page_size >> 3)
@@ -325,13 +326,18 @@ void pmap_init(void) {
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
     size_t kernel_size = (uintptr_t)(&__kernel_virtual_end) - (uintptr_t)(&__kernel_virtual_start);
-    kernel_physical_end = kernel_physical_start + kernel_size;
-    kernel_virtual_end = kernel_virtual_start + kernel_size;
+    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap, kernel_physical_start + kernel_size);
+    kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap, kernel_virtual_start + kernel_size);
+
+    // pmm_init won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
+    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap, pmm_get_size_requirement());
+    vaddr_t pmm_va = kernel_virtual_end;
+    kernel_physical_end += pmm_size;
+    kernel_virtual_end += pmm_size;
+    kernel_size = kernel_virtual_end - kernel_virtual_start;
 
     // Let's grab a page for the base translation table. This will need to mapped so bump up the physical and virtual end address
     // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
-    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap, kernel_physical_end);
-    kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap, kernel_virtual_end);
     kernel_pmap.ttb = kernel_physical_end;
     kernel_pmap.ttb_va = kernel_virtual_end;
     kernel_physical_end += kernel_pmap.page_size;
@@ -396,12 +402,11 @@ void pmap_init(void) {
     mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
     // Initialize pmm
-    pmm_init();
+    pmm_init(pmm_va);
 
     // Reserve the pages used by the kernel. The PMM works on the assumption of 4KB pages so we need to make sure we reserve the correct amount of pages
     for(unsigned long i = 0, num_pages = (next_unused_pa - kernel_physical_start) >> PMM_PAGE_SHIFT; i < num_pages; i++) {
-        kprintf("pmm_reserve(%p)\n", kernel_physical_start + (i << PMM_PAGE_SHIFT));
-        //pmm_reserve(kernel_physical_start + (i * PMM_PAGE_SIZE));
+        pmm_reserve(kernel_physical_start + (i << PMM_PAGE_SHIFT));
     }
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.

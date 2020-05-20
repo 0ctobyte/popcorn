@@ -122,13 +122,25 @@ mmu_enable_exit:
 .global mmu_kernel_longjmp
 .align 2
 mmu_kernel_longjmp:
-    sub fp, fp, x0
-    add fp, fp, x1
-    sub lr, lr, x0
-    add lr, lr, x1
     sub sp, sp, x0
     add sp, sp, x1
 
+    stp fp, lr, [sp, #-16]!
+    mov fp, sp
+
+    # Update stack frame pointers
+    ldp x2, x3, [fp]
+mmu_kernel_longjmp_loop:
+    sub x2, x2, x0
+    add x2, x2, x1
+    sub x3, x3, x0
+    add x3, x3, x1
+    stp x2, x3, [fp]
+    mov fp, x2
+    ldp x2, x3, [fp]
+    cbnz x2, mmu_kernel_longjmp_loop
+
+    mov fp, sp
     adr x2, mmu_kernel_longjmp_done
     sub x2, x2, x0
     add x2, x2, x1
@@ -153,4 +165,5 @@ mmu_kernel_longjmp_done:
     msr TCR_EL1, x0
     isb sy
 
+    ldp fp, lr, [sp], #16
     ret lr

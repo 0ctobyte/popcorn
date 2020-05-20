@@ -1,11 +1,8 @@
 #include <kernel/pmm.h>
-#include <kernel/mm.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
-
 #include <lib/bitmap.h>
 #include <lib/asm.h>
-
 #include <limits.h>
 
 // The number of bits in each bitmap
@@ -151,13 +148,17 @@ pagemap_t* _pmm_pop(pagestack_t *pstack) {
     return popped;
 }
 
-void pmm_init() {
+size_t pmm_get_size_requirement() {
+    return ((MEMSIZE >> (_ctz(PMM_PAGE_SIZE))) >> (_ctz(BITS))) * sizeof(pagemap_t);
+}
+
+void pmm_init(vaddr_t va) {
     // Allocate memory for the pagemaps
     // pmap_steal_memory will only work if pmap_init has been called
     pagestack.mem_base_addr = MEMBASEADDR;
     pagestack.mem_size = MEMSIZE;
     pagestack.size = ((pagestack.mem_size >> (_ctz(PMM_PAGE_SIZE))) >> (_ctz(BITS)));
-    pagestack.pagemaps = (pagemap_t*)pmap_steal_memory(pagestack.size * sizeof(pagemap_t));
+    pagestack.pagemaps = (pagemap_t*)va;
 
     // Link the pagemaps together
     pagestack.top = pagestack.pagemaps;

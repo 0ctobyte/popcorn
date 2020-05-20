@@ -9,9 +9,12 @@
 #define PMM_PAGE_SIZE  (4096)
 #define PMM_PAGE_SHIFT (12)
 
-// Initializes the pmm
-// NOTE: pmap_init should be called before this function
-void pmm_init();
+// Returns the maximum amount of memory needed to allocate all pagemaps
+size_t pmm_get_size_requirement(void);
+
+// Initializes the pmm. va is the virtual address where PMM will allocate the pagemaps since the heap may not be initialized
+// when pmm_init is called
+void pmm_init(vaddr_t va);
 
 // Finds a free page page and returns the physical address to the beginning of the page in addr
 // Returns false if it failed to find a free page
