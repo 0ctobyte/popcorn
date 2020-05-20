@@ -4,6 +4,10 @@
 
 #define STRINGIFY(s) #s
 
+#define EXC_CLASS_STR(exc_class) STRINGIFY(exc_class)
+#define GET_EXC_CLASS(esr) (((esr) >> 26) & 0x3f)
+#define GET_EXC_ISS(esr) ((esr) & 0x1ffffff)
+
 typedef enum {
     EXC_CLASS_UNKNOWN_REASON               = 0x0,
     EXC_CLASS_TRAP_WFI_WFE                 = 0x1,
@@ -38,21 +42,87 @@ typedef enum {
     EXC_CLASS_BKPT_INSTRUCTION_AARCH64     = 0x3c,
 } exception_class_type_t;
 
-#define GET_EXC_CLASS(esr) (((esr) >> 26) & 0x3f)
-#define EXC_CLASS_STR(exc_class) STRINGIFY(exc_class)
+void _exception_iss_decode_error(exception_state_t *exc_state) {
+    unsigned int exc_iss = GET_EXC_ISS(exc_state->esr) & 0x3f;
+    switch (exc_iss) {
+        case 0x00: kprintf("Address size fault, level 0\n"); break;
+        case 0x01: kprintf("Address size fault, level 1\n"); break;
+        case 0x02: kprintf("Address size fault, level 2\n"); break;
+        case 0x03: kprintf("Address size fault, level 3\n"); break;
+        case 0x04: kprintf("Translation fault, level 0\n"); break;
+        case 0x05: kprintf("Translation fault, level 1\n"); break;
+        case 0x06: kprintf("Translation fault, level 2\n"); break;
+        case 0x07: kprintf("Translation fault, level 3\n"); break;
+        case 0x09: kprintf("Access flag fault, level 1\n"); break;
+        case 0x0a: kprintf("Access flag fault, level 2\n"); break;
+        case 0x0b: kprintf("Access flag fault, level 3\n"); break;
+        case 0x0d: kprintf("Permission fault, level 1\n"); break;
+        case 0x0e: kprintf("Permission fault, level 2\n"); break;
+        case 0x0f: kprintf("Permission fault, level 3\n"); break;
+        case 0x10: kprintf("Synchronous external abort\n"); break;
+        case 0x14: kprintf("Synchronous external abort, level 0\n"); break;
+        case 0x15: kprintf("Synchronous external abort, level 1\n"); break;
+        case 0x16: kprintf("Synchronous external abort, level 2\n"); break;
+        case 0x17: kprintf("Synchronous external abort, level 3\n"); break;
+        case 0x18: kprintf("Synchronous parity or ECC error\n"); break;
+        case 0x1c: kprintf("Synchronous parity or ECC error, level 0\n"); break;
+        case 0x1d: kprintf("Synchronous parity or ECC error, level 1\n"); break;
+        case 0x1e: kprintf("Synchronous parity or ECC error, level 2\n"); break;
+        case 0x1f: kprintf("Synchronous parity or ECC error, level 3\n"); break;
+        case 0x21: kprintf("Alignment fault\n"); break;
+        case 0x30: kprintf("TLB conflict abort\n"); break;
+        default: kprintf("\n"); break;
+    }
+}
 
 bool _exception_class_decode_error(exception_state_t *exc_state) {
     bool fail = true;
     unsigned int exc_class = GET_EXC_CLASS(exc_state->esr);
     switch (exc_class) {
-        case EXC_CLASS_UNKNOWN_REASON:               kprintf(EXC_CLASS_STR(EXC_CLASS_UNKNOWN_REASON\n)); break;
-        case EXC_CLASS_ILLEGAL_EXECUTION_STATE:      kprintf(EXC_CLASS_STR(EXC_CLASS_ILLEGAL_EXECUTION_STATE\n)); break;
-        case EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL:   kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL\n)); break;
-        case EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL: kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL\n)); break;
-        case EXC_CLASS_PC_ALIGNMENT_FAULT:           kprintf(EXC_CLASS_STR(EXC_CLASS_PC_ALIGNMENT_FAULT\n)); break;
-        case EXC_CLASS_DATA_ABORT_LOWER_EL:          kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_LOWER_EL\n)); break;
-        case EXC_CLASS_DATA_ABORT_CURRENT_EL:        kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_CURRENT_EL\n)); break;
-        case EXC_CLASS_SERROR:                       kprintf(EXC_CLASS_STR(EXC_CLASS_SERROR\n)); break;
+        case EXC_CLASS_UNKNOWN_REASON:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_UNKNOWN_REASON\n));
+            break;
+        }
+        case EXC_CLASS_ILLEGAL_EXECUTION_STATE:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_ILLEGAL_EXECUTION_STATE\n));
+            break;
+        }
+        case EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL\n));
+            _exception_iss_decode_error(exc_state);
+            break;
+        }
+        case EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL\n));
+            _exception_iss_decode_error(exc_state);
+            break;
+        }
+        case EXC_CLASS_PC_ALIGNMENT_FAULT:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_PC_ALIGNMENT_FAULT\n));
+            break;
+        }
+        case EXC_CLASS_DATA_ABORT_LOWER_EL:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_LOWER_EL\n));
+            _exception_iss_decode_error(exc_state);
+            break;
+        }
+        case EXC_CLASS_DATA_ABORT_CURRENT_EL:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_CURRENT_EL\n));
+            _exception_iss_decode_error(exc_state);
+            break;
+        }
+        case EXC_CLASS_SERROR:
+        {
+            kprintf(EXC_CLASS_STR(EXC_CLASS_SERROR\n));
+            break;
+        }
         default: fail = false; break;
     }
 

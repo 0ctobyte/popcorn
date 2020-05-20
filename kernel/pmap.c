@@ -371,6 +371,13 @@ void pmap_init(void) {
     // Map the kernel's virtual address space to it's physical location. next_unused_pa is used by this routine to allocate page tables
     next_unused_pa = _pmap_init_map_range(kernel_virtual_start, kernel_physical_start, kernel_size, next_unused_pa);
 
+    // FIXME: temporary mapping of UART
+    extern uintptr_t uart_base_addr;
+    vaddr_t kernel_devices_virtual_start = 0xFFFFFC0000000000;
+    next_unused_pa = _pmap_init_map_range(kernel_devices_virtual_start, uart_base_addr, kernel_pmap.page_size, next_unused_pa);
+    uart_base_addr = kernel_devices_virtual_start;
+    kernel_devices_virtual_start += kernel_pmap.page_size;
+
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
     // Don't update next_unused_pa because we are going to throw away these tables after the MMU is enabled
@@ -378,9 +385,7 @@ void pmap_init(void) {
     paddr_t ttb1 = kernel_pmap.ttb;
     kernel_pmap.ttb = ttb0;
 
-    // FIXME: temporary mapping UART
     paddr_t _next_unused_pa = _pmap_init_map_range(kernel_physical_start, kernel_physical_start, kernel_size, next_unused_pa + kernel_pmap.page_size);
-    _pmap_init_map_range(0x09000000, 0x09000000, kernel_pmap.page_size, _next_unused_pa);
 
     // Restore TTBR1 in the kernel's pmap and Create MAIR
     kernel_pmap.ttb = ttb1;
