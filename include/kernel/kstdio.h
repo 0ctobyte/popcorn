@@ -8,4 +8,3 @@ long kputs(const char *s);
 long kprintf(const char *fmt, ...);
 
 #endif // __KSTDIO_H__
-

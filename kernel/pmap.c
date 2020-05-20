@@ -388,8 +388,7 @@ void pmap_init(void) {
 
     // Finally enable the MMU!
     mmu_enable(ttb0, ttb1, MAIR(ma_index), kernel_pmap.page_size);
-
-    // Perform stack adjustment and jump! And then disable TTBR0
+    mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
     // Initialize pmm
     pmm_init();

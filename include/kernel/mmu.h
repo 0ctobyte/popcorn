@@ -12,5 +12,9 @@ bool mmu_is_enabled(void);
 // Emable or disable the MMu
 void mmu_enable(unsigned long ttbr0, unsigned long ttbr1, unsigned long mair, unsigned int page_size);
 
+// This routine will perform a long jump to the kernel's virtual address space.
+// It assumes kernel code is translated using TTBR1 and will clear TTBR0 after the jump
+void mmu_kernel_longjmp(uintptr_t pa_base, uintptr_t va_base);
+
 #endif // __EVT_H__
 

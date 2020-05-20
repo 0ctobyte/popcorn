@@ -116,3 +116,41 @@ mmu_enable_exit:
     ldp lr, fp, [sp], #16
     add sp, sp, #48
     ret lr
+
+# x0 - pa_base
+# x1 - va_base
+.global mmu_kernel_longjmp
+.align 2
+mmu_kernel_longjmp:
+    sub fp, fp, x0
+    add fp, fp, x1
+    sub lr, lr, x0
+    add lr, lr, x1
+    sub sp, sp, x0
+    add sp, sp, x1
+
+    adr x2, mmu_kernel_longjmp_done
+    sub x2, x2, x0
+    add x2, x2, x1
+    br x2
+
+mmu_kernel_longjmp_done:
+    # Disable TTBR0 and clear it
+    mov x1, #0x80
+    mrs x0, TCR_EL1
+    orr x0, x0, x1
+    msr TCR_EL1, x0
+    isb sy
+
+    msr TTBR0_EL1, xzr
+    isb sy
+
+    tlbi vmalle1is
+
+    # Re-enable TTBR0
+    mrs x0, TCR_EL1
+    bic x0, x0, x1
+    msr TCR_EL1, x0
+    isb sy
+
+    ret lr
