@@ -147,6 +147,12 @@ mmu_kernel_longjmp_loop:
     br x2
 
 mmu_kernel_longjmp_done:
+    ldp fp, lr, [sp], #16
+    ret lr
+
+.global mmu_clear_ttbr0
+.align 2
+mmu_clear_ttbr0:
     # Disable TTBR0 and clear it
     mov x1, #0x80
     mrs x0, TCR_EL1
@@ -165,5 +171,4 @@ mmu_kernel_longjmp_done:
     msr TCR_EL1, x0
     isb sy
 
-    ldp fp, lr, [sp], #16
     ret lr

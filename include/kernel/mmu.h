@@ -16,5 +16,8 @@ void mmu_enable(unsigned long ttbr0, unsigned long ttbr1, unsigned long mair, un
 // It assumes kernel code is translated using TTBR1 and will clear TTBR0 after the jump
 void mmu_kernel_longjmp(uintptr_t pa_base, uintptr_t va_base);
 
+// Clears TTBR0
+void mmu_clear_ttbr0(void);
+
 #endif // __EVT_H__
 
