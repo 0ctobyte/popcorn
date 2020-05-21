@@ -9,12 +9,11 @@ tlb_invalidate_all:
     ret lr
 
 # x0 - va_start
-# x1 - va_range
-# FIXME: This should use a TLBI by va instruction!
-.global tlb_invalidate_range
+.global tlb_invalidate
 .align 2
-tlb_invalidate_range:
-    tlbi vmalle1is
+tlb_invalidate:
+    lsr x0, x0, #12
+    tlbi vale1is, x0
     dsb sy
     isb sy
     ret lr

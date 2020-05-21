@@ -45,15 +45,15 @@
 #define GET_TTB_VA(page_shift)  ((-1l << (page_shift)) & ~0xFFFF000000000000)
 #define GET_TABLE_VA_BASE(pmap) ((-1l << ((pmap).page_shift + ((3l - (((pmap).page_size == _64KB) ? 1l : 0l)) * ((pmap).page_shift - 3l)))) & ((pmap).is_kernel ? -1l : ~0xFFFF000000000000))
 
-#define MAX_NUM_PTES_TTB(pmap) (1 << GET_TABLE_IDX_WIDTH_TTB((pmap).page_shift))
-#define MAX_NUM_PTES_LL(pmap)  ((pmap).page_size >> 3)
-#define BLOCK_SIZE(pmap)       (1l << ((pmap).page_shift + (pmap).page_shift - 3l))
+#define MAX_NUM_PTES_TTB(page_shift) (1 << GET_TABLE_IDX_WIDTH_TTB(page_shift))
+#define MAX_NUM_PTES_LL(page_size)   ((page_size) >> 3)
 
-#define ROUND_PAGE_DOWN(pmap, addr)  ((long)(addr) & ~((long)(pmap).page_size - 1l))
-#define ROUND_PAGE_UP(pmap, addr)    ((IS_PAGE_ALIGNED((pmap), (addr))) ? (long)(addr) : (ROUND_PAGE_DOWN((pmap), (addr)) + (long)(pmap).page_size))
+#define ROUND_PAGE_DOWN(page_size, addr)  ((long)(addr) & ~((long)((page_size) - 1l)))
+#define ROUND_PAGE_UP(page_size, addr)    ((IS_PAGE_ALIGNED((page_size), (addr))) ? (long)(addr) : (ROUND_PAGE_DOWN((page_size), (addr)) + (long)(page_size)))
 
-#define IS_PAGE_ALIGNED(pmap, addr)  (((long)(addr) & ((long)(pmap).page_size - 1l)) == 0)
-#define IS_BLOCK_ALIGNED(pmap, addr) (((long)(addr) & (BLOCK_SIZE(pmap) - 1l)) == 0)
+#define BLOCK_SIZE(page_shift)            (1l << ((page_shift) + (page_shift) - 3l))
+#define IS_PAGE_ALIGNED(page_size, addr)  (((long)(addr) & ((long)(page_size) - 1l)) == 0)
+#define IS_BLOCK_ALIGNED(page_size, addr) (((long)(addr) & (BLOCK_SIZE(_ctz(page_size)) - 1l)) == 0)
 
 // Upper attributes for page table descriptors
 
@@ -249,8 +249,6 @@ vaddr_t kernel_virtual_start = ((uintptr_t)(&__kernel_virtual_start));
 paddr_t kernel_physical_end = 0;
 vaddr_t kernel_virtual_end = 0;
 
-#include <kernel/kstdio.h>
-
 bool _pmap_alloc_table(pmap_t *pmap, pte_t *table_pte) {
     // Attributes for the table descriptors
     t_attr_t t_attr_table = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NO_EL0, .uxn = T_UXN, .pxn = T_NON_PXN};
@@ -266,7 +264,7 @@ bool _pmap_alloc_table(pmap_t *pmap, pte_t *table_pte) {
     return true;
 }
 
-void _pmap_update_pte(pmap_t *pmap, vaddr_t va, pte_t *old_pte, pte_t new_pte) {
+void _pmap_update_pte(vaddr_t va, pte_t *old_pte, pte_t new_pte) {
     // Use break-before-make rule if the old PTE was valid. We must do this in the following cases:
     // - Changing memory type
     // - Changing cacheability
@@ -278,46 +276,41 @@ void _pmap_update_pte(pmap_t *pmap, vaddr_t va, pte_t *old_pte, pte_t new_pte) {
         return;
     }
 
-    // Check for block descriptors
-    size_t va_range = IS_BDE_VALID(*old_pte) ? BLOCK_SIZE(*pmap) : pmap->page_size;
-
     // The break-before-make procedure:
     // 1. Replace old PTE with invalid entry and issue DSB
     *old_pte = 0;
     barrier_dsb();
 
-    // 2. Invalidate the TLB entry by VA range
-    tlb_invalidate_range(va, va_range);
+    // 2. Invalidate the TLB entry by VA
+    tlb_invalidate(va);
 
     // 3. Write new pte and issue DSB
     *old_pte = new_pte;
     barrier_dsb();
 }
 
-void _pmap_clear_pte(pmap_t *pmap, vaddr_t va, pte_t *old_pte) {
+void _pmap_clear_pte(vaddr_t va, pte_t *old_pte) {
     if (!IS_PTE_VALID(*old_pte)) {
         *old_pte = 0;
         return;
     }
 
-    // Check for block descriptors
-    size_t va_range = IS_BDE_VALID(*old_pte) ? BLOCK_SIZE(*pmap) : pmap->page_size;
     *old_pte = 0;
     barrier_dsb();
-    tlb_invalidate_range(va, va_range);
+    tlb_invalidate(va);
 }
 
 bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
-    kassert(IS_PAGE_ALIGNED(*pmap, vaddr) && IS_PAGE_ALIGNED(*pmap, paddr));
+    kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr) && IS_PAGE_ALIGNED(pmap->page_size, paddr));
 
-    unsigned long block_size = BLOCK_SIZE(*pmap);
-    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(*pmap);
+    unsigned long block_size = BLOCK_SIZE(pmap->page_shift);
+    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(pmap->page_size);
 
     // Get rid of extraneous VA bits not used in translation
     vaddr_t va = vaddr & ~(0xFFFF000000000000);
     paddr_t pa = paddr;
 
-    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(*pmap); page_offset < size;) {
+    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(pmap->page_shift); page_offset < size;) {
         pte_t *table = (pte_t*)pmap->ttb;
 
         // Walk the page tables checking if a table is missing at an intermediate level and if so allocate one
@@ -327,13 +320,13 @@ bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
             unsigned int index = GET_TABLE_IDX(va, lsb, mask);
             pte_t pte = table[index];
 
-            // Check if we can make a block entry at level 2. We need to make sure the PA is block aligned and we have enough to map
-            if (level == 2 && IS_BLOCK_ALIGNED(*pmap, pa) && (size - page_offset) > block_size) break;
-
-            // Allocate a table if it doesn't exist at the current level
             if (!IS_TDE_VALID(pte)) {
+                // Check if we can make a block entry at level 2. We need to make sure the PA is block aligned and we have enough to map
+                if (level == 2 && IS_BLOCK_ALIGNED(pmap->page_size, pa) && (size - page_offset) > block_size) break;
+
+                // Allocate a table if it doesn't exist at the current level
                 if (!_pmap_alloc_table(pmap, &pte)) return false;
-                _pmap_update_pte(pmap, va, &table[index], pte);
+                _pmap_update_pte(va, &table[index], pte);
             }
 
             // Update table pointer to the next table
@@ -344,7 +337,7 @@ bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
         // In those cases, start the table walk again to get the next table pointer
         size_t mapped_size = (level == 2) ? block_size : pmap->page_size;
         for (unsigned int index = GET_TABLE_IDX(va, lsb, mask); (page_offset < size) && (index < max_num_ptes_ll) && ((level == 2) ? ((size - page_offset) > block_size) : true); index++) {
-            _pmap_update_pte(pmap, va, &table[index], (level == 2) ? MAKE_BDE(*pmap, pa, bpu, bpl) : MAKE_PDE(*pmap, pa, bpu, bpl));
+            _pmap_update_pte(va, &table[index], (level == 2) ? MAKE_BDE(*pmap, pa, bpu, bpl) : MAKE_PDE(*pmap, pa, bpu, bpl));
             page_offset += mapped_size;
             pa += mapped_size;
             va += mapped_size;
@@ -355,16 +348,17 @@ bool _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
 }
 
 bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
-    kassert(IS_PAGE_ALIGNED(*pmap, vaddr));
+    kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr));
 
-    unsigned long block_size = BLOCK_SIZE(*pmap);
+    unsigned long block_size = BLOCK_SIZE(pmap->page_shift);
     unsigned long block_mask = block_size - 1;
-    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(*pmap);
+    unsigned long max_num_ptes_ll = MAX_NUM_PTES_LL(pmap->page_size);
 
     // Get rid of extraneous VA bits not used in translation
     vaddr_t va = vaddr & ~(0xFFFF000000000000);
 
-    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(*pmap); page_offset < size;) {
+    for (unsigned long page_offset = 0, block_size = BLOCK_SIZE(pmap->page_shift); page_offset < size;) {
+        pte_t *tables[4] = {NULL, NULL, NULL, NULL};
         pte_t *table = (pte_t*)pmap->ttb;
 
         // Walk the page tables. If a page table does not exist where it should then the supplied VA range is too large for whatever reason
@@ -378,7 +372,7 @@ bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
             // If so, unmap the whole block and then map it as pages
             if(level == 2 && IS_BDE_VALID(pte)) {
                 size_t remaining_size = size - page_offset;
-                if (remaining_size > block_size && IS_BLOCK_ALIGNED(*pmap, va)) break;
+                if (remaining_size > block_size && IS_BLOCK_ALIGNED(pmap->page_size, va)) break;
 
                 bp_uattr_t bpu = BP_UATTR_EXTRACT(pte);
                 bp_lattr_t bpl = BP_LATTR_EXTRACT(pte);
@@ -387,7 +381,7 @@ bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
                 paddr_t pa = PTE_TO_PA(pmap->page_size, pte);
                 size_t va_size = block_size >> 1;
 
-                _pmap_clear_pte(pmap, va_block, &table[index]);
+                _pmap_clear_pte(va_block, &table[index]);
                 _pmap_map_range(pmap, va_block, pa, va_size, bpu, bpl);
                 _pmap_map_range(pmap, va_block + va_size, pa + va_size, va_size, bpu, bpl);
 
@@ -399,6 +393,7 @@ bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
             if (!IS_TDE_VALID(pte)) return false;
 
             // Update table pointer to the next table
+            tables[level] = &table[index];
             table = (pte_t*)PTE_TO_PA(pmap->page_size, pte);
         }
 
@@ -406,9 +401,32 @@ bool _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
         // In those cases, start the table walk again to get the next table pointer
         size_t mapped_size = (level == 2) ? block_size : pmap->page_size;
         for (unsigned int index = GET_TABLE_IDX(va, lsb, mask); (page_offset < size) && (index < max_num_ptes_ll) && ((level == 2) ? ((size - page_offset) > block_size) : true); index++) {
-            _pmap_clear_pte(pmap, va, &table[index]);
+            _pmap_clear_pte(va, &table[index]);
             page_offset += mapped_size;
             va += mapped_size;
+        }
+
+        // Scan the page tables we just walked and free any that are completely empty
+        tables[level] = table;
+        for (int i = level; i >= 0 && tables[i] != NULL; i--) {
+            pte_t *table_base = (pte_t*)((uintptr_t)tables[i] & ~mask);
+
+            bool empty = true;
+            for (int j = 0; j < max_num_ptes_ll; j++) {
+                if (IS_PTE_VALID(table_base[j])) {
+                    empty = false;
+                    break;
+                }
+            }
+
+            // Don't check the other tables if this one is not empty
+            if (!empty) break;
+
+            // If it is empty then clear the parent table PTE and free the page
+            if (i != 0) {
+                pmm_free(PTE_TO_PA(pmap->page_size, *tables[i - 1]));
+                _pmap_clear_pte(vaddr, tables[i - 1]);
+            }
         }
     }
 
@@ -425,11 +443,11 @@ void pmap_init(void) {
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
     size_t kernel_size = (uintptr_t)(&__kernel_virtual_end) - (uintptr_t)(&__kernel_virtual_start);
-    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap, kernel_physical_start + kernel_size);
-    kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap, kernel_virtual_start + kernel_size);
+    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_physical_start + kernel_size);
+    kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_virtual_start + kernel_size);
 
     // pmm_init won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
-    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap, pmm_get_size_requirement(MEMSIZE, kernel_pmap.page_size));
+    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap.page_size, pmm_get_size_requirement(MEMSIZE, kernel_pmap.page_size));
     vaddr_t pmm_va = kernel_virtual_end;
     pmm_init(kernel_physical_end, MEMBASEADDR, MEMSIZE, kernel_pmap.page_size);
     kernel_physical_end += pmm_size;
@@ -446,8 +464,8 @@ void pmap_init(void) {
     kassert(pmm_alloc(&kernel_pmap.ttb));
     memset((void*)kernel_pmap.ttb, 0, kernel_pmap.page_size);
 
-    size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB(kernel_pmap);
-    size_t max_num_ptes_ll = MAX_NUM_PTES_LL(kernel_pmap);
+    size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB(kernel_pmap.page_shift);
+    size_t max_num_ptes_ll = MAX_NUM_PTES_LL(kernel_pmap.page_size);
     pte_t *ttb = (pte_t*)kernel_pmap.ttb;
 
     // Attributes for the kernel's table descriptors

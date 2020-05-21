@@ -5,7 +5,7 @@
 
 // Invalidates all TLB entries
 void tlb_invalidate_all(void);
-void tlb_invalidate_range(uintptr_t va, size_t va_range);
+void tlb_invalidate(uintptr_t va);
 
 // Invalidates the icache completely to the polong of unification
 void icache_invalidate_all(void);
