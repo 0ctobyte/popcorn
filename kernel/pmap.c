@@ -229,7 +229,7 @@ extern paddr_t kernel_physical_start;
 vaddr_t kernel_virtual_start = ((uintptr_t)(&__kernel_virtual_start));
 
 // These are set to the end of the kernel's virtual address space and physical address space
-paddr_t kernel_physical_end = 0;
+extern paddr_t kernel_physical_end;
 vaddr_t kernel_virtual_end = 0;
 
 void _pmap_setup_table_recursive_mapping(pmap_t *pmap) {
@@ -428,8 +428,8 @@ void pmap_init(void) {
 
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
-    size_t kernel_size = (uintptr_t)(&__kernel_virtual_end) - (uintptr_t)(&__kernel_virtual_start);
-    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_physical_start + kernel_size);
+    size_t kernel_size = kernel_physical_end - kernel_physical_start;
+    kernel_physical_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_physical_end);
     kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_virtual_start + kernel_size);
 
     // pmm_init won't have any way to allocate memory this early in the boot process so pre-allocate memory for it

@@ -1,13 +1,13 @@
 .text
 
-virtualbaseaddr .req x11
-physicalbaseaddr .req x12
-
 .global _start
 .align 2
 _start:
     # Mask exceptions and interrupts for now
     msr DAIFSet, #0xf
+
+    # Move the pointer to the device tree
+    mov x12, x2
 
     # Disable the MMU
     mrs x0, SCTLR_EL1
@@ -15,19 +15,16 @@ _start:
     bic x0, x0, x1
     msr SCTLR_EL1, x0
 
-    ldr virtualbaseaddr, =__kernel_virtual_start
-    adr physicalbaseaddr, _start
-
     # We don't know what page granule we will eventually end up using so let's relocate ourself to a 64KB page boundary if necessary
-    mov x0, physicalbaseaddr
+    adr x11, _start
+    mov x0, x11
     ldr x1, =__kernel_physical_end
     bl _relocate
-    adr physicalbaseaddr, _start
+    adr x11, _start
 
     # Set the el1 stack (for now it's a physical address until we enable the MMU)
-    ldr x0, =__el1_stack_limit+8192
-    sub x0, x0, virtualbaseaddr
-    add sp, x0, physicalbaseaddr
+    adr x0, __el1_stack_limit+8192
+    mov sp, x0
 
     # Create a the first frame record, this should be 0
     mov fp, xzr
@@ -47,10 +44,14 @@ _start:
     msr SCTLR_EL1, x0
 
     # Store the physical base address of where the kernel was loaded in memory
-    ldr x0, =kernel_physical_start
-    sub x0, x0, virtualbaseaddr
-    add x0, x0, physicalbaseaddr
-    str physicalbaseaddr, [x0]
+    adr x0, kernel_physical_start
+    str x11, [x0]
+
+    # Store the end of the kernel's physical address space
+    ldr x0, =__kernel_physical_end
+    add x0, x0, x11
+    adr x1, kernel_physical_end
+    str x0, [x1]
 
     # Enable floating point & SIMD
     mrs x0, CPACR_EL1
@@ -126,5 +127,5 @@ _relocate_end:
 # Setup the boot time stack in the BSS
 .comm __el1_stack_limit, 8192, 8
 
-# Setup some boot time variables in the BSS
 .comm kernel_physical_start, 8, 8
+.comm kernel_physical_end, 8, 8
