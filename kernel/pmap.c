@@ -252,6 +252,19 @@ void _pmap_setup_table_recursive_mapping(pmap_t *pmap) {
     }
 }
 
+pte_t _pmap_alloc_table(pmap_t *pmap) {
+    // Allocate a page for this new table and zero it out. Table attributes are relaxed as we want per-page attributes to take precendent on access permissions
+    // Table descriptors don't have lower-page attributes but they are needed for the recursive page table mapping which allows us to access a table in VA as if it was a page
+    paddr_t new_table;
+    bp_lattr_t bpl_table = (bp_lattr_t){.ng = pmap->is_kernel ? BP_GLOBAL : BP_NON_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
+    t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NONE, .uxn = T_NON_UXN, .pxn = T_NON_PXN};
+
+    kassert(pmm_alloc(&new_table));
+    memset((void*)new_table, 0, pmap->page_size);
+
+    return MAKE_TDE(pmap, new_table, ta, bpl_table);
+}
+
 void _pmap_update_pte(vaddr_t va, pte_t *old_pte, pte_t new_pte) {
     // Use break-before-make rule if the old PTE was valid. We must do this in the following cases:
     // - Changing memory type
@@ -288,7 +301,7 @@ void _pmap_clear_pte(vaddr_t va, pte_t *old_pte) {
     tlb_invalidate(va);
 }
 
-size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl, pte_t *table, t_attr_t ta, unsigned long level) {
+size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl, pte_t *table, unsigned long level) {
     // Calculate the table index width, mask and lsb for this levels index bits in the VA
     // The top 16 bits of the VA are not used in translation so clear them
     unsigned long width = pmap->page_shift - 3, mask = (1 << width) - 1, lsb = pmap->page_shift + ((3 - level) * width), max_num_ptes_ll = pmap->page_size >> 3;
@@ -311,18 +324,15 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
     } else {
         // Otherwise we must be a table entry so check if one exists. If it doesn't create the table
         if (!IS_TDE_VALID(table[index])) {
-            // Allocate a page for this new table and zero it out
-            paddr_t new_table;
-            kassert(pmm_alloc(&new_table));
-            memset((void*)new_table, 0, pmap->page_size);
-            _pmap_update_pte(GET_TABLE_VA(pmap, (vaddr_t)table, index, width), &table[index], MAKE_TDE(pmap, new_table, ta, bpl));
+            pte_t new_table_pte = _pmap_alloc_table(pmap);
+            _pmap_update_pte(GET_TABLE_VA(pmap, (vaddr_t)table, index, width), &table[index], new_table_pte);
         }
 
         // Since this is a table entry, recursively call _pmap_do_map with a higher level value
         // Accumulate the mapped_size until we've mapped the entire range or we've hit the end of this page table
         pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
         for (mapped_size = 0; mapped_size < size && index < max_num_ptes_ll; index++) {
-            mapped_size += _pmap_do_map(pmap, vaddr + mapped_size, paddr + mapped_size, size - mapped_size, bpu, bpl, next_table, ta, level+1);
+            mapped_size += _pmap_do_map(pmap, vaddr + mapped_size, paddr + mapped_size, size - mapped_size, bpu, bpl, next_table, level+1);
         }
     }
 
@@ -332,10 +342,8 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
 void _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
     kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr) && IS_PAGE_ALIGNED(pmap->page_size, paddr));
 
-    // Attributes for the table descriptors
-    t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NO_EL0, .uxn = T_UXN, .pxn = T_NON_PXN};
     pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
-    _pmap_do_map(pmap, vaddr, paddr, size, bpu, bpl, table, ta, 0);
+    _pmap_do_map(pmap, vaddr, paddr, size, bpu, bpl, table, 0);
 }
 
 size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_table_pte, pte_t *table, unsigned long level) {
@@ -362,20 +370,16 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
         // Now we may may have a table entry or a block entry but the conditions to unmap a block weren't met. In that case check for a block descriptor
         // and break up the block to level 3 mappings
         if (IS_BDE_VALID(table[index])) {
-            // Allocate a page for this new table and zero it out
-            paddr_t new_table;
-            kassert(pmm_alloc(&new_table));
-            memset((void*)new_table, 0, pmap->page_size);
+            // Update the entry. Need to do this first so we can access the table in the table VA space
+            pte_t new_table_pte = _pmap_alloc_table(pmap);
+            _pmap_update_pte(vaddr, &table[index], new_table_pte);
 
-            // Map the entire table. The new table table inherits the parent table attributes
-            t_attr_t ta = T_ATTR_EXTRACT(*parent_table_pte);
+            // Map the entire table. The new page entries inherit the block attributes
+            pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, new_table_pte));
             bp_uattr_t bpu = BP_UATTR_EXTRACT(table[index]);
             bp_lattr_t bpl = BP_LATTR_EXTRACT(table[index]);
             paddr_t paddr = PTE_TO_PA(pmap->page_size, table[index]);
-            _pmap_do_map(pmap, vaddr, paddr, block_size, bpu, bpl, (pte_t*)new_table, ta, 3);
-
-            // Update the entry
-            _pmap_update_pte(vaddr, &table[index], MAKE_TDE(pmap, new_table, ta, bpl));
+            _pmap_do_map(pmap, vaddr, paddr, block_size, bpu, bpl, new_table, 3);
         }
 
         // Otherwise we must be a table entry so check if one exists otherwise we're trying to unmap a range that doesn't exist
@@ -412,8 +416,6 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 void _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
     kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr));
 
-    // Attributes for the table descriptors
-    t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NO_EL0, .uxn = T_UXN, .pxn = T_NON_PXN};
     pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
     _pmap_do_unmap(pmap, vaddr, size, NULL, table, 0);
 }
