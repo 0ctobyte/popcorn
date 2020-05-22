@@ -33,6 +33,9 @@ void kmain(void) {
     // We need to map UART in order to use kprintf!
     pmap_init();
     kprintf("pmap_init() - done!\n");
+    vaddr_t vstartp, vendp;
+    pmap_virtual_space(&vstartp, &vendp);
+    kprintf("virtual space: %p - %p\n", vstartp, vendp);
 
     //// TODO: This shouldn't be here! Only temporary
     //// Map the UART, VIC/SIC/GIC
