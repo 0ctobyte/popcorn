@@ -38,6 +38,20 @@ _rbit:
     rbit x0, x0
     ret lr
 
+# Reverse byte order in a 32-bit word. Use to convert between big and little endian
+.global _rev32
+.align 2
+_rev32:
+    rev w0, w0
+    ret lr
+
+# Reverse byte order in a 64-bit word. Use to convert between big and little endian
+.global _rev64
+.align 2
+_rev64:
+    rev x0, x0
+    ret lr
+
 # Counts the number of bits set
 .global _popcnt
 .align 2

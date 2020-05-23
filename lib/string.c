@@ -6,6 +6,25 @@ size_t strlen(const char *str) {
     return(len);
 }
 
+int strcmp(const char *str1, const char *str2) {
+    unsigned int i;
+    for (i = 0; str1[i] != '\0' && str2[i] != '\0' && str1[i] == str2[i]; i++);
+    return (str1[i] == '\0' && str2[i] == '\0') ? 0 : str1[i] - str2[i];
+}
+
+int strncmp(const char *str1, const char *str2, size_t num) {
+    unsigned int i;
+    for (i = 0; i < num && str1[i] == str2[i]; i++);
+    return (i == num) ? 0 : str1[i] - str2[i];
+}
+
+const char* strchr(const char *str, int character) {
+    size_t len = strlen(str);
+    for (int i = 0; i < len; i++) {
+        if (str[i] == character) return str + i;
+    }
+    return NULL;
+}
 
 void* memset(void *ptr, uint8_t value, size_t num) {
     uint8_t *buf = ptr;

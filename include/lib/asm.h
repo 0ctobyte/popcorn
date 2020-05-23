@@ -18,6 +18,10 @@ unsigned long _clz(unsigned long n);
 // Reverses the bit order on the 32-bit integer
 unsigned long _rbit(unsigned long n);
 
+// Reverse byte order in a 32-bit or 64-bit word. Use to convert between big and little endian
+unsigned long _rev32(unsigned long n);
+unsigned long _rev64(unsigned long n);
+
 // Counts the number of bits set
 unsigned long _popcnt(unsigned long n);
 

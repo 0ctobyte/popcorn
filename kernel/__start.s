@@ -6,14 +6,21 @@ _start:
     # Mask exceptions and interrupts for now
     msr DAIFSet, #0xf
 
-    # Move the pointer to the device tree
-    mov x12, x2
+    # Save the pointer to the device tree
+    adr x2, fdt_header
+    str x0, [x2]
 
     # Disable the MMU
     mrs x0, SCTLR_EL1
     mov x1, #1
     bic x0, x0, x1
     msr SCTLR_EL1, x0
+
+    # Enable floating point & SIMD
+    mrs x0, CPACR_EL1
+    mov x1, #0x3
+    bfi x0, x1, #20, #2
+    msr CPACR_EL1, x0
 
     # We don't know what page granule we will eventually end up using so let's relocate ourself to a 64KB page boundary if necessary
     adr x11, _start
@@ -53,11 +60,15 @@ _start:
     adr x1, kernel_physical_end
     str x0, [x1]
 
-    # Enable floating point & SIMD
-    mrs x0, CPACR_EL1
-    mov x1, #0x3
-    bfi x0, x1, #20, #2
-    msr CPACR_EL1, x0
+    # Finally copy the FDT to the end of the kernel's physical address space
+    # _copy_fdt returns the total size of the FDT header which we use to bump up kernel_physical_end
+    adr x1, fdt_header
+    ldr x1, [x1]
+    bl _copy_fdt
+    adr x2, kernel_physical_end
+    ldr x1, [x2]
+    add x0, x0, x1
+    str x0, [x2]
 
     # Jump to kernel main
     bl kmain
@@ -124,8 +135,38 @@ _relocate_done:
     ret lr
 _relocate_end:
 
+# x0 - destination
+# x1 - fdt_header pointer
+.align 2
+_copy_fdt:
+    # x0 is the total size of the FDT
+    mov x2, x0
+    mov x0, xzr
+
+    # Check for the magic value. All FDT values are big-endian so we need to use REV
+    movk w4, #0xd00d, lsl #16
+    movk w4, #0xfeed
+    ldr w3, [x1]
+    rev w3, w3
+    cmp w3, w4
+    bne _copy_fdt_done
+
+    # Get the total size of the FDT
+    ldr w3, [x1, #4]
+    rev w3, w3
+    mov w0, w3
+_copy_fdt_loop:
+    ldr w4, [x1], #4
+    str w4, [x2], #4
+    subs w3, w3, #1
+    cbnz w3, _copy_fdt_loop
+
+_copy_fdt_done:
+    ret lr
+
 # Setup the boot time stack in the BSS
 .comm __el1_stack_limit, 8192, 8
 
 .comm kernel_physical_start, 8, 8
 .comm kernel_physical_end, 8, 8
+.comm fdt_header, 8, 8
