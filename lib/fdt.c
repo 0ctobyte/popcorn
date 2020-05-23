@@ -1,6 +1,6 @@
-#include <kernel/fdt.h>
 #include <kernel/kstdio.h>
 #include <kernel/panic.h>
+#include <lib/fdt.h>
 #include <lib/asm.h>
 #include <string.h>
 #include <ctype.h>
@@ -41,7 +41,7 @@ fdt_token_t _fdt_next_token(fdt_header_t *fdth, unsigned int *offset) {
         {
             // Skip the prop header and data
             fdt_prop_t *prop = (fdt_prop_t*)addr;
-            size_t len = (_rev32(prop->len) + 3) & ~0x3;
+            size_t len = (fdt_get_len_from_prop(prop) + 3) & ~0x3;
             *offset += sizeof(fdt_prop_t) + len;
             break;
         }
@@ -60,8 +60,8 @@ fdt_token_t _fdt_next_token(fdt_header_t *fdth, unsigned int *offset) {
 unsigned int _fdt_find_node_from_offset(fdt_header_t *fdth, unsigned int offset, const char *name, size_t num) {
     if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
-    for (; offset != 0; offset = fdt_next_node(fdt_header, offset)) {
-        fdt_node_t *node = fdt_get_node_from_offset(fdt_header, offset);
+    for (; offset != 0; offset = fdt_next_node(fdth, offset)) {
+        fdt_node_t *node = fdt_get_node_from_offset(fdth, offset);
         if (strncmp(name, node->name, num) == 0) break;
     }
 
@@ -69,7 +69,7 @@ unsigned int _fdt_find_node_from_offset(fdt_header_t *fdth, unsigned int offset,
 }
 
 bool fdt_prop_data_is_string(fdt_prop_t *prop) {
-    uint32_t len = _rev32(prop->len);
+    uint32_t len = fdt_get_len_from_prop(prop);
     const char *str = (const char*)prop->data;
 
     // Strings must be null-terminated and greater than 0 in length
@@ -105,9 +105,37 @@ const char* fdt_get_name_from_prop(fdt_header_t *fdth, fdt_prop_t *prop) {
     return (const char*)((uintptr_t)fdth + _rev32(fdth->off_dt_strings) + _rev32(prop->nameoff));
 }
 
+uint32_t fdt_get_len_from_prop(fdt_prop_t *prop) {
+    return _rev32(prop->len);
+}
+
+uint32_t fdt_next_data_from_prop(fdt_prop_t *prop, unsigned int *data_offset) {
+    if (_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
+        *data_offset = 0;
+        return 0;
+    }
+
+    uint32_t data = _rev32(*((uint32_t*)((uintptr_t)prop->data + *data_offset)));
+    *data_offset += 4;
+    *data_offset = *data_offset < fdt_get_len_from_prop(prop) ? *data_offset : 0;
+    return data;
+}
+
+const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_offset) {
+    if (_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
+        *string_offset = 0;
+        return 0;
+    }
+
+    const char *string = (const char*)((uintptr_t)prop->data + *string_offset);
+    *string_offset += strlen(string) + 1;
+    *string_offset = *string_offset < fdt_get_len_from_prop(prop) ? *string_offset : 0;
+    return string;
+}
+
 unsigned int fdt_get_first_node(fdt_header_t *fdth) {
     if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
-    return fdt_next_subnode(fdt_header, _rev32(fdt_header->off_dt_struct));
+    return fdt_next_subnode(fdth, _rev32(fdth->off_dt_struct));
 }
 
 unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
@@ -180,13 +208,16 @@ unsigned int fdt_get_prop(fdt_header_t *fdth, unsigned int node_offset, const ch
     fdt_node_t *node = fdt_get_node_from_offset(fdth, node_offset);
     if (_rev32(node->token) != FDT_BEGIN_NODE) return 0;
 
-    unsigned int offset = fdt_next_prop(fdth, offset);
-    fdt_prop_t *prop = fdt_get_prop_from_offset(fdth, offset);
+    unsigned int offset = node_offset;
+    fdt_prop_t *prop;
 
-    while (offset != 0 && strcmp(name, fdt_get_name_from_prop(fdth, prop)) != 0) {
+    do {
         offset = fdt_next_prop(fdth, offset);
         prop = fdt_get_prop_from_offset(fdth, offset);
-    }
+        if (strcmp(name, fdt_get_name_from_prop(fdth, prop)) == 0) break;
+    } while (offset != 0);
+
+    return offset;
 }
 
 void fdt_dump_header(fdt_header_t *fdth) {
@@ -241,7 +272,7 @@ void fdt_dump(fdt_header_t *fdth) {
             {
                 fdt_prop_t *prop = fdt_get_prop_from_offset(fdth, offset);
                 const char *prop_name = fdt_get_name_from_prop(fdth, prop);
-                uint32_t prop_len = _rev32(prop->len);
+                uint32_t prop_len = fdt_get_len_from_prop(prop);
 
                 kprintf("%s%s", tabs, prop_name);
                 if (fdt_prop_data_is_string(prop)) {
@@ -252,7 +283,7 @@ void fdt_dump(fdt_header_t *fdth) {
                 } else if (prop_len != 0) {
                     kprintf(" = < ");
                     for (unsigned int i = 0; i < prop_len; i += 4) {
-                        kprintf("0x%08x ", _rev32(*(uint32_t*)(prop->data + i)));
+                        kprintf("%08x ", _rev32(*(uint32_t*)(prop->data + i)));
                     }
                     kprintf(">");
                 }

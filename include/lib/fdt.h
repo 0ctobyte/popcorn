@@ -37,13 +37,16 @@ typedef struct {
     uint8_t data[];
 } fdt_prop_t;
 
-extern fdt_header_t *fdt_header;
-
 // Checks whether the property data is a string
 bool fdt_prop_data_is_string(fdt_prop_t *prop);
 
-// Get the name string of the given property
+// Get the name string/len of the given property
 const char* fdt_get_name_from_prop(fdt_header_t *fdth, fdt_prop_t *prop);
+uint32_t fdt_get_len_from_prop(fdt_prop_t *prop);
+
+// Iterate through the data for a property. The iterators can be started by setting data_offset to 0
+uint32_t fdt_next_data_from_prop(fdt_prop_t *prop, unsigned int *data_offset);
+const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_offset);
 
 // Get's the node/prop/rsv at the specified offset
 fdt_node_t* fdt_get_node_from_offset(fdt_header_t *fdth, unsigned int offset);
