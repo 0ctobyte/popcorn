@@ -133,6 +133,11 @@ const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_off
     return string;
 }
 
+unsigned int fdt_get_root_node(fdt_header_t *fdth) {
+    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    return _rev32(fdth->off_dt_struct);
+}
+
 unsigned int fdt_get_first_node(fdt_header_t *fdth) {
     if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
     return fdt_next_subnode(fdth, _rev32(fdth->off_dt_struct));

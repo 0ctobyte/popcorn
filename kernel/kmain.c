@@ -6,11 +6,14 @@
 #include <kernel/pmap.h>
 #include <kernel/vmm.h>
 #include <kernel/kheap.h>
+#include <kernel/devicetree.h>
 
 #include <lib/asm.h>
 
-#include <platform/irq.h>
 #include <platform/iomem.h>
+
+unsigned long MEMBASEADDR;
+unsigned long MEMSIZE;
 
 void print_heap_stats() {
     size_t heap_free, heap_allocated, num_free_blocks, num_used_blocks, heap_size;
@@ -21,9 +24,12 @@ void print_heap_stats() {
     kprintf("Heap blocks: used = %llu | free = %llu\n", num_used_blocks, num_free_blocks);
 }
 
+#include <string.h>
 void kmain(void) {
     // Setup the exception vector table
     exceptions_init();
+
+    if (!devicetree_find_memory(&MEMBASEADDR, &MEMSIZE)) HALT();
 
     kprintf("Hello World\n");
 

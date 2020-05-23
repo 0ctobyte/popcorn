@@ -63,6 +63,9 @@ unsigned int fdt_next_prop(fdt_header_t *fdth, unsigned int offset);
 // for the unique node otherwise it will stop after the finding the first matching node
 unsigned int fdt_get_node(fdt_header_t *fdth, const char *name);
 
+// Returns the offset to the root node
+unsigned int fdt_get_root_node(fdt_header_t *fdth);
+
 // Returns the offset to the very first node in the FDT (other than the root node)
 unsigned int fdt_get_first_node(fdt_header_t *fdth);
 
