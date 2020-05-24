@@ -22,7 +22,6 @@ void print_heap_stats() {
     kprintf("Heap blocks: used = %llu | free = %llu\n", num_used_blocks, num_free_blocks);
 }
 
-#include <string.h>
 void kmain(void) {
     // Setup the exception vector table
     exceptions_init();

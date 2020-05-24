@@ -15,6 +15,7 @@ parser.add_argument("-cpu", help='''
                                 ''', default="cortex-a53")
 parser.add_argument("-cores", help="Number of cores to emulate", default=1)
 parser.add_argument("-graphics", help="Enable graphical mode (i.e. display)", default=False, action="store_true")
+parser.add_argument("-dtb", help="Use the given DeviceTree blob file", default="")
 
 args = parser.parse_args()
 
@@ -26,6 +27,8 @@ if not args.graphics:
     qemu += ["-nographic"]
 if args.debug:
     qemu += ["-s", "-S"]
+if args.dtb != "":
+    qemu += ["-dtb", args.dtb]
 qemu += ["-kernel", args.bin]
 
 print("Running QEMU ARM Virt platform with command-line: " + ' '.join(qemu))

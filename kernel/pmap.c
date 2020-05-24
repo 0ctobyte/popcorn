@@ -463,7 +463,8 @@ void pmap_init(void) {
     bp_uattr_t bp_uattr_dev = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
     bp_lattr_t bp_lattr_dev = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_DEVICE_NGNRNE};
     vaddr_t kernel_devices_virtual_start = 0xFFFFFC0000000000;
-    _pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr, kernel_pmap.page_size, bp_uattr_dev, bp_lattr_dev);
+    unsigned int uart_base_offset = uart_base_addr & (kernel_pmap.page_size - 1);
+    _pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr & ~(kernel_pmap.page_size - 1), kernel_pmap.page_size, bp_uattr_dev, bp_lattr_dev);
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
@@ -485,7 +486,7 @@ void pmap_init(void) {
     mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
     // FIXME Switch UART base address to virtual address
-    uart_base_addr = kernel_devices_virtual_start;
+    uart_base_addr = kernel_devices_virtual_start + uart_base_offset;
     kernel_devices_virtual_start += kernel_pmap.page_size;
 
     // Tell pmm to switch to using the virtual address space to access it's data structures
