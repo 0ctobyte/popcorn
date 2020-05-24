@@ -10,8 +10,6 @@
 
 #include <lib/asm.h>
 
-#include <platform/iomem.h>
-
 unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
