@@ -1,7 +1,7 @@
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
-#include <stdint.h>
+#include <sys/types.h>
 
 // Invalidates all TLB entries
 void tlb_invalidate_all(void);
