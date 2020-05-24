@@ -66,10 +66,6 @@ The lib code consists of useful helper functions and implementations of some of 
 The code is still incomplete. As of now, the kernel boots and runs in virtual memory mode on an emulated ARM platform board as well as on real hardware (Beaglebone Black) and is able to print text over UART.
 
 Next steps:
-* Need a slab allocator to allocate kernel structures (pmaps, pgd, pgts etc.)
-* Managing platform specific IO devices and memory mappings
-* Initialization of platform specific devices
-* Better build system
-* Debugging output on aborts/exceptions (register dump, stack trace)
-* Enabling and modifying functionality of caches, TLBs, and CPU (branch prediction) through the control registers
-
+* Virtual memory management system and pmap
+* Kernel heap
+* process control block
