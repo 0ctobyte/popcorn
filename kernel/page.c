@@ -252,5 +252,15 @@ page_t* page_reserve_pa(paddr_t pa) {
 }
 
 void page_relocate_array(vaddr_t va) {
-    page_array.pages = (page_t*)va;
+    page_t *page_array_va = (page_t*)va;
+
+    // Adjust very single buddy pointer in each bin
+    for (unsigned int i = 0; i < NUM_BINS; i++) {
+        if (page_array.page_bins[i] != NULL) page_array.page_bins[i] = (page_array.page_bins[i] - page_array.pages) + page_array_va;
+        for (page_t *buddy = page_array.page_bins[i]; buddy != NULL; buddy = buddy->next_buddy) {
+            if (buddy->next_buddy != NULL) buddy->next_buddy = (buddy->next_buddy - page_array.pages) + page_array_va;
+        }
+    }
+
+    page_array.pages = page_array_va;
 }
