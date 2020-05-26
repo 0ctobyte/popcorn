@@ -1,4 +1,4 @@
-#include <kernel/vmm.h>
+#include <kernel/vmap.h>
 #include <kernel/kassert.h>
 #include <kernel/pmm.h>
 #include <kernel/kheap.h>

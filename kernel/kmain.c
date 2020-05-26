@@ -4,7 +4,6 @@
 #include <kernel/exceptions.h>
 #include <kernel/interrupts.h>
 #include <kernel/pmap.h>
-#include <kernel/vmm.h>
 #include <kernel/kheap.h>
 #include <kernel/devicetree.h>
 

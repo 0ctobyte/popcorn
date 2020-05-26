@@ -67,7 +67,7 @@ void pmap_reference(pmap_t *pmap);
 #define pmap_wired_count(pmap) ((pmap)->pmap_stats.wired_count)
 
 // Adds a virtual to physical page mapping to the specified pmap using the specified protection
-long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vmm_prot_t prot, pmap_flags_t flags);
+long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vprot_t prot, pmap_flags_t flags);
 
 // Removes a range of virtual to physical page mappings from the specified pmap
 void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva);
@@ -76,7 +76,7 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva);
 void pmap_remove_all(pmap_t *pmap);
 
 // Changes the protection of all mappings in the specified range in the pmap
-void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vmm_prot_t prot);
+void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vprot_t prot);
 
 // Clears the wired attribute on the mapping for the specified virtual address
 void pmap_unwire(pmap_t *pmap, vaddr_t va);
@@ -86,7 +86,7 @@ void pmap_unwire(pmap_t *pmap, vaddr_t va);
 bool pmap_extract(pmap_t *pmap, vaddr_t va, paddr_t *pa);
 
 // Enter an unmanaged mapping for the kernel pmap. This mapping will not be affected by other systems and will always be wired and can't fail
-void pmap_kenter_pa(vaddr_t va, paddr_t pa, vmm_prot_t vm_prot, pmap_flags_t flags);
+void pmap_kenter_pa(vaddr_t va, paddr_t pa, vprot_t prot, pmap_flags_t flags);
 
 // Removes all mappings starting at the specified virtual address to the size (in bytes) specified from the kernel pmap.
 // All mappings must have been entered with pmap_kenter_pa
@@ -117,7 +117,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 
 // Lower the permissions for all mappings of vpg to prot. Used by the vmm to implement copy-on-write by setting page as read-only
 // and to invalidate all mappings when prot = 0. Access permissions will never be added by this function.
-void pmap_page_protect(vmm_page_t *vpg, vmm_prot_t prot);
+void pmap_page_protect(vmm_page_t *vpg, vprot_t prot);
 
 // Clear the modified attribute on vpg. Returns old value of the modified attribute
 bool pmap_clear_modify(vmm_page_t *vpg);

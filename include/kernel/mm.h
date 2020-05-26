@@ -13,7 +13,7 @@ typedef uintptr_t vaddr_t;
 typedef uintptr_t paddr_t;
 
 // Protection bits
-typedef unsigned long vmm_prot_t;
+typedef unsigned long vprot_t;
 
 typedef struct {
     // The starting virtual address of the page

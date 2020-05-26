@@ -570,13 +570,13 @@ void pmap_reference(pmap_t *pmap) {
 }
 
 //// TODO: Implement PMAP_CANFAIL logic
-//long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
+//long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vprot_t prot, pmap_flags_t pmap_flags) {
 //    // Must have a valid pmap
 //    kassert(pmap != NULL && pmap->pgd != NULL && IS_WITHIN_MEM_BOUNDS(pa) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
 //
 //    // Encode the protection bits in the page table entry
 //    // Encode the protection and pmap flags in the page table entry
-//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
+//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 //
 //    // First check if the page table for the given va exists within the page directory. If not create the page table
 //    unsigned long pgd_index = PGD_GET_INDEX(va);
@@ -590,12 +590,12 @@ void pmap_reference(pmap_t *pmap) {
 //}
 
 //// TODO: Should a lock be used to access kernel_pmap?
-//void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t vm_prot, pmap_flags_t pmap_flags) {
+//void pmap_kenter_pa(vaddr_t va, paddr_t pa, prot_t prot, pmap_flags_t pmap_flags) {
 //    // The mapping must be in the kernel virtual address space
 //    kassert(va >= (uintptr_t)(&__kernel_virtual_start) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
 //
 //    // Encode the protection and pmap flags in the page table entry
-//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(vm_prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
+//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
 //
 //
 //    // Now we must place the page table entry in the correct kernel page table

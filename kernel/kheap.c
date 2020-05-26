@@ -1,5 +1,5 @@
 #include <kernel/kheap.h>
-#include <kernel/vmm.h>
+#include <kernel/vmap.h>
 #include <kernel/kassert.h>
 
 #include <lib/asm.h>
@@ -215,7 +215,7 @@ void _kheap_free_used_block(vaddr_t free) {
 
 void kheap_init(void) {
     // Initialize the kernel heap region
-    vmm_km_heap_init();
+    //vmm_km_heap_init();
 
     // Initially start with a heap of PAGESIZE bytes
     //vaddr_t heap_start = vmm_km_heap_extend(PAGESIZE);
@@ -232,7 +232,7 @@ void* kheap_alloc(size_t size) {
     // If we haven't found a free block of the specified size, it is time to extend the heap region
     if(free == 0) {
         // Let's ask vmm for more heap
-        vaddr_t vstart = vmm_km_heap_extend(block_size);
+        vaddr_t vstart = 0;//vmm_km_heap_extend(block_size);
 
         // Since vmm rounds to PAGESIZE
         //_kheap_bin_insert(vstart, ROUND_PAGE(block_size));
