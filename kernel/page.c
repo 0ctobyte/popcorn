@@ -28,14 +28,12 @@
 // of physical address then we can merge them into one buddy and place them in the higher up bin; this process continues recursively until
 // it is no longer possible to do so. Note that this only allows allocating power-of-2 number of contiguous pages. Anything else is rounded
 // up to the next power of 2 and we will have wasted pages.
-
 typedef struct {
     spinlock_t lock;              // Multiple readers, single writer lock
     page_t *pages;                // Contiguous array of all pages
     page_t *page_bins[NUM_BINS];  // Buddy allocation bins
     size_t num_pages;             // Total # of pages
     paddr_t mem_base_addr;        // Base address of memory
-    unsigned long page_size;      // Page size
     unsigned long page_shift;     // Page shift
 } page_array_t;
 
@@ -136,13 +134,12 @@ void _page_bin_push(page_t *pages, size_t num_pages) {
     }
 }
 
-void page_init(paddr_t page_array_pa, paddr_t mem_base_addr, size_t mem_size, size_t page_size) {
+void page_init(paddr_t page_array_addr, size_t total_pages, paddr_t mem_base_addr, size_t page_size) {
     page_array.lock = SPINLOCK_INIT;
-    page_array.pages = (page_t*)page_array_pa;
+    page_array.pages = (page_t*)page_array_addr;
     page_array.mem_base_addr = mem_base_addr;
-    page_array.page_size = page_size;
-    page_array.page_shift = _ctz(page_array.page_size);
-    page_array.num_pages = mem_size >> page_array.page_shift;
+    page_array.page_shift = _ctz(page_size);
+    page_array.num_pages = total_pages;
 
     // Clear the entire array
     memset((void*)page_array.pages, 0, page_array.num_pages * sizeof(page_t));
@@ -204,7 +201,7 @@ void page_free(page_t *page) {
     page_free_contiguous(page, 1);
 }
 
-paddr_t page_get_pa(page_t *page) {
+paddr_t page_to_pa(page_t *page) {
     kassert(page != NULL);
     return (GET_PAGE_INDEX(page) << page_array.page_shift) + page_array.mem_base_addr;
 }
@@ -232,6 +229,7 @@ page_t* page_reserve_pa(paddr_t pa) {
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
+            page->wired_count++;
 
             if (prev != NULL) prev->next_buddy = buddy->next_buddy;
             else page_array.page_bins[bin] = buddy->next_buddy;
@@ -251,4 +249,8 @@ page_t* page_reserve_pa(paddr_t pa) {
 
     // We should never get here otherwise we may be reserving a page that has already been allocated
     return NULL;
+}
+
+void page_relocate_array(vaddr_t va) {
+    page_array.pages = (page_t*)va;
 }

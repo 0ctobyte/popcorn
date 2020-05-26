@@ -1,6 +1,6 @@
 #include <kernel/vmap.h>
 #include <kernel/kassert.h>
-#include <kernel/pmm.h>
+#include <kernel/page.h>
 #include <kernel/kheap.h>
 
 #include <string.h>
@@ -104,7 +104,7 @@ vaddr_t vmm_km_zalloc(size_t size) {
     //if(end >= kernel_vend) {
     //    // Loop through and allocate pages until we have enough memory to serve the requested size
     //    for( ; kernel_vend < end; kernel_vend+=PAGESIZE) {
-    //        paddr_t pa = pmm_alloc();
+    //        paddr_t pa = page_to_pa(page_alloc());
     //        pmap_kenter_pa(kernel_vend, pa, VM_PROT_DEFAULT, PMAP_WRITE_BACK);
     //    }
     //}
@@ -172,7 +172,7 @@ vaddr_t vmm_km_heap_extend(size_t size) {
 
     //for(vaddr_t va = prev_vend; va < region->vend; va += PAGESIZE) {
     //    // Allocate a free page if one should be available else panic
-    //    paddr_t pa = pmm_alloc();
+    //    paddr_t pa = page_to_pa(page_alloc());
     //    kassert(pa != UINTPTR_MAX);
 
     //    // TODO: Use pmap_enter here instead

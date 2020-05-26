@@ -1,5 +1,5 @@
 #include <kernel/pmap.h>
-#include <kernel/pmm.h>
+#include <kernel/page.h>
 #include <kernel/mmu.h>
 #include <kernel/barrier.h>
 #include <kernel/cache.h>
@@ -259,7 +259,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
     bp_lattr_t bpl_table = (bp_lattr_t){.ng = pmap->is_kernel ? BP_GLOBAL : BP_NON_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
     t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NONE, .uxn = T_NON_UXN, .pxn = T_NON_PXN};
 
-    kassert(pmm_alloc(&new_table));
+    new_table = page_to_pa(page_alloc());
     memset((void*)new_table, 0, pmap->page_size);
 
     return MAKE_TDE(pmap, new_table, ta, bpl_table);
@@ -322,16 +322,16 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
             _pmap_update_pte(vaddr + mapped_size, &table[index], MAKE_BDE(pmap, paddr + mapped_size, bpu, bpl));
         }
     } else {
-        // Otherwise we must be a table entry so check if one exists. If it doesn't create the table
-        if (!IS_TDE_VALID(table[index])) {
-            pte_t new_table_pte = _pmap_alloc_table(pmap);
-            _pmap_update_pte(GET_TABLE_VA(pmap, (vaddr_t)table, index, width), &table[index], new_table_pte);
-        }
-
         // Since this is a table entry, recursively call _pmap_do_map with a higher level value
         // Accumulate the mapped_size until we've mapped the entire range or we've hit the end of this page table
-        pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
         for (mapped_size = 0; mapped_size < size && index < max_num_ptes_ll; index++) {
+            // Check if we need to create a table
+            if (!IS_TDE_VALID(table[index])) {
+                pte_t new_table_pte = _pmap_alloc_table(pmap);
+                _pmap_update_pte(GET_TABLE_VA(pmap, (vaddr_t)table, index, width), &table[index], new_table_pte);
+            }
+
+            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
             mapped_size += _pmap_do_map(pmap, vaddr + mapped_size, paddr + mapped_size, size - mapped_size, bpu, bpl, next_table, level+1);
         }
     }
@@ -367,28 +367,28 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
             _pmap_clear_pte(vaddr + unmapped_size, &table[index]);
         }
     } else {
-        // Now we may may have a table entry or a block entry but the conditions to unmap a block weren't met. In that case check for a block descriptor
-        // and break up the block to level 3 mappings
-        if (IS_BDE_VALID(table[index])) {
-            // Update the entry. Need to do this first so we can access the table in the table VA space
-            pte_t new_table_pte = _pmap_alloc_table(pmap);
-            _pmap_update_pte(vaddr, &table[index], new_table_pte);
-
-            // Map the entire table. The new page entries inherit the block attributes
-            pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, new_table_pte));
-            bp_uattr_t bpu = BP_UATTR_EXTRACT(table[index]);
-            bp_lattr_t bpl = BP_LATTR_EXTRACT(table[index]);
-            paddr_t paddr = PTE_TO_PA(pmap->page_size, table[index]);
-            _pmap_do_map(pmap, vaddr, paddr, block_size, bpu, bpl, new_table, 3);
-        }
-
-        // Otherwise we must be a table entry so check if one exists otherwise we're trying to unmap a range that doesn't exist
-        kassert(IS_TDE_VALID(table[index]));
-
         // Since this is a table entry, recursively call _pmap_do_unmap with a higher level value
         // Accumulate the unmapped_size until we've unmapped the entire range or we've hit the end of this page table
-        pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
         for (unmapped_size = 0; unmapped_size < size && index < max_num_ptes_ll; index++) {
+            // Now we may may have a table entry or a block entry but the conditions to unmap a block weren't met. In that case check for a block descriptor
+            // and break up the block to level 3 mappings
+            if (IS_BDE_VALID(table[index])) {
+                // Update the entry. Need to do this first so we can access the table in the table VA space
+                pte_t new_table_pte = _pmap_alloc_table(pmap);
+                _pmap_update_pte(vaddr, &table[index], new_table_pte);
+
+                // Map the entire table. The new page entries inherit the block attributes
+                pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, new_table_pte));
+                bp_uattr_t bpu = BP_UATTR_EXTRACT(table[index]);
+                bp_lattr_t bpl = BP_LATTR_EXTRACT(table[index]);
+                paddr_t paddr = PTE_TO_PA(pmap->page_size, table[index]);
+                _pmap_do_map(pmap, vaddr, paddr, block_size, bpu, bpl, new_table, 3);
+            }
+
+            // Otherwise we must be a table entry so check if one exists otherwise we're trying to unmap a range that doesn't exist
+            kassert(IS_TDE_VALID(table[index]));
+
+            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
             unmapped_size += _pmap_do_unmap(pmap, vaddr + unmapped_size, size - unmapped_size, &table[index], next_table, level+1);
         }
     }
@@ -406,7 +406,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
         if (empty) {
             paddr_t table_pa = PTE_TO_PA(pmap->page_size, *parent_table_pte);
             _pmap_clear_pte((vaddr_t)table, parent_table_pte);
-            pmm_free(table_pa);
+            page_free(page_from_pa(table_pa));
         }
     }
 
@@ -432,22 +432,22 @@ void pmap_init(void) {
     kernel_physical_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_physical_end);
     kernel_virtual_end = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_virtual_start + kernel_size);
 
-    // pmm_init won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
-    size_t pmm_size = ROUND_PAGE_UP(kernel_pmap.page_size, pmm_get_size_requirement(MEMSIZE, kernel_pmap.page_size));
-    vaddr_t pmm_va = kernel_virtual_end;
-    pmm_init(kernel_physical_end, MEMBASEADDR, MEMSIZE, kernel_pmap.page_size);
-    kernel_physical_end += pmm_size;
-    kernel_virtual_end += pmm_size;
+    // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
+    size_t total_pages = MEMSIZE >> kernel_pmap.page_shift, page_array_size = ROUND_PAGE_UP(kernel_pmap.page_size, total_pages * sizeof(page_t));
+    vaddr_t page_array_va = kernel_virtual_end;
+    page_init(kernel_physical_end, total_pages, MEMBASEADDR, kernel_pmap.page_size);
+    kernel_physical_end += page_array_size;
+    kernel_virtual_end += page_array_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
     // Reserve the physical pages used by the kernel
     for(unsigned long i = 0, num_pages = kernel_size >> kernel_pmap.page_shift; i < num_pages; i++) {
-        pmm_reserve(kernel_physical_start + (i << kernel_pmap.page_shift));
+        page_reserve_pa(kernel_physical_start + (i << kernel_pmap.page_shift));
     }
 
     // Let's grab a page for the base translation table
     // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
-    kassert(pmm_alloc(&kernel_pmap.ttb));
+    kernel_pmap.ttb = page_to_pa(page_alloc());
     memset((void*)kernel_pmap.ttb, 0, kernel_pmap.page_size);
     _pmap_setup_table_recursive_mapping(&kernel_pmap);
 
@@ -468,8 +468,7 @@ void pmap_init(void) {
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
-    paddr_t ttb0, ttb1 = kernel_pmap.ttb;
-    kassert(pmm_alloc(&ttb0));
+    paddr_t ttb0 = page_to_pa(page_alloc()), ttb1 = kernel_pmap.ttb;
     memset((void*)ttb0, 0, kernel_pmap.page_size);
     pmap_t identity_pmap;
     identity_pmap.ttb = ttb0;
@@ -489,12 +488,12 @@ void pmap_init(void) {
     uart_base_addr = kernel_devices_virtual_start + uart_base_offset;
     kernel_devices_virtual_start += kernel_pmap.page_size;
 
-    // Tell pmm to switch to using the virtual address space to access it's data structures
-    pmm_set_va(pmm_va);
+    // Re-locate the page_array to it's virtual address
+    page_relocate_array(page_array_va);
 
     // Reclaim page table memory from the identity mappings that we no longer need
     _pmap_unmap_range(&identity_pmap, kernel_physical_start, kernel_size);
-    pmm_free(identity_pmap.ttb);
+    page_free(page_from_pa(identity_pmap.ttb));
     mmu_clear_ttbr0();
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.

@@ -15,7 +15,8 @@ typedef struct page_s {
     struct page_s *next_resident;       // List of resident pages. This is used by the object that has this page mapped
 } page_t;
 
-void page_init(paddr_t page_array_pa, paddr_t mem_base_addr, size_t mem_size, size_t page_size);
+// Will initialize the page allocation system using the space addressed by page_array_addr with the given number of pages
+void page_init(paddr_t page_array_addr, size_t total_pages, paddr_t mem_base_addr, size_t page_size);
 
 // Allocate or free a contiguous range of pages
 page_t* page_alloc_contiguous(size_t num_pages);
@@ -26,11 +27,15 @@ page_t* page_alloc(void);
 void page_free(page_t *page);
 
 // Convert a page to a physical address and vice versa
-paddr_t page_get_pa(page_t *page);
+paddr_t page_to_pa(page_t *page);
 page_t* page_from_pa(paddr_t pa);
 
 // Reserve pages that have been allocated but not through page_alloc*. This should be used by the virtual memory system
-// during boot time initialization to tell the page system what pages are being used by the kernel
+// during boot time initialization to tell the page system what pages are being used by the kernel. These pages will be wired
 page_t* page_reserve_pa(paddr_t pa);
+
+// Relocate the page array to it's virtual address, this is called by the virtual memory subsystem in it's initialization process
+// after it has enabled the MMU
+void page_relocate_array(vaddr_t va);
 
 #endif // __PAGE_H__
