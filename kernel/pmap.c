@@ -1,5 +1,4 @@
 #include <kernel/pmap.h>
-#include <kernel/page.h>
 #include <kernel/mmu.h>
 #include <kernel/barrier.h>
 #include <kernel/cache.h>
@@ -262,7 +261,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
     bp_lattr_t bpl_table = (bp_lattr_t){.ng = pmap->is_kernel ? BP_GLOBAL : BP_NON_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
     t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NONE, .uxn = T_NON_UXN, .pxn = T_NON_PXN};
 
-    new_table = page_to_pa(page_alloc());
+    new_table = vm_page_to_pa(vm_page_alloc());
     return MAKE_TDE(new_table, ta, bpl_table);
 }
 
@@ -410,7 +409,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
         if (empty) {
             paddr_t table_pa = PTE_TO_PA(*parent_table_pte);
             _pmap_clear_pte((vaddr_t)table, parent_table_pte);
-            page_free(page_from_pa(table_pa));
+            vm_page_free(vm_page_from_pa(table_pa));
         }
     }
 
@@ -437,21 +436,21 @@ void pmap_init(void) {
     kernel_virtual_end = kernel_virtual_start + kernel_size;
 
     // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
-    size_t page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(page_t));
-    vaddr_t page_array_va = kernel_virtual_end;
-    page_init(kernel_physical_end);
-    kernel_physical_end += page_array_size;
-    kernel_virtual_end += page_array_size;
+    size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
+    vaddr_t vm_page_array_va = kernel_virtual_end;
+    vm_page_init(kernel_physical_end);
+    kernel_physical_end += vm_page_array_size;
+    kernel_virtual_end += vm_page_array_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
     // Reserve the physical pages used by the kernel
     for(unsigned long i = 0, num_pages = kernel_size >> PAGESHIFT; i < num_pages; i++) {
-        page_reserve_pa(kernel_physical_start + (i << PAGESHIFT));
+        vm_page_reserve_pa(kernel_physical_start + (i << PAGESHIFT));
     }
 
     // Let's grab a page for the base translation table
     // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
-    kernel_pmap.ttb = page_to_pa(page_alloc());
+    kernel_pmap.ttb = vm_page_to_pa(vm_page_alloc());
     memset((void*)kernel_pmap.ttb, 0, PAGESIZE);
     _pmap_setup_table_recursive_mapping(&kernel_pmap);
 
@@ -472,7 +471,7 @@ void pmap_init(void) {
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
-    paddr_t ttb0 = page_to_pa(page_alloc()), ttb1 = kernel_pmap.ttb;
+    paddr_t ttb0 = vm_page_to_pa(vm_page_alloc()), ttb1 = kernel_pmap.ttb;
     memset((void*)ttb0, 0, PAGESIZE);
     pmap_t identity_pmap;
     identity_pmap.ttb = ttb0;
@@ -490,12 +489,12 @@ void pmap_init(void) {
     uart_base_addr = kernel_devices_virtual_start + uart_base_offset;
     kernel_devices_virtual_start += PAGESIZE;
 
-    // Re-locate the page_array to it's virtual address
-    page_relocate_array(page_array_va);
+    // Re-locate the vm_page_array to it's virtual address
+    vm_page_relocate_array(vm_page_array_va);
 
     // Reclaim page table memory from the identity mappings that we no longer need
     _pmap_unmap_range(&identity_pmap, kernel_physical_start, kernel_size);
-    page_free(page_from_pa(identity_pmap.ttb));
+    vm_page_free(vm_page_from_pa(identity_pmap.ttb));
     mmu_clear_ttbr0();
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
@@ -508,108 +507,9 @@ void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
     if(vendp != NULL) *vendp = GET_TABLE_VA_BASE(&kernel_pmap);
 }
 
-vaddr_t pmap_steal_memory(size_t vsize) {
-    kassert(kernel_virtual_end != 0);
-
-    static vaddr_t placement_addr = 0;
-    placement_addr = (placement_addr == 0) ? kernel_virtual_end : placement_addr;
-
-    //// Make sure enough memory is left!
-    //kassert((UINT32_MAX-placement_addr) >= vsize);
-
-    //vaddr_t start = placement_addr;
-    //vaddr_t end = placement_addr + vsize;
-
-    //// Allocate a new page if there is not enough memory
-    //if(end >= kernel_vend) {
-    //    // Loop through and map the pages using pmap_kenter_pa while incrementing kernel_pend and kernel_vend
-    //    for(; kernel_vend < end; kernel_vend+=PAGESIZE, kernel_pend+=PAGESIZE) {
-    //        pmap_kenter_pa(kernel_vend, kernel_pend,  VM_PROT_DEFAULT, PMAP_WRITE_BACK);
-    //    }
-    //}
-
-    //// Zero the memory
-    //memset((void*)placement_addr, 0x0, vsize);
-
-    //placement_addr = end;
-
-    return 0;
-}
-
-//pmap_t* pmap_create(void) {
-//    pmap_t *pmap = (pmap_t*)kheap_alloc(sizeof(pmap_t));
-//    memset(pmap, 0, sizeof(pmap_t));
-//
-//    // Create pgd
-//    // TODO: This will not work! We need to allocate 16 KiB of contiguous memory aligned to a 16 KiB address boundary
-//    pmap->pgd = (pgd_t*)kheap_alloc(sizeof(pgd_t));
-//    memset(pmap->pgd, 0, sizeof(pgd_t));
-//
-//    // Get the physical address of the pgd
-//    pmap->pgd_pa = TRUNC_PAGE(KERNEL_PGTS_BASE[PGD_GET_INDEX((vaddr_t)pmap->pgd)-KERNEL_PGD_PGT_INDEX_BASE].pte[PGT_GET_INDEX((vaddr_t)pmap->pgd)]);
-//
-//    pmap_reference(pmap);
-//    return pmap;
-//}
-//
-//void pmap_destroy(pmap_t *pmap) {
-//    kassert(pmap != NULL);
-//
-//    atomic_dec(&pmap->refcount);
-//
-//    // The kernel's pmap should never be 0!! Something is fucking up
-//    kassert(pmap->refcount == 0 && pmap == pmap_kernel());
-//
-//    // TODO: Deallocate resources for pmap if refcount is 0
-//}
-
 void pmap_reference(pmap_t *pmap) {
     // Can't be NULL!
     kassert(pmap != NULL);
 
     atomic_inc(&pmap->refcount);
 }
-
-//// TODO: Implement PMAP_CANFAIL logic
-//long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vprot_t prot, pmap_flags_t pmap_flags) {
-//    // Must have a valid pmap
-//    kassert(pmap != NULL && pmap->pgd != NULL && IS_WITHIN_MEM_BOUNDS(pa) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
-//
-//    // Encode the protection bits in the page table entry
-//    // Encode the protection and pmap flags in the page table entry
-//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
-//
-//    // First check if the page table for the given va exists within the page directory. If not create the page table
-//    unsigned long pgd_index = PGD_GET_INDEX(va);
-//    if(!PDE_PGT_EXISTS(pmap->pgd->pde[pgd_index])) {
-//        // TODO: To get pa of pgt -> TRUNC_PAGE(pgt) and search kernel pgd & pgt for entry
-//    }
-//
-//
-//    kassert(entry != 0);
-//    return 0;
-//}
-
-//// TODO: Should a lock be used to access kernel_pmap?
-//void pmap_kenter_pa(vaddr_t va, paddr_t pa, prot_t prot, pmap_flags_t pmap_flags) {
-//    // The mapping must be in the kernel virtual address space
-//    kassert(va >= (uintptr_t)(&__kernel_virtual_start) && IS_PAGE_ALIGNED(pa) && IS_PAGE_ALIGNED(va));
-//
-//    // Encode the protection and pmap flags in the page table entry
-//    pte_t entry = PTE_CREATE(pa, PTE_AP0_BIT | PTE_S_BIT | PTE_ENCODE_PROTECTION(prot, pmap_kernel()) | PTE_ENCODE_PMAP_FLAGS(pmap_flags));
-//
-//
-//    // Now we must place the page table entry in the correct kernel page table
-//    // Since we know that the pgts are laid out contiguously in memory we can cheat by
-//    // accessing the correct pgt directly without having to loop over the pmap_kernel's pgt_entries
-//    // to search for the pgt_entry with the correct offset in the pgd.
-//
-//    // Place the entry in the page table if one doesn't already exist
-//    pte_t existing_entry = KERNEL_PGTS_BASE[PGD_GET_INDEX(va)-KERNEL_PGD_PGT_INDEX_BASE].pte[PGT_GET_INDEX(va)];
-//    kassert(!(existing_entry & PTE_PAGE_BIT));
-//    KERNEL_PGTS_BASE[PGD_GET_INDEX(va)-KERNEL_PGD_PGT_INDEX_BASE].pte[PGT_GET_INDEX(va)] = entry;
-//
-//    // Update the stats
-//    pmap_kernel()->pmap_stats.wired_count++;
-//    pmap_kernel()->pmap_stats.resident_count++;
-//}
