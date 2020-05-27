@@ -28,8 +28,6 @@ typedef struct {
 
 typedef struct {
     paddr_t ttb;                     // Translation table base address
-    unsigned long page_size;         // The size of a single page, cane be 4KB, 16KB or 64KB
-    unsigned long page_shift;        // The shift value to convert between page #'s to addresses and vice versa
     bool is_kernel;                  // Is the kernel's pmap?
     atomic_t refcount;               // Reference count on the pmap
     pmap_statistics_t stats;

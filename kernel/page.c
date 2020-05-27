@@ -33,8 +33,6 @@ typedef struct {
     page_t *pages;                // Contiguous array of all pages
     page_t *page_bins[NUM_BINS];  // Buddy allocation bins
     size_t num_pages;             // Total # of pages
-    paddr_t mem_base_addr;        // Base address of memory
-    unsigned long page_shift;     // Page shift
 } page_array_t;
 
 page_array_t page_array;
@@ -54,7 +52,7 @@ void page_dump_bins(void) {
 
 void page_dump_page(page_t *page) {
     kprintf("Page Num: %u\n", GET_PAGE_INDEX(page));
-    kprintf("\tpaddr          = %p\n", (GET_PAGE_INDEX(page) << page_array.page_shift) + page_array.mem_base_addr);
+    kprintf("\tpaddr          = %p\n", (GET_PAGE_INDEX(page) << PAGESHIFT) + MEMBASEADDR);
     kprintf("\tStatus         = R:%u,D:%u,A:%u\n", page->status.is_referenced, page->status.is_dirty, page->status.is_active);
     kprintf("\tnext_buddy     = %p\n", page->next_buddy);
     kprintf("\tnext_resident  = %p\n", page->next_resident);
@@ -134,12 +132,10 @@ void _page_bin_push(page_t *pages, size_t num_pages) {
     }
 }
 
-void page_init(paddr_t page_array_addr, size_t total_pages, paddr_t mem_base_addr, size_t page_size) {
+void page_init(paddr_t page_array_addr) {
     page_array.lock = SPINLOCK_INIT;
     page_array.pages = (page_t*)page_array_addr;
-    page_array.mem_base_addr = mem_base_addr;
-    page_array.page_shift = _ctz(page_size);
-    page_array.num_pages = total_pages;
+    page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
     // Clear the entire array
     memset((void*)page_array.pages, 0, page_array.num_pages * sizeof(page_t));
@@ -203,11 +199,11 @@ void page_free(page_t *page) {
 
 paddr_t page_to_pa(page_t *page) {
     kassert(page != NULL);
-    return (GET_PAGE_INDEX(page) << page_array.page_shift) + page_array.mem_base_addr;
+    return (GET_PAGE_INDEX(page) << PAGESHIFT) + MEMBASEADDR;
 }
 
 page_t* page_from_pa(paddr_t pa) {
-    return page_array.pages + ((pa - page_array.mem_base_addr) >> page_array.page_shift);
+    return page_array.pages + ((pa - MEMBASEADDR) >> PAGESHIFT);
 }
 
 page_t* page_reserve_pa(paddr_t pa) {

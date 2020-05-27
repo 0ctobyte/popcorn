@@ -24,19 +24,19 @@
 #define MAX_NUM_PTES_TTB_16KB (2)
 #define MAX_NUM_PTES_TTB_64KB (64)
 
-#define MAX_NUM_PTES_TTB(page_shift) (1 << (48 - ((page_shift) + ((3l - ((page_shift) == 16 ? 1 : 0)) * ((page_shift) - 3l)))))
-#define MAX_NUM_PTES_LL(page_size)   ((page_size) >> 3)
+#define MAX_NUM_PTES_TTB                  (1 << (48 - (PAGESHIFT + ((3l - (PAGESHIFT == 16 ? 1 : 0)) * (PAGESHIFT - 3l)))))
+#define MAX_NUM_PTES_LL                   (PAGESIZE >> 3)
 
-#define ROUND_PAGE_DOWN(page_size, addr)  ((long)(addr) & ~((long)((page_size) - 1l)))
-#define ROUND_PAGE_UP(page_size, addr)    ((IS_PAGE_ALIGNED((page_size), (addr))) ? (long)(addr) : (ROUND_PAGE_DOWN((page_size), (addr)) + (long)(page_size)))
+#define ROUND_PAGE_DOWN(addr)             ((long)(addr) & ~((long)((PAGESIZE) - 1l)))
+#define ROUND_PAGE_UP(addr)               (IS_PAGE_ALIGNED(addr) ? (long)(addr) : ROUND_PAGE_DOWN(addr) + (long)(PAGESIZE))
 
-#define BLOCK_SIZE(page_shift)             (1l << ((page_shift) + (page_shift) - 3l))
-#define IS_PAGE_ALIGNED(page_size, addr)   (((long)(addr) & ((long)(page_size) - 1l)) == 0)
-#define IS_BLOCK_ALIGNED(page_shift, addr) (((long)(addr) & (BLOCK_SIZE(page_shift) - 1l)) == 0)
+#define BLOCK_SIZE                        (1l << (PAGESHIFT + PAGESHIFT - 3l))
+#define IS_PAGE_ALIGNED(addr)             (((long)(addr) & ((long)(PAGESIZE) - 1l)) == 0)
+#define IS_BLOCK_ALIGNED(addr)            (((long)(addr) & (BLOCK_SIZE - 1l)) == 0)
 
-#define GET_TTB_VA(pmap) ((-1l << ((pmap)->page_shift)) & ((pmap)->is_kernel ? -1l : ~0xFFFF000000000000))
-#define GET_TABLE_VA(pmap, parent_table_va, index, width) ((((parent_table_va) << (width)) | ((index) << (pmap)->page_shift)) & ((pmap)->is_kernel ? -1 : ~0xFFFF000000000000))
-#define GET_TABLE_VA_BASE(pmap) ((-1l << ((pmap)->page_shift + ((3l - (((pmap)->page_size == _64KB) ? 1l : 0l)) * ((pmap)->page_shift - 3l)))) & ((pmap)->is_kernel ? -1l : ~0xFFFF000000000000))
+#define GET_TTB_VA(pmap)                  ((-1l << PAGESHIFT) & ((pmap)->is_kernel ? -1l : ~0xFFFF000000000000))
+#define GET_TABLE_VA_BASE(pmap)           ((-1l << (PAGESHIFT + ((3l - ((PAGESIZE == _64KB) ? 1l : 0l)) * (PAGESHIFT - 3l)))) & ((pmap)->is_kernel ? -1l : ~0xFFFF000000000000))
+#define GET_TABLE_VA(pmap, parent_table_va, index, width) ((((parent_table_va) << (width)) | ((index) << PAGESHIFT)) & ((pmap)->is_kernel ? -1 : ~0xFFFF000000000000))
 
 // Upper attributes for page table descriptors
 
@@ -182,11 +182,11 @@ typedef struct {
     .ma = (bp_ma_attr_t)((pte) & BP_MA_NORMAL_WTWNRN)\
 })
 
-#define PTE_TO_PA(page_size, pte)  (((pte) & 0xffffffffffff) & -(page_size))
-#define PA_TO_PTE(page_size, pa) PTE_TO_PA(page_size, pa)
-#define MAKE_TDE(pmap, pa, t_attr, bp_lattr)   (PA_TO_PTE((pmap)->page_size, pa) | T_ATTR(t_attr) | BP_LATTR(bp_lattr) | 0x3)
-#define MAKE_BDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE((pmap)->page_size, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x1)
-#define MAKE_PDE(pmap, pa, bp_uattr, bp_lattr) (PA_TO_PTE((pmap)->page_size, pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x3)
+#define PTE_TO_PA(pte)                         (((pte) & 0xffffffffffff) & -(PAGESIZE))
+#define PA_TO_PTE(pa)                          PTE_TO_PA(pa)
+#define MAKE_TDE(pa, t_attr, bp_lattr)         (PA_TO_PTE(pa) | T_ATTR(t_attr) | BP_LATTR(bp_lattr) | 0x3)
+#define MAKE_BDE(pa, bp_uattr, bp_lattr)       (PA_TO_PTE(pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x1)
+#define MAKE_PDE(pa, bp_uattr, bp_lattr)       (PA_TO_PTE(pa) | BP_UATTR(bp_uattr) | BP_LATTR(bp_lattr) | 0x3)
 
 #define IS_PTE_VALID(pte) ((pte) & 0x1)
 #define IS_PDE_VALID(pte) (((pte) & 0x3) == 0x3)
@@ -232,9 +232,12 @@ vaddr_t kernel_virtual_start = ((uintptr_t)(&__kernel_virtual_start));
 extern paddr_t kernel_physical_end;
 vaddr_t kernel_virtual_end = 0;
 
+unsigned long PAGESIZE;
+unsigned long PAGESHIFT;
+
 void _pmap_setup_table_recursive_mapping(pmap_t *pmap) {
-    size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB(pmap->page_shift);
-    size_t max_num_ptes_ll = MAX_NUM_PTES_LL(pmap->page_size);
+    size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB;
+    size_t max_num_ptes_ll = MAX_NUM_PTES_LL;
     pte_t *ttb = (pte_t*)pmap->ttb;
 
     // Attributes for the table descriptors
@@ -243,8 +246,8 @@ void _pmap_setup_table_recursive_mapping(pmap_t *pmap) {
 
     // Point the last entry in the TTB to itself. For 16KB and 64KB page granules we need to fill the rest of the TTB page with the last entry
     // This recursive page mapping allows us to access any page table in a fixed VA aperture
-    ttb[max_num_ptes_ttb - 1] = MAKE_TDE(pmap, pmap->ttb, t_attr_table, bp_lattr_table);
-    if (pmap->page_size == _16KB || pmap->page_size == _64KB) {
+    ttb[max_num_ptes_ttb - 1] = MAKE_TDE(pmap->ttb, t_attr_table, bp_lattr_table);
+    if (PAGESIZE == _16KB || PAGESIZE == _64KB) {
         pte_t last_ttb_pte = ttb[max_num_ptes_ttb - 1];
         for(unsigned long idx = max_num_ptes_ttb; idx < max_num_ptes_ll; idx++) {
             ttb[idx] = last_ttb_pte;
@@ -260,7 +263,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
     t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NONE, .uxn = T_NON_UXN, .pxn = T_NON_PXN};
 
     new_table = page_to_pa(page_alloc());
-    return MAKE_TDE(pmap, new_table, ta, bpl_table);
+    return MAKE_TDE(new_table, ta, bpl_table);
 }
 
 void _pmap_update_pte(vaddr_t va, pte_t *old_pte, pte_t new_pte) {
@@ -302,8 +305,8 @@ void _pmap_clear_pte(vaddr_t va, pte_t *old_pte) {
 size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl, pte_t *table, unsigned long level) {
     // Calculate the table index width, mask and lsb for this levels index bits in the VA
     // The top 16 bits of the VA are not used in translation so clear them
-    unsigned long width = pmap->page_shift - 3, mask = (1 << width) - 1, lsb = pmap->page_shift + ((3 - level) * width), max_num_ptes_ll = pmap->page_size >> 3;
-    unsigned long block_size = 1 << (pmap->page_shift + width), block_mask = block_size - 1;
+    unsigned long width = PAGESHIFT - 3, mask = (1 << width) - 1, lsb = PAGESHIFT + ((3 - level) * width), max_num_ptes_ll = PAGESIZE >> 3;
+    unsigned long block_size = 1 << (PAGESHIFT + width), block_mask = block_size - 1;
     unsigned long index = ((vaddr & ~0xFFFF000000000000) >> lsb) & mask;
     size_t mapped_size;
     bool mmu_enabled = mmu_is_enabled();
@@ -311,12 +314,12 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
     for (mapped_size = 0; mapped_size < size && index < max_num_ptes_ll; index++) {
         if (level == 3) {
             // If we are at the lowest level page table then map as many pages as possible in this table
-            _pmap_update_pte(vaddr + mapped_size, &table[index], MAKE_PDE(pmap, paddr + mapped_size, bpu, bpl));
-            mapped_size += pmap->page_size;
+            _pmap_update_pte(vaddr + mapped_size, &table[index], MAKE_PDE(paddr + mapped_size, bpu, bpl));
+            mapped_size += PAGESIZE;
         } else if (level == 2 && (paddr & block_mask) == 0 && size > block_size && !IS_TDE_VALID(table[index]) && (size - mapped_size) > block_size) {
             // At level 2, if our address is block aligned and we need to map a range greater than the block size then map as many blocks as we can
             // We need to make sure that the remaining size does not go lower than the block size
-            _pmap_update_pte(vaddr + mapped_size, &table[index], MAKE_BDE(pmap, paddr + mapped_size, bpu, bpl));
+            _pmap_update_pte(vaddr + mapped_size, &table[index], MAKE_BDE(paddr + mapped_size, bpu, bpl));
             mapped_size += block_size;
         } else {
             // Otherwise we need to map a table and go to level 3 page tables
@@ -325,13 +328,13 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
                 vaddr_t new_table_va = GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
 
                 _pmap_update_pte(new_table_va, &table[index], new_table_pte);
-                paddr_t new_table = mmu_enabled ? new_table_va : PTE_TO_PA(pmap->page_size, new_table_pte);
-                memset((void*)new_table, 0, pmap->page_size);
+                paddr_t new_table = mmu_enabled ? new_table_va : PTE_TO_PA(new_table_pte);
+                memset((void*)new_table, 0, PAGESIZE);
             }
 
             // Since this is a table entry, recursively call _pmap_do_map with a higher level value
             // Accumulate the mapped_size until we've mapped the entire range or we've hit the end of this page table
-            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
+            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(table[index]));
             mapped_size += _pmap_do_map(pmap, vaddr + mapped_size, paddr + mapped_size, size - mapped_size, bpu, bpl, next_table, level+1);
         }
     }
@@ -340,7 +343,7 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
 }
 
 void _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
-    kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr) && IS_PAGE_ALIGNED(pmap->page_size, paddr));
+    kassert(IS_PAGE_ALIGNED(vaddr) && IS_PAGE_ALIGNED(paddr));
 
     pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
     _pmap_do_map(pmap, vaddr, paddr, size, bpu, bpl, table, 0);
@@ -349,8 +352,8 @@ void _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
 size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_table_pte, pte_t *table, unsigned long level) {
     // Calculate the table index width, mask and lsb for this levels index bits in the VA
     // The top 16 bits of the VA are not used in translation so clear them
-    unsigned long width = pmap->page_shift - 3, mask = (1 << width) - 1, lsb = pmap->page_shift + ((3 - level) * width), max_num_ptes_ll = pmap->page_size >> 3;
-    unsigned long block_size = 1 << (pmap->page_shift + width), block_mask = block_size - 1;
+    unsigned long width = PAGESHIFT - 3, mask = (1 << width) - 1, lsb = PAGESHIFT + ((3 - level) * width), max_num_ptes_ll = PAGESIZE >> 3;
+    unsigned long block_size = 1 << (PAGESHIFT + width), block_mask = block_size - 1;
     unsigned long index = ((vaddr & ~0xFFFF000000000000) >> lsb) & mask;
     size_t unmapped_size;
     bool mmu_enabled = mmu_is_enabled();
@@ -359,7 +362,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
         if (level == 3) {
             // If we are at the lowest level page table then unmap as many pages as possible in this table
             _pmap_clear_pte(vaddr + unmapped_size, &table[index]);
-            unmapped_size += pmap->page_size;
+            unmapped_size += PAGESIZE;
         } else if (level == 2 && (vaddr & block_mask) == 0 && size > block_size && IS_BDE_VALID(table[index]) && (size - unmapped_size) > block_size) {
             // If our address is block aligned and we need to unmap a range greater than the block size then unmap as many blocks as we can
             // We need to make sure that the remaining size does not go lower than the block size
@@ -372,14 +375,14 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
                 // Update the entry. Need to do this first so we can access the table in the table VA space
                 bp_uattr_t bpu = BP_UATTR_EXTRACT(table[index]);
                 bp_lattr_t bpl = BP_LATTR_EXTRACT(table[index]);
-                paddr_t paddr = PTE_TO_PA(pmap->page_size, table[index]);
+                paddr_t paddr = PTE_TO_PA(table[index]);
 
                 pte_t new_table_pte = _pmap_alloc_table(pmap);
                 _pmap_update_pte(vaddr, &table[index], new_table_pte);
 
                 // Map the entire table. The new page entries inherit the block attributes
-                pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, new_table_pte));
-                memset((void*)new_table, 0, pmap->page_size);
+                pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(new_table_pte));
+                memset((void*)new_table, 0, PAGESIZE);
 
                 _pmap_do_map(pmap, vaddr, paddr, block_size, bpu, bpl, new_table, 3);
             }
@@ -389,7 +392,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 
             // Since this is a table entry, recursively call _pmap_do_unmap with a higher level value
             // Accumulate the unmapped_size until we've unmapped the entire range or we've hit the end of this page table
-            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pmap->page_size, table[index]));
+            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(table[index]));
             unmapped_size += _pmap_do_unmap(pmap, vaddr + unmapped_size, size - unmapped_size, &table[index], next_table, level+1);
         }
     }
@@ -405,7 +408,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
         }
 
         if (empty) {
-            paddr_t table_pa = PTE_TO_PA(pmap->page_size, *parent_table_pte);
+            paddr_t table_pa = PTE_TO_PA(*parent_table_pte);
             _pmap_clear_pte((vaddr_t)table, parent_table_pte);
             page_free(page_from_pa(table_pa));
         }
@@ -415,7 +418,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 }
 
 void _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
-    kassert(IS_PAGE_ALIGNED(pmap->page_size, vaddr));
+    kassert(IS_PAGE_ALIGNED(vaddr));
 
     pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
     _pmap_do_unmap(pmap, vaddr, size, NULL, table, 0);
@@ -423,33 +426,33 @@ void _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
 
 void pmap_init(void) {
     // Check for MMU supported features. We prefer 4KB pages
-    kernel_pmap.page_size = mmu_is_4kb_granule_supported() ? _4KB : (mmu_is_16kb_granule_supported() ? _16KB : _64KB);
-    kernel_pmap.page_shift = _ctz(kernel_pmap.page_size);
+    PAGESIZE = mmu_is_4kb_granule_supported() ? _4KB : (mmu_is_16kb_granule_supported() ? _16KB : _64KB);
+    PAGESHIFT = _ctz(PAGESIZE);
     kernel_pmap.is_kernel = true;
 
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
-    size_t kernel_size = ROUND_PAGE_UP(kernel_pmap.page_size, kernel_physical_end - kernel_physical_start);
+    size_t kernel_size = ROUND_PAGE_UP(kernel_physical_end - kernel_physical_start);
     kernel_physical_end = kernel_physical_start + kernel_size;
     kernel_virtual_end = kernel_virtual_start + kernel_size;
 
     // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
-    size_t total_pages = MEMSIZE >> kernel_pmap.page_shift, page_array_size = ROUND_PAGE_UP(kernel_pmap.page_size, total_pages * sizeof(page_t));
+    size_t page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(page_t));
     vaddr_t page_array_va = kernel_virtual_end;
-    page_init(kernel_physical_end, total_pages, MEMBASEADDR, kernel_pmap.page_size);
+    page_init(kernel_physical_end);
     kernel_physical_end += page_array_size;
     kernel_virtual_end += page_array_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
     // Reserve the physical pages used by the kernel
-    for(unsigned long i = 0, num_pages = kernel_size >> kernel_pmap.page_shift; i < num_pages; i++) {
-        page_reserve_pa(kernel_physical_start + (i << kernel_pmap.page_shift));
+    for(unsigned long i = 0, num_pages = kernel_size >> PAGESHIFT; i < num_pages; i++) {
+        page_reserve_pa(kernel_physical_start + (i << PAGESHIFT));
     }
 
     // Let's grab a page for the base translation table
     // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
     kernel_pmap.ttb = page_to_pa(page_alloc());
-    memset((void*)kernel_pmap.ttb, 0, kernel_pmap.page_size);
+    memset((void*)kernel_pmap.ttb, 0, PAGESIZE);
     _pmap_setup_table_recursive_mapping(&kernel_pmap);
 
     // Attributes for the Kernel's page table mappings
@@ -464,17 +467,15 @@ void pmap_init(void) {
     bp_uattr_t bp_uattr_dev = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
     bp_lattr_t bp_lattr_dev = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_DEVICE_NGNRNE};
     vaddr_t kernel_devices_virtual_start = 0xFFFFFC0000000000;
-    unsigned int uart_base_offset = uart_base_addr & (kernel_pmap.page_size - 1);
-    _pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr & ~(kernel_pmap.page_size - 1), kernel_pmap.page_size, bp_uattr_dev, bp_lattr_dev);
+    unsigned int uart_base_offset = uart_base_addr & (PAGESIZE - 1);
+    _pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr & ~(PAGESIZE - 1), PAGESIZE, bp_uattr_dev, bp_lattr_dev);
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
     paddr_t ttb0 = page_to_pa(page_alloc()), ttb1 = kernel_pmap.ttb;
-    memset((void*)ttb0, 0, kernel_pmap.page_size);
+    memset((void*)ttb0, 0, PAGESIZE);
     pmap_t identity_pmap;
     identity_pmap.ttb = ttb0;
-    identity_pmap.page_size = kernel_pmap.page_size;
-    identity_pmap.page_shift = kernel_pmap.page_shift;
     identity_pmap.is_kernel = false;
     _pmap_setup_table_recursive_mapping(&identity_pmap);
 
@@ -482,12 +483,12 @@ void pmap_init(void) {
 
     // Finally enable the MMU!
     ma_index_t ma_index = {.attrs = {MA_DEVICE_NGNRNE, MA_DEVICE_NGNRE, MA_NORMAL_NC, MA_NORMAL_INC, MA_NORMAL_WBWARA, MA_NORMAL_WTWARA, MA_NORMAL_WTWNRA, MA_NORMAL_WTWNRN}};
-    mmu_enable(ttb0, ttb1, MAIR(ma_index), kernel_pmap.page_size);
+    mmu_enable(ttb0, ttb1, MAIR(ma_index), PAGESIZE);
     mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
     // FIXME Switch UART base address to virtual address
     uart_base_addr = kernel_devices_virtual_start + uart_base_offset;
-    kernel_devices_virtual_start += kernel_pmap.page_size;
+    kernel_devices_virtual_start += PAGESIZE;
 
     // Re-locate the page_array to it's virtual address
     page_relocate_array(page_array_va);

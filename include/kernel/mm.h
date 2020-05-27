@@ -5,6 +5,8 @@
 
 extern unsigned long MEMBASEADDR;
 extern unsigned long MEMSIZE;
+extern unsigned long PAGESIZE;
+extern unsigned long PAGESHIFT;
 
 // Virtual address
 typedef uintptr_t vaddr_t;

@@ -16,7 +16,7 @@ typedef struct page_s {
 } page_t;
 
 // Will initialize the page allocation system using the space addressed by page_array_addr with the given number of pages
-void page_init(paddr_t page_array_addr, size_t total_pages, paddr_t mem_base_addr, size_t page_size);
+void page_init(paddr_t page_array_addr);
 
 // Allocate or free a contiguous range of pages
 page_t* page_alloc_contiguous(size_t num_pages);
