@@ -381,10 +381,19 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
                 kassert(paddr != PTE_PA_NO_CHANGE);
 
                 pte = _pmap_alloc_table(pmap);
-                vaddr_t new_table_va = GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                pte_t *new_table;
+                if (mmu_enabled) {
+                    if (is_current_ttb) {
+                        new_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                    } else {
+                        new_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                        _pmap_map_temp_page((vaddr_t)new_table, PTE_TO_PA(pte));
+                    }
+                } else {
+                    new_table = (pte_t*)(PTE_TO_PA(pte));
+                }
 
-                _pmap_update_pte(new_table_va, pmap->asid, ptep, pte);
-                paddr_t new_table = mmu_enabled ? new_table_va : PTE_TO_PA(pte);
+                _pmap_update_pte((vaddr_t)new_table, pmap->asid, ptep, pte);
                 memset((void*)new_table, 0, PAGESIZE);
             }
 
@@ -411,7 +420,21 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
 void _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_uattr_t bpu, bp_lattr_t bpl) {
     kassert(IS_PAGE_ALIGNED(vaddr) && IS_PAGE_ALIGNED(paddr));
 
-    pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
+    bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
+
+    pte_t *table;
+    if (mmu_enabled) {
+        if (is_current_ttb) {
+            table = (pte_t*)GET_TTB_VA(pmap);
+        } else {
+            table = (pte_t*)TEMP_PAGE_VA(0);
+            _pmap_map_temp_page((vaddr_t)table, pmap->ttb);
+        }
+    } else {
+        table = (pte_t*)pmap->ttb;
+    }
+
     _pmap_do_map(pmap, vaddr, paddr, size, bpu, bpl, table, 0);
 }
 
@@ -455,9 +478,20 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 
                 // Need to invalidate both the block VA and the table VA. The block may be aliased in the table VA region
                 pte = _pmap_alloc_table(pmap);
-                pte_t *new_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pte));
+                pte_t *new_table;
+                if (mmu_enabled) {
+                    if (is_current_ttb) {
+                        new_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                    } else {
+                        new_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                        _pmap_map_temp_page((vaddr_t)new_table, PTE_TO_PA(pte));
+                    }
+                } else {
+                    new_table = (pte_t*)(PTE_TO_PA(pte));
+                }
+
                 _pmap_update_pte(vaddr, pmap->asid, ptep, pte);
-                tlb_invalidate_va((vaddr_t)new_table, pmap->asid);
+                if (mmu_enabled && is_current_ttb) tlb_invalidate_va((vaddr_t)new_table, pmap->asid);
 
                 // Map the entire table. The new page entries inherit the block attributes
                 memset((void*)new_table, 0, PAGESIZE);
@@ -507,7 +541,21 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 void _pmap_unmap_range(pmap_t *pmap, vaddr_t vaddr, size_t size) {
     kassert(IS_PAGE_ALIGNED(vaddr));
 
-    pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
+    bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
+
+    pte_t *table;
+    if (mmu_enabled) {
+        if (is_current_ttb) {
+            table = (pte_t*)GET_TTB_VA(pmap);
+        } else {
+            table = (pte_t*)TEMP_PAGE_VA(0);
+            _pmap_map_temp_page((vaddr_t)table, pmap->ttb);
+        }
+    } else {
+        table = (pte_t*)pmap->ttb;
+    }
+
     _pmap_do_unmap(pmap, vaddr, size, NULL, table, 0);
 }
 
@@ -550,8 +598,22 @@ void _pmap_do_wipe(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned
 }
 
 void _pmap_wipe(pmap_t *pmap) {
-    _pmap_map_temp_page(TEMP_PAGE_VA(0), pmap->ttb);
-    _pmap_do_wipe(pmap, NULL, (pte_t*)TEMP_PAGE_VA(0), 0);
+    bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
+
+    pte_t *table;
+    if (mmu_enabled) {
+        if (is_current_ttb) {
+            table = (pte_t*)GET_TTB_VA(pmap);
+        } else {
+            table = (pte_t*)TEMP_PAGE_VA(0);
+            _pmap_map_temp_page((vaddr_t)table, pmap->ttb);
+        }
+    } else {
+        table = (pte_t*)pmap->ttb;
+    }
+
+    _pmap_do_wipe(pmap, NULL, table, 0);
     barrier_dsb();
     tlb_invalidate_asid(pmap->asid);
 }
@@ -598,8 +660,22 @@ paddr_t _pmap_do_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr
 }
 
 paddr_t _pmap_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr_t *bpu, bp_lattr_t *bpl) {
-    _pmap_map_temp_page(TEMP_PAGE_VA(0), pmap->ttb);
-    return _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, (pte_t*)TEMP_PAGE_VA(0), 0);
+    bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
+
+    pte_t *table;
+    if (mmu_enabled) {
+        if (is_current_ttb) {
+            table = (pte_t*)GET_TTB_VA(pmap);
+        } else {
+            table = (pte_t*)TEMP_PAGE_VA(0);
+            _pmap_map_temp_page((vaddr_t)table, pmap->ttb);
+        }
+    } else {
+        table = (pte_t*)pmap->ttb;
+    }
+
+    return _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, table, 0);
 }
 
 void pmap_bootstrap(void) {
