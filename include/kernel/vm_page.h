@@ -5,8 +5,8 @@
 #include <kernel/spinlock.h>
 
 typedef struct vm_page_s {
-    unsigned int wired_count;           // How many virtual maps have wired this page
     struct vm_page_status_s {           // Status bits indicating the state of this page
+        unsigned int wired_count:16;    // How many virtual maps have wired this page
         unsigned int is_referenced:1;   // Has this page been referenced recently
         unsigned int is_dirty:1;        // Has this page been modified
         unsigned int is_active:1;       // Is this page being used i.e. mapped in some virtual map
@@ -31,7 +31,7 @@ paddr_t vm_page_to_pa(vm_page_t *page);
 vm_page_t* vm_page_from_pa(paddr_t pa);
 
 // Reserve pages that have been allocated but not through vm_page_alloc*. This should be used by the virtual memory system
-// during boot time initialization to tell the page system what pages are being used by the kernel. These pages will be wired
+// during boot time initialization to tell the page system what pages are being used by the kernel. These pages are wired
 vm_page_t* vm_page_reserve_pa(paddr_t pa);
 
 // Relocate the page array to it's virtual address, this is called by the virtual memory subsystem in it's initialization process

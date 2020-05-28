@@ -1,23 +1,5 @@
 .text
 
-.global tlb_invalidate_all
-.align 2
-tlb_invalidate_all:
-    tlbi vmalle1is
-    dsb sy
-    isb sy
-    ret lr
-
-# x0 - va_start
-.global tlb_invalidate
-.align 2
-tlb_invalidate:
-    lsr x0, x0, #12
-    tlbi vale1is, x0
-    dsb sy
-    isb sy
-    ret lr
-
 .global icache_invalidate_all
 .align 2
 icache_invalidate_all:

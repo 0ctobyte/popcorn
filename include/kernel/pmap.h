@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <kernel/mm.h>
+#include <kernel/spinlock.h>
 #include <kernel/atomic.h>
 #include <kernel/vm_page.h>
 
@@ -11,15 +12,19 @@
  * Used to manage physical address maps and interface with the MMU (i.e. page tables).
  */
 
-// Flag bits
+// Flag bits. The READ, WRITE and EXECUTE bits indicate the page is being mapped in because of those
+// access types.
 typedef unsigned long pmap_flags_t;
 
-#define PMAP_WIRED         (0x8)
-#define PMAP_CANFAIL       (0x10)
-#define PMAP_NOCACHE       (0x20)
-#define PMAP_WRITE_COMBINE (0x40)
-#define PMAP_WRITE_BACK    (0x80)
-#define PMAP_NOCACHE_OVR   (0x100)
+#define PMAP_FLAGS_READ          (0x1)
+#define PMAP_FLAGS_WRITE         (0x2)
+#define PMAP_FLAGS_EXECUTE       (0x3)
+#define PMAP_FLAGS_WIRED         (0x8)
+#define PMAP_FLAGS_CANFAIL       (0x10)
+#define PMAP_FLAGS_NOCACHE       (0x20)
+#define PMAP_FLAGS_WRITE_COMBINE (0x40)
+#define PMAP_FLAGS_WRITE_BACK    (0x80)
+#define PMAP_FLAGS_NOCACHE_OVR   (0x100)
 
 // These should be updated during any pmap function calls if necessary
 typedef struct {
@@ -28,14 +33,18 @@ typedef struct {
 } pmap_statistics_t;
 
 typedef struct {
+    spinlock_t lock;
     paddr_t ttb;                     // Translation table base address
-    bool is_kernel;                  // Is the kernel's pmap?
+    unsigned int asid;               // ASID associated with this pmap
     atomic_t refcount;               // Reference count on the pmap
     pmap_statistics_t stats;
 } pmap_t;
 
 // Declare the kernel's pmap
 extern pmap_t kernel_pmap;
+
+// Early init bootstrap code. This functions gets the kernel to run in virtual memory mode
+void pmap_bootstrap(void);
 
 // Initializes the pmap system
 void pmap_init(void);
@@ -66,7 +75,9 @@ void pmap_reference(pmap_t *pmap);
 #define pmap_wired_count(pmap) ((pmap)->pmap_stats.wired_count)
 
 // Adds a virtual to physical page mapping to the specified pmap using the specified protection
-long pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags);
+// The flags contain the access type to the page specified by PA in order to indicate what type of access caused this page to be mapped; these are the same bits used in prot.
+// This is used to keep track of modified/referenced information. The access type in flags should never exceed the protection in prot.
+int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags);
 
 // Removes a range of virtual to physical page mappings from the specified pmap
 void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva);
@@ -92,14 +103,11 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags);
 void pmap_kremove(vaddr_t va, size_t size);
 
 // Copies page mappings from pmap to another
-void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t *dst_addr, size_t len, vaddr_t *src_addr);
-
-// Called before a process is swapped out in order to release any resources (i.e. page tables); except for wired pages
-void pmap_collect(pmap_t *pmap);
+void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, vaddr_t src_addr);
 
 // Inform the pmap module that all physical mappings must now be correct. Any delayed mappings (such as TLB invalidation, address space identifier updates)
 // must be completed. Should be used after calls to pmap_enter, pmap_remove, pmap_protect, pmap_kenter_pa and pmap_kremove
-void pmap_update(pmap_t *pmap);
+#define pmap_update(pmap)
 
 // Activate the pmap, i.e. set the translation table base register with the page directory associated with the pmap
 void pmap_activate(pmap_t *pmap);
@@ -125,9 +133,9 @@ bool pmap_clear_modify(vm_page_t *vpg);
 bool pmap_clear_reference(vm_page_t *vpg);
 
 // Check whether modified attribute is set
-#define pmap_is_modified(vpg) ((vpg)->modified)
+#define pmap_is_modified(vpg) ((vpg)->status.modified)
 
 // Check whether referenced attribute is set
-#define pmap_is_referenced(vpg) ((vpg)->referenced)
+#define pmap_is_referenced(vpg) ((vpg)->status.referenced)
 
 #endif // __PMAP_H__

@@ -1,6 +1,17 @@
 #ifndef __MMU_H__
 #define __MMU_H__
 
+#include <sys/types.h>
+
+// Invalidates all TLB entries
+void tlb_invalidate_all(void);
+
+// Invalidate VA for only entries with the specified ASID
+void tlb_invalidate_va(uintptr_t va, unsigned int asid);
+
+// Invalidate all entries corresponding to the specified ASID
+void tlb_invalidate_asid(unsigned int asid);
+
 // MMU feature support checkers
 bool mmu_is_4kb_granule_supported(void);
 bool mmu_is_16kb_granule_supported(void);
@@ -16,8 +27,13 @@ void mmu_enable(unsigned long ttbr0, unsigned long ttbr1, unsigned long mair, un
 // It assumes kernel code is translated using TTBR1 and will clear TTBR0 after the jump
 void mmu_kernel_longjmp(uintptr_t pa_base, uintptr_t va_base);
 
-// Clears TTBR0
+// MMU context switching
+unsigned long mmu_get_ttbr0(void);
+void mmu_set_ttbr0(unsigned long ttb0, unsigned int asid);
 void mmu_clear_ttbr0(void);
+
+// Given a VA, translates it to a PA using the current MMU context. Returns a valid PA or -1 if the translation cannot be performed
+unsigned long mmu_translate_va(unsigned long va);
 
 #endif // __EVT_H__
 

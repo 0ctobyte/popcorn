@@ -2,6 +2,7 @@
 #define __ASM_H__
 
 #include <stdint.h>
+#include <stddef.h>
 
 // Unsigned integer modulo
 unsigned long _umod(unsigned long n, unsigned long m);
@@ -24,6 +25,10 @@ unsigned long _rev64(unsigned long n);
 
 // Counts the number of bits set
 unsigned long _popcnt(unsigned long n);
+
+// Copy and zero pages. page_size_multiple must be page size aligned
+void _copy_pages(unsigned long dst_addr, unsigned long src_addr, size_t page_size_multiple);
+void _zero_pages(unsigned long addr, size_t page_size_multiple);
 
 #endif // __ASM_H__
 

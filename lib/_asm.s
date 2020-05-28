@@ -88,3 +88,41 @@ _popcnt_loop:
 _popcnt_done:
     ldp fp, lr, [sp], #16
     ret lr
+
+# Copies pages from src to dst
+# x0 - dst address
+# x1 - src address
+# x2 - multiple of page size
+.global _copy_pages
+.align 2
+_copy_pages:
+    stp fp, lr, [sp, #-16]!
+    mov fp, sp
+
+_copy_pages_loop:
+    ldp x3, x4, [x1], #16
+    stp x3, x4, [x0], #16
+    sub x2, x2, #16
+    cbnz x2, _copy_pages_loop
+
+    ldp fp, lr, [sp], #16
+    ret lr
+
+# Zero out pages
+# x0 - address
+# x1 - multiple of page size
+.global _zero_pages
+.align 2
+_zero_pages:
+    stp fp, lr, [sp, #-16]!
+    mov fp, sp
+
+    mov x2, xzr
+    mov x3, xzr
+_zero_pages_loop:
+    stp x2, x3, [x0], #16
+    sub x1, x1, #16
+    cbnz x1, _zero_pages_loop
+
+    ldp fp, lr, [sp], #16
+    ret lr

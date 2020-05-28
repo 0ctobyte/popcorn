@@ -1,5 +1,37 @@
 .text
 
+.global tlb_invalidate_all
+.align 2
+tlb_invalidate_all:
+    tlbi vmalle1is
+    dsb sy
+    isb sy
+    ret lr
+
+# x0 - va_start
+# x1 - asid
+.global tlb_invalidate_va
+.align 2
+tlb_invalidate_va:
+    lsr x0, x0, #12
+    bfi x0, xzr, #48, #16
+    bfi x0, x1, #48, #16
+    tlbi vale1is, x0
+    dsb sy
+    isb sy
+    ret lr
+
+# x0 - asid
+.global tlb_invalidate_asid
+.align 2
+tlb_invalidate_asid:
+    mov x1, xzr
+    bfi x1, x0, #48, #16
+    tlbi aside1is, x1
+    dsb sy
+    isb sy
+    ret lr
+
 .global mmu_is_4kb_granule_supported
 .align 2
 mmu_is_4kb_granule_supported:
@@ -150,9 +182,53 @@ mmu_kernel_longjmp_done:
     ldp fp, lr, [sp], #16
     ret lr
 
+.global mmu_get_ttbr0
+.align 2
+mmu_get_ttbr0:
+    mrs x0, TTBR0_EL1
+    ret lr
+
+# x0 - Translation Table Base address
+# x1 - ASID
+.global mmu_set_ttbr0
+.align 2
+mmu_set_ttbr0:
+    mrs x2, DAIF
+    orr x3, x2, #0xC0
+    msr DAIF, x3
+
+    # Disable TTBR0 and clear it
+    dsb sy
+    isb sy
+    mov x3, #0x80
+    mrs x4, TCR_EL1
+    orr x4, x4, x3
+    msr TCR_EL1, x4
+    isb sy
+
+    # Set new TTBR0 and ASID
+    orr x0, x0, x1, lsl #48
+    msr TTBR0_EL1, x0
+    isb sy
+
+    # Re-enable TTBR0
+    mrs x4, TCR_EL1
+    bic x4, x4, x3
+    msr TCR_EL1, x4
+    isb sy
+
+    msr DAIF, x2
+    isb sy
+
+    ret lr
+
 .global mmu_clear_ttbr0
 .align 2
 mmu_clear_ttbr0:
+    mrs x2, DAIF
+    orr x3, x2, #0xC0
+    msr DAIF, x3
+
     # Disable TTBR0 and clear it
     mov x1, #0x80
     mrs x0, TCR_EL1
@@ -163,12 +239,26 @@ mmu_clear_ttbr0:
     msr TTBR0_EL1, xzr
     isb sy
 
-    tlbi vmalle1is
-
     # Re-enable TTBR0
     mrs x0, TCR_EL1
     bic x0, x0, x1
     msr TCR_EL1, x0
     isb sy
 
+    msr DAIF, x2
+    isb sy
+
+    ret lr
+
+# x0 - VA to translate
+.global mmu_translate_va
+.align 2
+mmu_translate_va:
+    at S1E1R, x0
+    mrs x1, PAR_EL1
+    ubfx x0, x1, #12, #36
+    lsl x0, x0, #12
+    mvn x2, xzr
+    tst x1, #1
+    csel x0, x0, x2, eq
     ret lr

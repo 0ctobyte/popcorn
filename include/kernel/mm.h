@@ -1,5 +1,5 @@
-#ifndef __KERNEL_MM_H__
-#define __KERNEL_MM_H__
+#ifndef __MM_H__
+#define __MM_H__
 
 #include <sys/types.h>
 
@@ -24,4 +24,4 @@ typedef unsigned long vm_prot_t;
 #define VM_PROT_DEFAULT (VM_PROT_READ|VM_PROT_WRITE)
 #define VM_PROT_ALL     (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
 
-#endif // __KERNEL_MM_H__
+#endif // __MM_H__

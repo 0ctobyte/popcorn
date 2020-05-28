@@ -197,7 +197,7 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
-            page->wired_count++;
+            page->status.wired_count++;
 
             if (prev != NULL) prev->next_buddy = buddy->next_buddy;
             else vm_page_array.page_bins[bin] = buddy->next_buddy;
