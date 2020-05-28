@@ -182,6 +182,12 @@ mmu_kernel_longjmp_done:
     ldp fp, lr, [sp], #16
     ret lr
 
+.global mmu_get_ttbr1
+.align 2
+mmu_get_ttbr1:
+    mrs x0, TTBR1_EL1
+    ret lr
+
 .global mmu_get_ttbr0
 .align 2
 mmu_get_ttbr0:

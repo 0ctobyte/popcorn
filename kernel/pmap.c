@@ -242,6 +242,8 @@ vaddr_t kernel_virtual_end = 0;
 unsigned long PAGESIZE;
 unsigned long PAGESHIFT;
 
+void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr);
+
 void _pmap_setup_table_recursive_mapping(pmap_t *pmap) {
     size_t max_num_ptes_ttb = MAX_NUM_PTES_TTB;
     size_t max_num_ptes_ll = MAX_NUM_PTES_LL;
@@ -322,6 +324,7 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
     unsigned long index = ((vaddr & ~0xFFFF000000000000) >> lsb) & mask;
     size_t mapped_size;
     bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
 
     for (mapped_size = 0; mapped_size < size && index < max_num_ptes_ll; index++) {
         pte_t pte = table[index], *ptep = &table[index];
@@ -387,7 +390,17 @@ size_t _pmap_do_map(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp_
 
             // Since this is a table entry, recursively call _pmap_do_map with a higher level value
             // Accumulate the mapped_size until we've mapped the entire range or we've hit the end of this page table
-            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pte));
+            pte_t *next_table;
+            if (mmu_enabled) {
+                if (is_current_ttb) {
+                    next_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                } else {
+                    next_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                    _pmap_map_temp_page((vaddr_t)next_table, PTE_TO_PA(pte));
+                }
+            } else {
+                next_table = (pte_t*)(PTE_TO_PA(pte));
+            }
             mapped_size += _pmap_do_map(pmap, vaddr + mapped_size, paddr + mapped_size, size - mapped_size, bpu, bpl, next_table, level+1);
         }
     }
@@ -417,6 +430,7 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
     unsigned long index = ((vaddr & ~0xFFFF000000000000) >> lsb) & mask;
     size_t unmapped_size;
     bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
 
     for (unmapped_size = 0; unmapped_size < size && index < max_num_ptes_ll ; index++) {
         pte_t pte = table[index], *ptep = &table[index];
@@ -455,7 +469,17 @@ size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_ta
 
             // Since this is a table entry, recursively call _pmap_do_unmap with a higher level value
             // Accumulate the unmapped_size until we've unmapped the entire range or we've hit the end of this page table
-            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pte));
+            pte_t *next_table;
+            if (mmu_enabled) {
+                if (is_current_ttb) {
+                    next_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                } else {
+                    next_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                    _pmap_map_temp_page((vaddr_t)next_table, PTE_TO_PA(pte));
+                }
+            } else {
+                next_table = (pte_t*)(PTE_TO_PA(pte));
+            }
             unmapped_size += _pmap_do_unmap(pmap, vaddr + unmapped_size, size - unmapped_size, ptep, next_table, level+1);
         }
     }
@@ -492,6 +516,7 @@ void _pmap_do_wipe(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned
     // The top 16 bits of the VA are not used in translation so clear them
     unsigned long width = PAGESHIFT - 3, mask = (1 << width) - 1, lsb = PAGESHIFT + ((3 - level) * width), max_num_ptes_ll = PAGESIZE >> 3;
     bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
 
     // Skip the last entry in level 0; this is our recursive mapping
     for (unsigned long index = 0; index < (max_num_ptes_ll - (level == 0 ? 1 : 0)); index++) {
@@ -501,8 +526,18 @@ void _pmap_do_wipe(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned
             // Defer TLBI until all entries are cleared
             _pmap_clear_pte_no_tlbi(&table[index]);
         } else if (IS_TDE_VALID(pte)) {
-            _pmap_map_temp_page(TEMP_PAGE_VA(level+1), PTE_TO_PA(pte));
-            _pmap_do_wipe(pmap, ptep, (pte_t*)TEMP_PAGE_VA(level+1), level + 1);
+            pte_t *next_table;
+            if (mmu_enabled) {
+                if (is_current_ttb) {
+                    next_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+                } else {
+                    next_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                    _pmap_map_temp_page((vaddr_t)next_table, PTE_TO_PA(pte));
+                }
+            } else {
+                next_table = (pte_t*)(PTE_TO_PA(pte));
+            }
+            _pmap_do_wipe(pmap, ptep, next_table, level + 1);
         }
     }
 
@@ -528,6 +563,7 @@ paddr_t _pmap_do_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr
     unsigned long block_size = 1 << (PAGESHIFT + width), block_mask = block_size - 1;
     unsigned long index = ((vaddr & ~0xFFFF000000000000) >> lsb) & mask;
     bool mmu_enabled = mmu_is_enabled();
+    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
     paddr_t paddr;
     pte_t pte = table[index];
 
@@ -544,8 +580,18 @@ paddr_t _pmap_do_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr
         *bpl = BP_LATTR_EXTRACT(pte);
     } else {
         if (!IS_TDE_VALID(pte)) return -1;
-        _pmap_map_temp_page(TEMP_PAGE_VA(level+1), PTE_TO_PA(pte));
-        paddr = _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, (pte_t*)TEMP_PAGE_VA(level+1), level+1);
+        pte_t *next_table;
+        if (mmu_enabled) {
+            if (is_current_ttb) {
+                next_table = (pte_t*)GET_TABLE_VA(pmap, (vaddr_t)table, index, width);
+            } else {
+                next_table = (pte_t*)TEMP_PAGE_VA(level+1);
+                _pmap_map_temp_page((vaddr_t)next_table, PTE_TO_PA(pte));
+            }
+        } else {
+            next_table = (pte_t*)(PTE_TO_PA(pte));
+        }
+        paddr = _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, next_table, level+1);
     }
 
     return paddr;

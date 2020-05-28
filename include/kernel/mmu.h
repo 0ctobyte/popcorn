@@ -29,6 +29,7 @@ void mmu_kernel_longjmp(uintptr_t pa_base, uintptr_t va_base);
 
 // MMU context switching
 unsigned long mmu_get_ttbr0(void);
+unsigned long mmu_get_ttbr1(void);
 void mmu_set_ttbr0(unsigned long ttb0, unsigned int asid);
 void mmu_clear_ttbr0(void);
 
