@@ -36,8 +36,11 @@
 #define GET_TABLE_VA_BASE(pmap)           ((-1l << (PAGESHIFT + ((3l - ((PAGESIZE == _64KB) ? 1l : 0l)) * (PAGESHIFT - 3l)))) & ((pmap) == pmap_kernel() ? -1l : ~0xFFFF000000000000))
 #define GET_TABLE_VA(pmap, parent_table_va, index, width) ((((parent_table_va) << (width)) | ((index) << PAGESHIFT)) & ((pmap) == pmap_kernel() ? -1 : ~0xFFFF000000000000))
 
-#define TEMP_BUF_VA0                      (GET_TABLE_VA_BASE(pmap_kernel()) - (PAGESIZE << 1))
-#define TEMP_BUF_VA1                      (TEMP_BUF_VA0 + PAGESIZE)
+#define TEMP_PAGE_VA0                     (GET_TABLE_VA_BASE(pmap_kernel()) - (PAGESIZE << 2))
+#define TEMP_PAGE_VA1                     (TEMP_PAGE_VA0 + PAGESIZE)
+#define TEMP_PAGE_VA2                     (TEMP_PAGE_VA1 + PAGESIZE)
+#define TEMP_PAGE_VA3                     (TEMP_PAGE_VA2 + PAGESIZE)
+#define TEMP_PAGE_VA(level)               (level == 0 ? TEMP_PAGE_VA0 : (level == 1 ? TEMP_PAGE_VA1 : (level == 2 ? TEMP_PAGE_VA2 : TEMP_PAGE_VA3)))
 
 // Don't change the physical address in the page tables. This is used to tell the mapper to only update the attributes of a PTE
 #define PTE_PA_NO_CHANGE                  (-1)
@@ -399,6 +402,13 @@ void _pmap_map_range(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, size_t size, bp
     _pmap_do_map(pmap, vaddr, paddr, size, bpu, bpl, table, 0);
 }
 
+void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr) {
+    bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
+    bp_lattr_t bpl = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
+
+    _pmap_map_range(pmap_kernel(), temp_va, paddr, PAGESIZE, bpu, bpl);
+}
+
 size_t _pmap_do_unmap(pmap_t *pmap, vaddr_t vaddr, size_t size, pte_t *parent_table_pte, pte_t *table, unsigned long level) {
     // Calculate the table index width, mask and lsb for this levels index bits in the VA
     // The top 16 bits of the VA are not used in translation so clear them
@@ -483,15 +493,16 @@ void _pmap_do_wipe(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned
     unsigned long width = PAGESHIFT - 3, mask = (1 << width) - 1, lsb = PAGESHIFT + ((3 - level) * width), max_num_ptes_ll = PAGESIZE >> 3;
     bool mmu_enabled = mmu_is_enabled();
 
-    for (unsigned long index = 0; index < max_num_ptes_ll ; index++) {
+    // Skip the last entry in level 0; this is our recursive mapping
+    for (unsigned long index = 0; index < (max_num_ptes_ll - (level == 0 ? 1 : 0)); index++) {
         pte_t pte = table[index], *ptep = &table[index];
 
-        if (IS_TDE_VALID(pte)) {
-            pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pte));
-            _pmap_do_wipe(pmap, ptep, next_table, level + 1);
-        } else if (IS_PTE_VALID(pte)) {
+        if (level == 3 && IS_PTE_VALID(pte)) {
             // Defer TLBI until all entries are cleared
-            _pmap_clear_pte_no_tlbi(&pte);
+            _pmap_clear_pte_no_tlbi(&table[index]);
+        } else if (IS_TDE_VALID(pte)) {
+            _pmap_map_temp_page(TEMP_PAGE_VA(level+1), PTE_TO_PA(pte));
+            _pmap_do_wipe(pmap, ptep, (pte_t*)TEMP_PAGE_VA(level+1), level + 1);
         }
     }
 
@@ -504,8 +515,8 @@ void _pmap_do_wipe(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned
 }
 
 void _pmap_wipe(pmap_t *pmap) {
-    pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
-    _pmap_do_wipe(pmap, NULL, table, 0);
+    _pmap_map_temp_page(TEMP_PAGE_VA(0), pmap->ttb);
+    _pmap_do_wipe(pmap, NULL, (pte_t*)TEMP_PAGE_VA(0), 0);
     barrier_dsb();
     tlb_invalidate_asid(pmap->asid);
 }
@@ -533,16 +544,16 @@ paddr_t _pmap_do_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr
         *bpl = BP_LATTR_EXTRACT(pte);
     } else {
         if (!IS_TDE_VALID(pte)) return -1;
-        pte_t *next_table = (pte_t*)(mmu_enabled ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : PTE_TO_PA(pte));
-        paddr = _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, next_table, level+1);
+        _pmap_map_temp_page(TEMP_PAGE_VA(level+1), PTE_TO_PA(pte));
+        paddr = _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, (pte_t*)TEMP_PAGE_VA(level+1), level+1);
     }
 
     return paddr;
 }
 
 paddr_t _pmap_translate(pmap_t *pmap, vaddr_t vaddr, bool *is_block, bp_uattr_t *bpu, bp_lattr_t *bpl) {
-    pte_t *table = (pte_t*)(mmu_is_enabled() ? GET_TTB_VA(pmap) : pmap->ttb);
-    return _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, table, 0);
+    _pmap_map_temp_page(TEMP_PAGE_VA(0), pmap->ttb);
+    return _pmap_do_translate(pmap, vaddr, is_block, bpu, bpl, (pte_t*)TEMP_PAGE_VA(0), 0);
 }
 
 void pmap_bootstrap(void) {
@@ -584,14 +595,6 @@ void pmap_bootstrap(void) {
     bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
     _pmap_map_range(&kernel_pmap, kernel_virtual_start, kernel_physical_start, kernel_size, bp_uattr_page, bp_lattr_page);
 
-    // FIXME: temporary mapping of UART
-    extern uintptr_t uart_base_addr;
-    bp_uattr_t bp_uattr_dev = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
-    bp_lattr_t bp_lattr_dev = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_DEVICE_NGNRNE};
-    vaddr_t kernel_devices_virtual_start = 0xFFFFFC0000000000;
-    unsigned int uart_base_offset = uart_base_addr & (PAGESIZE - 1);
-    _pmap_map_range(&kernel_pmap, kernel_devices_virtual_start, uart_base_addr & ~(PAGESIZE - 1), PAGESIZE, bp_uattr_dev, bp_lattr_dev);
-
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
     pmap_t identity_pmap;
@@ -605,17 +608,13 @@ void pmap_bootstrap(void) {
     mmu_enable(identity_pmap.ttb, kernel_pmap.ttb, MAIR(ma_index), PAGESIZE);
     mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
-    // FIXME Switch UART base address to virtual address
-    uart_base_addr = kernel_devices_virtual_start + uart_base_offset;
-    kernel_devices_virtual_start += PAGESIZE;
-
     // Re-locate the vm_page_array to it's virtual address
     vm_page_relocate_array(vm_page_array_va);
 
     // Reclaim page table memory from the identity mappings that we no longer need
-    _pmap_unmap_range(&identity_pmap, kernel_physical_start, kernel_size);
-    vm_page_free(vm_page_from_pa(identity_pmap.ttb));
     mmu_clear_ttbr0();
+    pmap_remove_all(&identity_pmap);
+    vm_page_free(vm_page_from_pa(identity_pmap.ttb));
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
     pmap_reference(pmap_kernel());
@@ -629,7 +628,7 @@ void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
     // The kernel's virtual address space ends just before where the page table VA space starts
     // We leave some VA space to map temporary pages
     *vstartp = kernel_virtual_start;
-    *vendp = TEMP_BUF_VA0;
+    *vendp = TEMP_PAGE_VA0;
 }
 
 void pmap_reference(pmap_t *pmap) {
@@ -869,21 +868,15 @@ void pmap_deactivate(pmap_t *pmap) {
 }
 
 void pmap_zero_page(paddr_t pa) {
-    bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
-    bp_lattr_t bpl = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
-
-    _pmap_map_range(pmap_kernel(), TEMP_BUF_VA0, pa, PAGESIZE, bpu, bpl);
-    _zero_pages(TEMP_BUF_VA0, PAGESIZE);
+    _pmap_map_temp_page(TEMP_PAGE_VA0, pa);
+    _zero_pages(TEMP_PAGE_VA0, PAGESIZE);
     barrier_dmb();
 }
 
 void pmap_copy_page(paddr_t src, paddr_t dst) {
-    bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
-    bp_lattr_t bpl = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
-
-    _pmap_map_range(pmap_kernel(), TEMP_BUF_VA0, src, PAGESIZE, bpu, bpl);
-    _pmap_map_range(pmap_kernel(), TEMP_BUF_VA1, dst, PAGESIZE, bpu, bpl);
-    _copy_pages(TEMP_BUF_VA1, TEMP_BUF_VA0, PAGESIZE);
+    _pmap_map_temp_page(TEMP_PAGE_VA0, src);
+    _pmap_map_temp_page(TEMP_PAGE_VA1, dst);
+    _copy_pages(TEMP_PAGE_VA1, TEMP_PAGE_VA0, PAGESIZE);
     barrier_dmb();
 }
 

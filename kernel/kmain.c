@@ -27,9 +27,10 @@ void kmain(void) {
     pmap_bootstrap();
 
     // FIXME switching UART to VA address
-    //extern unsigned long uart_base_addr;
-    //pmap_kenter_pa(0xFFFFC00000000000, uart_base_addr, VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
-    //uart_base_addr = 0xFFFFC00000000000 + uart_base_addr & (PAGESIZE - 1);
+    extern unsigned long uart_base_addr;
+    vaddr_t uart_base_va = 0xFFFFC00000000000;
+    pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+    uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
 
     kprintf("pmap_init() - done!\n");
     vaddr_t vstartp, vendp;
