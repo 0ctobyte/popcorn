@@ -10,6 +10,7 @@ extern unsigned long PAGESHIFT;
 
 // Virtual address
 typedef uintptr_t vaddr_t;
+extern vaddr_t max_kernel_virtual_end;
 
 // Physical address
 typedef uintptr_t paddr_t;

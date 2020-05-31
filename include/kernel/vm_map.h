@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+#include <kernel/vmm.h>
 #include <kernel/pmap.h>
 #include <kernel/vm_object.h>
 
@@ -15,7 +16,7 @@ typedef struct vm_mapping {
     struct vm_mapping *left, *right; // Children vm_mappings
     vaddr_t vstart, vend;            // The start and end addresses of this virtual memory region
     vm_prot_t prot;                  // The region's attributes
-    vm_object_t object;              // The VM object that this vregion is mapping
+    vm_object_t *object;             // The VM object that this vregion is mapping
     vm_offset_t offset;              // The offset into the object that the mapping starts from
 } vm_mapping_t;
 
@@ -26,8 +27,8 @@ typedef struct {
     spinlock_t lock;         // Multiple readers, single writer lock
     pmap_t *pmap;            // The pmap associated with this vmap
     vm_mapping_t *root;      // A list of contiguous virtual memory regions associated with this virtual memory space
-    size_t size;             // Total size of the virtual address space defined by this map
     vaddr_t start, end;      // The start and end virtual addresses of the entire virtual space definied by this map
+    size_t size;             // Total size of the virtual address space defined by this map
 } vm_map_t;
 
 // Declare the kernel's vmap

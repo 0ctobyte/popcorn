@@ -104,6 +104,36 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
     }
 }
 
+void _vm_page_insert_in_object(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm_offset_t starting_offset) {
+    // Add each page in the list to the object and update the pages object and offset fields
+    for (unsigned int p = 0; p < num_pages; p++) {
+        pages[p].object = object;
+        pages[p].offset = starting_offset + (p << PAGESHIFT);
+
+        vm_page_t *next = object->resident_pages;
+        pages[p].next_resident = next;
+        if (next != NULL) next->prev_resident = &pages[p];
+        pages[p].prev_resident = NULL;
+        object->resident_pages = &pages[p];
+    }
+}
+
+void _vm_page_remove_from_object(vm_page_t *pages, size_t num_pages) {
+    // Remove each page from the list
+    for (unsigned int p = 0; p < num_pages; p++) {
+        vm_object_t *object = pages[p].object;
+        vm_page_t *prev = pages[p].prev_resident, *next = pages[p].next_resident;
+        if (prev != NULL) prev->next_resident = next;
+        if (next != NULL) next->prev_resident = prev;
+        if (object != NULL && prev == NULL) object->resident_pages = next;
+
+        pages[p].prev_resident = NULL;
+        pages[p].next_resident = NULL;
+        pages[p].object = NULL;
+        pages[p].offset = 0;
+    }
+}
+
 void vm_page_init(paddr_t vm_page_array_addr) {
     vm_page_array.lock = SPINLOCK_INIT;
     vm_page_array.pages = (vm_page_t*)vm_page_array_addr;
@@ -121,7 +151,7 @@ void vm_page_init(paddr_t vm_page_array_addr) {
     }
 }
 
-vm_page_t* vm_page_alloc_contiguous(size_t num_pages) {
+vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset) {
     kassert(num_pages <= vm_page_array.num_pages && num_pages < MAX_NUM_CONTIGUOUS_PAGES);
 
     spinlock_irqacquire(&vm_page_array.lock);
@@ -138,6 +168,14 @@ vm_page_t* vm_page_alloc_contiguous(size_t num_pages) {
     }
 
     spinlock_irqrelease(&vm_page_array.lock);
+
+    // If an object is specified, add the page(s) to that object
+    if (first_page != NULL && object != NULL) {
+        spinlock_writeacquire(&object->lock);
+        _vm_page_insert_in_object(first_page, num_pages, object, offset);
+        spinlock_writerelease(&object->lock);
+    }
+
     return first_page;
 }
 
@@ -148,6 +186,14 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
 
     // The page number must be a multiple of num_pages
     kassert((GET_PAGE_INDEX(pages) & (num_pages - 1)) == 0);
+
+    // Assuming all pages belong to the same object
+    vm_object_t *object = pages[0].object;
+    if (object != NULL) {
+        spinlock_writeacquire(&object->lock);
+        _vm_page_remove_from_object(pages, num_pages);
+        spinlock_writerelease(&object->lock);
+    }
 
     spinlock_irqacquire(&vm_page_array.lock);
 
@@ -161,12 +207,16 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
     spinlock_irqrelease(&vm_page_array.lock);
 }
 
-vm_page_t* vm_page_alloc(void) {
-    return vm_page_alloc_contiguous(1);
+vm_page_t* vm_page_alloc(vm_object_t *object, vm_offset_t offset) {
+    return vm_page_alloc_contiguous(1, object, offset);
 }
 
 void vm_page_free(vm_page_t *page) {
     vm_page_free_contiguous(page, 1);
+}
+
+vm_page_t* vm_page_steal(void) {
+    return vm_page_alloc(NULL, 0);
 }
 
 paddr_t vm_page_to_pa(vm_page_t *page) {
@@ -178,7 +228,7 @@ vm_page_t* vm_page_from_pa(paddr_t pa) {
     return vm_page_array.pages + ((pa - MEMBASEADDR) >> PAGESHIFT);
 }
 
-vm_page_t* vm_page_reserve_pa(paddr_t pa) {
+vm_page_t* vm_page_reserve_pa(paddr_t pa, vm_object_t *object, vm_offset_t offset) {
     // Get the page to reserve
     vm_page_t *page = vm_page_from_pa(pa);
 
@@ -198,6 +248,7 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
         if (buddy != NULL) {
             page->status.is_active = 1;
             page->status.wired_count++;
+            _vm_page_insert_in_object(page, 1, object, offset);
 
             if (prev != NULL) prev->next_buddy = buddy->next_buddy;
             else vm_page_array.page_bins[bin] = buddy->next_buddy;

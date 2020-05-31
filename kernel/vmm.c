@@ -3,6 +3,7 @@
 #include <kernel/vm_map.h>
 
 void vmm_init(void) {
+    vm_object_bootstrap();
     pmap_bootstrap();
 
     // FIXME switching UART to VA address

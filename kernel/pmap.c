@@ -2,6 +2,7 @@
 #include <kernel/mmu.h>
 #include <kernel/barrier.h>
 #include <kernel/kassert.h>
+#include <kernel/vm_object.h>
 #include <lib/asm.h>
 #include <string.h>
 
@@ -225,6 +226,9 @@ vaddr_t kernel_virtual_start = ((uintptr_t)(&__kernel_virtual_start));
 extern paddr_t kernel_physical_end;
 vaddr_t kernel_virtual_end = 0;
 
+// The last kernel virtual address the kernel grow up to
+vaddr_t max_kernel_virtual_end;
+
 unsigned long PAGESIZE;
 unsigned long PAGESHIFT;
 
@@ -258,7 +262,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
     bp_lattr_t bpl_table = (bp_lattr_t){.ng = pmap == pmap_kernel() ? BP_GLOBAL : BP_NON_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
     t_attr_t ta = (t_attr_t){.ns = T_NON_SECURE, .ap = T_AP_NONE, .uxn = T_NON_UXN, .pxn = T_NON_PXN};
 
-    vm_page_t *page = vm_page_alloc();
+    vm_page_t *page = vm_page_steal();
     kassert(page != NULL);
     page->status.wired_count++;
 
@@ -598,8 +602,8 @@ void pmap_bootstrap(void) {
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
     size_t kernel_size = ROUND_PAGE_UP(kernel_physical_end - kernel_physical_start);
-    kernel_physical_end = kernel_physical_start + kernel_size;
     kernel_virtual_end = kernel_virtual_start + kernel_size;
+    max_kernel_virtual_end = TEMP_PAGE_VA0;
 
     // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
     size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
@@ -610,8 +614,9 @@ void pmap_bootstrap(void) {
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
     // Reserve the physical pages used by the kernel
-    for (size_t s = 0; s < kernel_size; s += PAGESIZE) {
-        vm_page_reserve_pa(kernel_physical_start + s);
+    for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
+        vm_page_reserve_pa(kernel_physical_start + offset, &kernel_object, offset);
+        kernel_object.size += PAGESIZE;
     }
 
     // Let's grab a page for the base translation table
@@ -620,8 +625,8 @@ void pmap_bootstrap(void) {
     _pmap_setup_table_recursive_mapping(&kernel_pmap);
 
     // Map the kernel's virtual address space to it's physical location
-    for (size_t s = 0; s < kernel_size; s += PAGESIZE) {
-        pmap_enter(pmap_kernel(), kernel_virtual_start + s, kernel_physical_start + s, VM_PROT_ALL, PMAP_FLAGS_WIRED | PMAP_FLAGS_WRITE_BACK);
+    for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
+        pmap_enter(pmap_kernel(), kernel_virtual_start + offset, kernel_physical_start + offset, VM_PROT_ALL, PMAP_FLAGS_WIRED | PMAP_FLAGS_WRITE_BACK);
     }
 
     // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
@@ -635,8 +640,8 @@ void pmap_bootstrap(void) {
     // These mappings will be just thrown out after, use the internal _pmap_enter for this
     bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .contiguous = BP_NON_CONTIGUOUS};
     bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
-    for (size_t s = 0; s < kernel_size; s += PAGESIZE) {
-        _pmap_enter(&identity_pmap, kernel_physical_start + s, kernel_physical_start + s, bp_uattr_page, bp_lattr_page);
+    for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
+        _pmap_enter(&identity_pmap, kernel_physical_start + offset, kernel_physical_start + offset, bp_uattr_page, bp_lattr_page);
     }
 
     // Finally enable the MMU!
@@ -670,16 +675,19 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
     if (next_unused_addr == 0) next_unused_addr = kernel_virtual_end;
 
     if ((next_unused_addr + vsize) > kernel_virtual_end) {
+        spinlock_writeacquire(&kernel_object.lock);
         // Allocate some more pages if we don't have more room at the end of the kernel for vsize
         size_t num_pages = ROUND_PAGE_UP(vsize - (kernel_virtual_end - next_unused_addr));
         for (unsigned long i = 0; i < num_pages; i++) {
-            vm_page_t *page = vm_page_alloc();
+            vm_page_t *page = vm_page_alloc(&kernel_object, kernel_virtual_end - kernel_virtual_start);
             kassert(page != NULL);
 
             page->status.wired_count++;
             pmap_kenter_pa(kernel_virtual_end, vm_page_to_pa(page), VM_PROT_DEFAULT, PMAP_FLAGS_WRITE_BACK | PMAP_FLAGS_WIRED);
             kernel_virtual_end += PAGESIZE;
+            kernel_object.size += PAGESIZE;
         }
+        spinlock_writerelease(&kernel_object.lock);
     }
 
     *vstartp = kernel_virtual_start;
