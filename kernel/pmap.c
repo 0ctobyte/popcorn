@@ -609,11 +609,6 @@ void pmap_bootstrap(void) {
     kernel_virtual_end += vm_page_array_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
 
-    // Reserve the physical pages used by the kernel
-    for(unsigned long i = 0, num_pages = kernel_size >> PAGESHIFT; i < num_pages; i++) {
-        vm_page_reserve_pa(kernel_physical_start + (i << PAGESHIFT));
-    }
-
     // Let's grab a page for the base translation table
     // The base table for 16KB granule only has 2 entries while the 64KB granule base table only has 64 entries.
     kernel_pmap.ttb = PTE_TO_PA(_pmap_alloc_table(pmap_kernel()));
@@ -621,6 +616,8 @@ void pmap_bootstrap(void) {
 
     // Map the kernel's virtual address space to it's physical location
     for (size_t s = 0; s < kernel_size; s += PAGESIZE) {
+        // Reserve the physical pages used by the kernel
+        vm_page_reserve_pa(kernel_physical_start + s);
         pmap_enter(pmap_kernel(), kernel_virtual_start + s, kernel_physical_start + s, VM_PROT_ALL, PMAP_FLAGS_WIRED | PMAP_FLAGS_WRITE_BACK);
     }
 
