@@ -37,9 +37,6 @@ typedef struct {
 // Declare the kernel's vmap
 extern vm_map_t kernel_vmap;
 
-// Initializes the kernel's VM map
-void vm_map_bootstrap(void);
-
 // Initialize the vm_map system
 void vm_map_init(void);
 

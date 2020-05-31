@@ -602,6 +602,7 @@ void pmap_bootstrap(void) {
     // Set the start and end of the kernel's virtual and physical address space
     // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
     size_t kernel_size = ROUND_PAGE_UP(kernel_physical_end - kernel_physical_start);
+    kernel_physical_end = kernel_physical_start + kernel_size;
     kernel_virtual_end = kernel_virtual_start + kernel_size;
     max_kernel_virtual_end = TEMP_PAGE_VA0;
 
@@ -661,6 +662,7 @@ void pmap_bootstrap(void) {
 }
 
 void pmap_init(void) {
+    // FIXME do pmap module init
 }
 
 void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
@@ -683,10 +685,6 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
             page->status.wired_count++;
             pmap_kenter_pa(kernel_virtual_end, vm_page_to_pa(page), VM_PROT_DEFAULT, PMAP_FLAGS_WRITE_BACK | PMAP_FLAGS_WIRED);
             kernel_virtual_end += PAGESIZE;
-
-            spinlock_writeacquire(&kernel_object.lock);
-            kernel_object.size += PAGESIZE;
-            spinlock_writerelease(&kernel_object.lock);
         }
     }
 
@@ -699,6 +697,7 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
 }
 
 pmap_t* pmap_create(void) {
+    // FIXME create the pmap
     return NULL;
 }
 
@@ -707,10 +706,11 @@ void pmap_destroy(pmap_t *pmap) {
     atomic_dec(&pmap->refcount);
 
     if (pmap->refcount == 0) {
+        spinlock_writeacquire(&pmap->lock);
+        // FIXME free the pmap
         pmap_remove_all(pmap);
+        spinlock_writerelease(&pmap->lock);
     }
-
-    // FIXME free the pmap
 }
 
 void pmap_reference(pmap_t *pmap) {
@@ -764,6 +764,8 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
 
     // Update the vm_page struct (assume is_active is already set by a vm_page_alloc call somewhere else);
     vm_page_t *page = vm_page_from_pa(pa);
+    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
+
     if (flags & PMAP_FLAGS_WIRED) {
         page->status.wired_count++;
         pmap->stats.wired_count++;
@@ -776,6 +778,8 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
     if (flags & VM_PROT_WRITE) {
         page->status.is_dirty = 1;
     }
+
+    if (page->object != NULL) spinlock_writerelease(&page->object->lock);
 
     pmap->stats.resident_count++;
     spinlock_writerelease(&pmap->lock);
@@ -859,7 +863,9 @@ void pmap_unwire(pmap_t *pmap, vaddr_t va) {
     kassert(_pmap_lookup(pmap, va, &pa, &bpu, &bpl));
 
     vm_page_t *page = vm_page_from_pa(pa);
+    spinlock_writeacquire(&page->object->lock);
     page->status.wired_count--;
+    spinlock_writerelease(&page->object->lock);
 
     spinlock_writeacquire(&pmap->lock);
     pmap->stats.wired_count--;
@@ -872,8 +878,11 @@ bool pmap_extract(pmap_t *pmap, vaddr_t va, paddr_t *pa) {
     bp_uattr_t bpu;
     bp_lattr_t bpl;
 
-    if (_pmap_lookup(pmap, va, pa, &bpu, &bpl)) return true;
-    else return false;
+    spinlock_readacquire(&pmap->lock);
+    bool ret = _pmap_lookup(pmap, va, pa, &bpu, &bpl);
+    spinlock_readrelease(&pmap->lock);
+
+    return ret;
 }
 
 void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) {
@@ -913,6 +922,9 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
     src_addr = ROUND_PAGE_DOWN(src_addr);
     dst_addr = ROUND_PAGE_DOWN(dst_addr);
 
+    spinlock_writeacquire(&dst_map->lock);
+    spinlock_readacquire(&src_map->lock);
+
     size_t stride_size = 0;
     for (unsigned long s = 0; s < len; s += PAGESIZE) {
         paddr_t pa;
@@ -922,47 +934,65 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
         kassert(_pmap_lookup(src_map, src_addr + s, &pa, &bpu, &bpl));
         _pmap_enter(dst_map, dst_addr + s, pa & (PAGESIZE - 1), bpu, bpl);
     }
+
+    spinlock_readrelease(&src_map->lock);
+    spinlock_writerelease(&dst_map->lock);
 }
 
 void pmap_activate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
+    spinlock_readacquire(&pmap->lock);
     mmu_set_ttbr0(pmap->ttb, pmap->asid);
+    spinlock_readrelease(&pmap->lock);
 }
 
 void pmap_deactivate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
+
+    spinlock_readacquire(&pmap->lock);
 
     // Check that we are deactivating the current context
     unsigned long ttbr0 = mmu_get_ttbr0();
     kassert((ttbr0 >> 48) == pmap->asid && (ttbr0 & ~0xFFFF000000000000) == pmap->ttb);
 
     mmu_clear_ttbr0();
+
+    spinlock_readrelease(&pmap->lock);
 }
 
 void pmap_zero_page(paddr_t pa) {
+    spinlock_writeacquire(&pmap_kernel()->lock);
     _pmap_map_temp_page(TEMP_PAGE_VA0, pa);
     _zero_pages(TEMP_PAGE_VA0, PAGESIZE);
+    spinlock_writerelease(&pmap_kernel()->lock);
     barrier_dmb();
 }
 
 void pmap_copy_page(paddr_t src, paddr_t dst) {
+    spinlock_writeacquire(&pmap_kernel()->lock);
     _pmap_map_temp_page(TEMP_PAGE_VA0, src);
     _pmap_map_temp_page(TEMP_PAGE_VA1, dst);
     _copy_pages(TEMP_PAGE_VA1, TEMP_PAGE_VA0, PAGESIZE);
+    spinlock_writerelease(&pmap_kernel()->lock);
     barrier_dmb();
 }
 
 void pmap_page_protect(vm_page_t *vpg, vm_prot_t prot) {
+    // FIXME implement this
 }
 
 bool pmap_clear_modify(vm_page_t *vpg) {
+    spinlock_writeacquire(&vpg->object->lock);
     bool dirty = vpg->status.is_dirty;
     vpg->status.is_dirty = 0;
+    spinlock_writerelease(&vpg->object->lock);
     return dirty;
 }
 
 bool pmap_clear_reference(vm_page_t *vpg) {
+    spinlock_writeacquire(&vpg->object->lock);
     bool referenced = vpg->status.is_referenced;
     vpg->status.is_referenced = 0;
+    spinlock_writerelease(&vpg->object->lock);
     return referenced;
 }

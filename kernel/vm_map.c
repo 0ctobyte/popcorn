@@ -6,26 +6,33 @@
 // Kernel vmap
 vm_map_t kernel_vmap;
 
-void vm_map_bootstrap(void) {
-    vaddr_t kernel_virtual_start, kernel_virtual_end;
+void _vm_mapping_remove_all(vm_mapping_t *root) {
+    // FIXME Implement this
+}
 
-    pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
+void vm_map_init(void) {
+    // FIXME Init vm_map module
+}
 
-    // Initialize the kernel vm_map
-    kernel_vmap.lock = SPINLOCK_INIT;
-    kernel_vmap.pmap = pmap_kernel();
-    kernel_vmap.start = kernel_virtual_start;
-    kernel_vmap.end = max_kernel_virtual_end;
-    kernel_vmap.size = 0;
-    atomic_inc(&kernel_vmap.refcnt);
+vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
+    // FIXME Allocate map
+    vm_map_t *map;
 
-    // Add a mapping to the kernel_object for all of the kernel memory mapped to this point
-    vm_mapping_t *initial_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
-    initial_mapping->left = NULL;
-    initial_mapping->right = NULL;
-    initial_mapping->vstart = kernel_virtual_start;
-    initial_mapping->vend = kernel_virtual_end;
-    initial_mapping->prot = VM_PROT_ALL;
-    initial_mapping->object = &kernel_object;
-    initial_mapping->offset = 0;
+    map->lock = SPINLOCK_INIT;
+    map->pmap = pmap;
+    map->start = vmin;
+    map->end = vmax;
+    map->size = 0;
+    map->refcnt = 0;
+
+    return map;
+}
+
+void vm_map_destroy(vm_map_t *vmap) {
+    atomic_dec(&vmap->refcnt);
+
+    if (vmap->refcnt == 0) {
+        // FIXME Free map
+        _vm_mapping_remove_all(vmap->root);
+    }
 }

@@ -107,8 +107,11 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
 void _vm_page_insert_in_object(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm_offset_t starting_offset) {
     // Add each page in the list to the object and update the pages object and offset fields
     for (unsigned int p = 0; p < num_pages; p++) {
+        vm_offset_t offset = starting_offset + (p << PAGESHIFT);
+        if (offset >= object->size) object->size += (offset - object->size) + PAGESIZE;
+
         pages[p].object = object;
-        pages[p].offset = starting_offset + (p << PAGESHIFT);
+        pages[p].offset = offset;
 
         vm_page_t *next = object->resident_pages;
         pages[p].next_resident = next;
