@@ -2,9 +2,12 @@
 #include <kernel/pmap.h>
 #include <kernel/vm_map.h>
 
+extern paddr_t kernel_physical_start;
+extern paddr_t kernel_physical_end;
+
 void vmm_init(void) {
-    vm_object_bootstrap();
     pmap_bootstrap();
+    vm_object_bootstrap(kernel_physical_start, kernel_physical_end);
 
     // FIXME switching UART to VA address
     extern unsigned long uart_base_addr;

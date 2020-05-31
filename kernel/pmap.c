@@ -615,8 +615,7 @@ void pmap_bootstrap(void) {
 
     // Reserve the physical pages used by the kernel
     for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
-        vm_page_reserve_pa(kernel_physical_start + offset, &kernel_object, offset);
-        kernel_object.size += PAGESIZE;
+        vm_page_reserve_pa(kernel_physical_start + offset);
     }
 
     // Let's grab a page for the base translation table
@@ -675,9 +674,8 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
     if (next_unused_addr == 0) next_unused_addr = kernel_virtual_end;
 
     if ((next_unused_addr + vsize) > kernel_virtual_end) {
-        spinlock_writeacquire(&kernel_object.lock);
         // Allocate some more pages if we don't have more room at the end of the kernel for vsize
-        size_t num_pages = ROUND_PAGE_UP(vsize - (kernel_virtual_end - next_unused_addr));
+        size_t num_pages = ROUND_PAGE_UP(vsize - (kernel_virtual_end - next_unused_addr)) >> PAGESHIFT;
         for (unsigned long i = 0; i < num_pages; i++) {
             vm_page_t *page = vm_page_alloc(&kernel_object, kernel_virtual_end - kernel_virtual_start);
             kassert(page != NULL);
@@ -685,9 +683,11 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
             page->status.wired_count++;
             pmap_kenter_pa(kernel_virtual_end, vm_page_to_pa(page), VM_PROT_DEFAULT, PMAP_FLAGS_WRITE_BACK | PMAP_FLAGS_WIRED);
             kernel_virtual_end += PAGESIZE;
+
+            spinlock_writeacquire(&kernel_object.lock);
             kernel_object.size += PAGESIZE;
+            spinlock_writerelease(&kernel_object.lock);
         }
-        spinlock_writerelease(&kernel_object.lock);
     }
 
     *vstartp = kernel_virtual_start;

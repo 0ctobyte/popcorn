@@ -6,6 +6,8 @@
 #include <kernel/vmm.h>
 #include <kernel/pmap.h>
 #include <kernel/vm_object.h>
+#include <kernel/atomic.h>
+#include <kernel/spinlock.h>
 
 // A virtual memory mapping represents a contiguous range of virtual address space with the same
 // protections and attributes. Mappings are part of a single map and organized in red/black tree
@@ -27,8 +29,9 @@ typedef struct {
     spinlock_t lock;         // Multiple readers, single writer lock
     pmap_t *pmap;            // The pmap associated with this vmap
     vm_mapping_t *root;      // A list of contiguous virtual memory regions associated with this virtual memory space
-    vaddr_t start, end;      // The start and end virtual addresses of the entire virtual space definied by this map
-    size_t size;             // Total size of the virtual address space defined by this map
+    vaddr_t start, end;      // The start and end virtual addresses of the entire possible virtual space definied by this map
+    size_t size;             // Total size of the current virtual address space defined by this map
+    atomic_t refcnt;         // Reference count
 } vm_map_t;
 
 // Declare the kernel's vmap

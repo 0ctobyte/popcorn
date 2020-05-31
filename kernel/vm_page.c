@@ -228,7 +228,7 @@ vm_page_t* vm_page_from_pa(paddr_t pa) {
     return vm_page_array.pages + ((pa - MEMBASEADDR) >> PAGESHIFT);
 }
 
-vm_page_t* vm_page_reserve_pa(paddr_t pa, vm_object_t *object, vm_offset_t offset) {
+vm_page_t* vm_page_reserve_pa(paddr_t pa) {
     // Get the page to reserve
     vm_page_t *page = vm_page_from_pa(pa);
 
@@ -248,7 +248,6 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa, vm_object_t *object, vm_offset_t offse
         if (buddy != NULL) {
             page->status.is_active = 1;
             page->status.wired_count++;
-            _vm_page_insert_in_object(page, 1, object, offset);
 
             if (prev != NULL) prev->next_buddy = buddy->next_buddy;
             else vm_page_array.page_bins[bin] = buddy->next_buddy;

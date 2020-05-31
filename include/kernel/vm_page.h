@@ -43,7 +43,7 @@ vm_page_t* vm_page_from_pa(paddr_t pa);
 // Reserve pages that have been allocated but not through vm_page_alloc*. This should be used by the virtual memory system
 // during boot time initialization to tell the page system what pages are being used by the kernel. These pages are wired
 // These pages should be added to the provided kernel memory object
-vm_page_t* vm_page_reserve_pa(paddr_t pa, vm_object_t *object, vm_offset_t offset);
+vm_page_t* vm_page_reserve_pa(paddr_t pa);
 
 // Relocate the page array to it's virtual address, this is called by the virtual memory subsystem in it's initialization process
 // after it has enabled the MMU
