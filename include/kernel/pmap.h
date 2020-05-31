@@ -2,7 +2,7 @@
 #define __PMAP_H__
 
 #include <sys/types.h>
-#include <kernel/mm.h>
+#include <kernel/vmm.h>
 #include <kernel/spinlock.h>
 #include <kernel/atomic.h>
 #include <kernel/vm_page.h>
@@ -54,7 +54,7 @@ void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp);
 
 // This function should only be used as a bootstrap memory allocator before the memory management systems have been setup.
 // It will allocate the required memory if available and map it into the kernel's address space
-vaddr_t pmap_steal_memory(size_t vsize);
+vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp);
 
 // Returns the kernel's pmap; must return a reference to kernel_pmap
 #define pmap_kernel() (&(kernel_pmap))

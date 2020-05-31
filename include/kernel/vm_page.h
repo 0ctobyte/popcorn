@@ -1,7 +1,7 @@
 #ifndef __VM_PAGE_H__
 #define __VM_PAGE_H__
 
-#include <kernel/mm.h>
+#include <kernel/vmm.h>
 #include <kernel/spinlock.h>
 
 typedef struct vm_page_s {

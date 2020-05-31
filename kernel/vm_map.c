@@ -6,3 +6,6 @@
 
 // Kernel vmap
 vm_map_t kernel_vmap;
+
+void vm_map_bootstrap(void) {
+}

@@ -14,4 +14,6 @@ typedef struct {
     atomic_t refcnt;           // How many VM regions are referencing this object
 } vm_object_t;
 
+extern vm_object_t kernel_object;
+
 #endif // __VM_OBJECT_H__
