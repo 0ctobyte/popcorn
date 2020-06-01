@@ -16,6 +16,7 @@ string(TOUPPER ${platform} platform_def)
 enable_language(ASM)
 set(linker_script ${CMAKE_SOURCE_DIR}/linker.ld)
 
+set(CMAKE_OBJCOPY aarch64-none-elf-objcopy)
 set(OC_FLAGS --target elf32-littlearm --set-section-flags .bss=contents,alloc,load -O binary)
 
 add_executable(${target} "")
