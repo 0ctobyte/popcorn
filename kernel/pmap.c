@@ -10,16 +10,10 @@
 #define _16KB  (0x4000)
 #define _64KB  (0x10000)
 
-#define IS_WITHIN_MEM_BOUNDS(addr) (((addr) >= MEMBASEADDR) && ((addr) < (MEMBASEADDR + MEMSIZE)))
-
 #define MAX_NUM_PTES_TTB                  (1 << (48 - (PAGESHIFT + ((3l - (PAGESHIFT == 16 ? 1 : 0)) * (PAGESHIFT - 3l)))))
 #define MAX_NUM_PTES_LL                   (PAGESIZE >> 3)
 
-#define ROUND_PAGE_DOWN(addr)             ((long)(addr) & ~((long)((PAGESIZE) - 1l)))
-#define ROUND_PAGE_UP(addr)               (IS_PAGE_ALIGNED(addr) ? (long)(addr) : ROUND_PAGE_DOWN(addr) + (long)(PAGESIZE))
-
 #define BLOCK_SIZE                        (1l << (PAGESHIFT + PAGESHIFT - 3l))
-#define IS_PAGE_ALIGNED(addr)             (((long)(addr) & ((long)(PAGESIZE) - 1l)) == 0)
 #define IS_BLOCK_ALIGNED(addr)            (((long)(addr) & (BLOCK_SIZE - 1l)) == 0)
 
 #define GET_TTB_VA(pmap)                  ((-1l << PAGESHIFT) & ((pmap) == pmap_kernel() ? -1l : ~0xFFFF000000000000))
@@ -264,7 +258,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
 
     vm_page_t *page = vm_page_steal();
     kassert(page != NULL);
-    page->status.wired_count++;
+    vm_page_wire(page);
 
     new_table = vm_page_to_pa(page);
     return MAKE_TDE(new_table, ta, bpl_table);
@@ -682,7 +676,7 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
             vm_page_t *page = vm_page_alloc(&kernel_object, kernel_virtual_end - kernel_virtual_start);
             kassert(page != NULL);
 
-            page->status.wired_count++;
+            vm_page_wire(page);
             pmap_kenter_pa(kernel_virtual_end, vm_page_to_pa(page), VM_PROT_DEFAULT, PMAP_FLAGS_WRITE_BACK | PMAP_FLAGS_WIRED);
             kernel_virtual_end += PAGESIZE;
         }
@@ -764,12 +758,13 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
 
     // Update the vm_page struct (assume is_active is already set by a vm_page_alloc call somewhere else);
     vm_page_t *page = vm_page_from_pa(pa);
-    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
 
     if (flags & PMAP_FLAGS_WIRED) {
-        page->status.wired_count++;
+        vm_page_wire(page);
         pmap->stats.wired_count++;
     }
+
+    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
 
     if ((flags & VM_PROT_READ) || (flags & VM_PROT_EXECUTE)) {
         page->status.is_referenced = 1;
@@ -863,9 +858,7 @@ void pmap_unwire(pmap_t *pmap, vaddr_t va) {
     kassert(_pmap_lookup(pmap, va, &pa, &bpu, &bpl));
 
     vm_page_t *page = vm_page_from_pa(pa);
-    spinlock_writeacquire(&page->object->lock);
-    page->status.wired_count--;
-    spinlock_writerelease(&page->object->lock);
+    vm_page_wire(page);
 
     spinlock_writeacquire(&pmap->lock);
     pmap->stats.wired_count--;

@@ -36,6 +36,10 @@ void vm_page_free(vm_page_t *page);
 // FIXME Need this to allocate page tables but it doesn't seem like a great idea
 vm_page_t* vm_page_steal(void);
 
+// Increase/decrease the wire count on the page
+void vm_page_wire(vm_page_t *page);
+void vm_page_unwire(vm_page_t *page);
+
 // Convert a page to a physical address and vice versa
 paddr_t vm_page_to_pa(vm_page_t *page);
 vm_page_t* vm_page_from_pa(paddr_t pa);

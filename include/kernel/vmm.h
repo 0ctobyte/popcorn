@@ -8,6 +8,11 @@ extern unsigned long MEMSIZE;
 extern unsigned long PAGESIZE;
 extern unsigned long PAGESHIFT;
 
+#define IS_WITHIN_MEM_BOUNDS(addr)  (((addr) >= MEMBASEADDR) && ((addr) < (MEMBASEADDR + MEMSIZE)))
+#define IS_PAGE_ALIGNED(addr)       (((long)(addr) & ((long)(PAGESIZE) - 1l)) == 0)
+#define ROUND_PAGE_DOWN(addr)       ((long)(addr) & ~((long)((PAGESIZE) - 1l)))
+#define ROUND_PAGE_UP(addr)         (IS_PAGE_ALIGNED(addr) ? (long)(addr) : ROUND_PAGE_DOWN(addr) + (long)(PAGESIZE))
+
 // Virtual address
 typedef uintptr_t vaddr_t;
 extern vaddr_t max_kernel_virtual_end;

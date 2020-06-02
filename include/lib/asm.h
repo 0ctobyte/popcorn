@@ -26,7 +26,7 @@ unsigned long _rev64(unsigned long n);
 // Counts the number of bits set
 unsigned long _popcnt(unsigned long n);
 
-// Copy and zero pages. page_size_multiple must be page size aligned
+// Copy and zero pages. page_size_multiple is in bytes must be page size aligned
 void _copy_pages(unsigned long dst_addr, unsigned long src_addr, size_t page_size_multiple);
 void _zero_pages(unsigned long addr, size_t page_size_multiple);
 

@@ -222,6 +222,18 @@ vm_page_t* vm_page_steal(void) {
     return vm_page_alloc(NULL, 0);
 }
 
+void vm_page_wire(vm_page_t *page) {
+    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
+    page->status.wired_count++;
+    if (page->object != NULL) spinlock_writerelease(&page->object->lock);
+}
+
+void vm_page_unwire(vm_page_t *page) {
+    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
+    page->status.wired_count--;
+    if (page->object != NULL) spinlock_writerelease(&page->object->lock);
+}
+
 paddr_t vm_page_to_pa(vm_page_t *page) {
     kassert(page != NULL);
     return (GET_PAGE_INDEX(page) << PAGESHIFT) + MEMBASEADDR;
@@ -250,7 +262,7 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
-            page->status.wired_count++;
+            vm_page_wire(page);
 
             if (prev != NULL) prev->next_buddy = buddy->next_buddy;
             else vm_page_array.page_bins[bin] = buddy->next_buddy;

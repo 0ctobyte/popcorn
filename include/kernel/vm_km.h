@@ -16,9 +16,9 @@ typedef unsigned long vm_km_flags_t;
 // Initializes the Kernel's virtual memory map
 void vm_km_init(void);
 
-// Allocate virtual address space of the given size, alignment and flags
+// Allocate virtual address space of the given size and flags
 // If VM_KM_FLAGS_CANFAIL is set in flags then this function returns 0 on failure
-vaddr_t vm_km_alloc(size_t size, size_t alignment, vm_km_flags_t flags);
+vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags);
 
 // Frees the virtual address range allocated by vm_km_alloc. va must be the same as that returned by vm_km_alloc.
 // size and flags must be the same as the ones used in vm_km_alloc
