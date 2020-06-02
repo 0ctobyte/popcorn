@@ -27,6 +27,13 @@ typedef unsigned long vm_offset_t;
 #define VM_PROT_DEFAULT (VM_PROT_READ|VM_PROT_WRITE)
 #define VM_PROT_ALL     (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
 
+typedef enum {
+    KRESULT_OK,
+    KRESULT_NO_SPACE,
+    KRESULT_NOT_FOUND,
+    KRESULT_INVALID_ARGUMENT,
+} kresult_t;
+
 void vmm_init(void);
 
 #endif // __VMM_H__
