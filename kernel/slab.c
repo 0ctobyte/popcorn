@@ -25,7 +25,8 @@ slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t 
     slab_buf->free_blocks_remaining = slab_buf->capacity;
 
     // Create a pointer chain to link all free blocks
-    slab_buf->next_free = buf + sizeof(slab_buf_t);
+    size_t offset = *((unsigned long*)slab_buf->buf) == SLAB_MAGIC ? sizeof(slab_buf_t) : 0;
+    slab_buf->next_free = buf + offset;
     void *next = slab_buf->next_free;
     for (unsigned int i = 0; i < (slab_buf->capacity-1); i++) {
         void *next_block = (void*)((uintptr_t)next + block_size);
