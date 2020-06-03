@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+#include <kernel/vmm.h>
+
 // Kernel virtual address space allocator. This module allows allocating/freeing virtual address space in the kernel's virtual memory map
 
 typedef unsigned long vm_km_flags_t;
