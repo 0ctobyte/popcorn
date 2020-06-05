@@ -1,13 +1,11 @@
 #include <lib/list.h>
 
 void list_init(list_t *list) {
-    list->first = NULL;
-    list->last = NULL;
+    *list = LIST_INITIALIZER;
 }
 
 void list_node_init(list_node_t *node) {
-    node->next = NULL;
-    node->prev = NULL;
+    *node = LIST_NODE_INITIALIZER;
 }
 
 size_t list_count(list_t *list) {
@@ -76,4 +74,24 @@ bool list_remove(list_t *list, list_node_t *node) {
 
     list_node_init(node);
     return true;
+}
+
+bool list_clear(list_t *list, list_node_delete_func_t delete_func) {
+    while (!list_is_empty(list)) {
+        list_node_t *node = list_first(list);
+        if (!list_remove(list, node)) return false;
+        delete_func(node);
+    }
+
+    return true;
+}
+
+list_node_t* list_search(list_t *list, list_node_compare_func_t compare_func, void *key) {
+    list_node_t *node = NULL;
+
+    for (node = list_first(list); !list_end(node); node = list_next(node)) {
+        if (compare_func(node, key)) break;
+    }
+
+    return node;
 }
