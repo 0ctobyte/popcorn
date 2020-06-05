@@ -105,6 +105,10 @@ bool rbtree_insert(rbtree_t *tree, rbtree_node_t *node, rbtree_compare_func_t co
 bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node);
 void rbtree_clear(rbtree_t *tree, rbtree_delete_func_t delete_func);
 
+// Searches for the given key, in either the found or not found case, slot will hold the parent and child position that the
+// given key may be inserted at. This saves an extra tree walk if key will/will not be inserted as a result of this search
+rbtree_node_t* rbtree_search_slot(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot);
+
 // Search for the node that matches the given key (in w/e sense of the word "matches" according to the compare_func)
 rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key);
 

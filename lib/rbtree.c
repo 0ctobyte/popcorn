@@ -481,17 +481,29 @@ void rbtree_clear(rbtree_t *tree, rbtree_delete_func_t delete_func) {
     }
 }
 
-rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key) {
-    rbtree_node_t *here = rbtree_root(tree);
+rbtree_node_t* rbtree_search_slot(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot) {
+    rbtree_node_t *here = rbtree_root(tree), *parent = NULL;
+    rbtree_child_t child;
 
-    for (rbtree_compare_result_t cmp; here != NULL; here = rbtree_this_child(here, rbtree_which_child(cmp))) {
+    for (rbtree_compare_result_t cmp; here != NULL; here = rbtree_this_child(here, child)) {
         cmp = compare_func(key, here);
 
-        // Found it
+        // Found a match
         if (cmp == RBTREE_COMPARE_EQ) break;
+
+        parent = here;
+        child = rbtree_which_child(cmp);
     }
 
+    // Set the slot in the tree where the key may be inserted
+    if (slot != NULL) *slot = rbtree_slot_init(parent, child);
+
     return here;
+}
+
+rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key) {
+    rbtree_slot_t slot;
+    return rbtree_search_slot(tree, compare_func, key, &slot);
 }
 
 rbtree_node_t* rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot, rbtree_dir_t dir) {
