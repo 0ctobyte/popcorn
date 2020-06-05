@@ -8,17 +8,18 @@
 #include <kernel/vm_object.h>
 #include <kernel/atomic.h>
 #include <kernel/spinlock.h>
+#include <lib/rbtree.h>
 
 // A virtual memory mapping represents a contiguous range of virtual address space with the same
-// protections and attributes. Mappings are part of a single map and organized in a linked list
+// protections and attributes. Mappings are part of a single map and organized in a red/black tree
 // Mappings are linked to a virtual memory object which provides the data for the mapped virtual address range.
 // Mappings may not actually have a physical address range associated with it; physical pages are linked to mappings on demand
 typedef struct vm_mapping {
-    struct vm_mapping *prev, *next;           // Linked list of vm_mappings ordered by virtual address
-    vaddr_t vstart, vend;                     // The start and end addresses of this virtual memory region
-    vm_prot_t prot;                           // The region's attributes
-    vm_object_t *object;                      // The VM object that this vregion is mapping
-    vm_offset_t offset;                       // The offset into the object that the mapping starts from
+    rbtree_node_t rb_node;  // Red/black tree linkage
+    vaddr_t vstart, vend;   // The start and end addresses of this virtual memory region
+    vm_prot_t prot;         // The region's attributes
+    vm_object_t *object;    // The VM object that this vregion is mapping
+    vm_offset_t offset;     // The offset into the object that the mapping starts from
 } vm_mapping_t;
 
 // A virtual memory map represents the entire virtual address space of a process. The map contains
@@ -26,7 +27,7 @@ typedef struct vm_mapping {
 typedef struct {
     spinlock_t lock;         // Multiple readers, single writer lock
     pmap_t *pmap;            // The pmap associated with this vmap
-    vm_mapping_t *mappings;  // A list of contiguous virtual memory regions associated with this virtual memory space
+    rbtree_t rb_mappings;    // All contiguous virtual memory regions assocaited with this virtual memory space rooted in a red/black tree
     vaddr_t start, end;      // The start and end virtual addresses of the entire possible virtual space definied by this map
     size_t size;             // Total size of the current virtual address space defined by this map
     atomic_t refcnt;         // Reference count

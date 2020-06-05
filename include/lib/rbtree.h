@@ -43,9 +43,10 @@ typedef enum {
 
 typedef rbtree_compare_result_t (*rbtree_compare_func_t)(rbtree_node_t*,rbtree_node_t*);
 typedef void (*rbtree_delete_func_t)(rbtree_node_t*);
+typedef void (*rbtree_walk_func_t)(rbtree_node_t*);
 
 #define structof(ptr, struct_type, struct_member)      ((struct_type*)((uintptr_t)(ptr) - offsetof(struct_type, struct_member)))
-#define rbtree_entry(node, struct_type, struct_member) (structof(node, struct_type, struct_member))
+#define rbtree_entry(node, struct_type, struct_member) ((node) != NULL ? (structof(node, struct_type, struct_member)) : NULL)
 
 #define rbtree_root(tree)                              ((tree)->root)
 #define rbtree_is_empty(tree)                          (rbtree_root(tree) == NULL)
@@ -70,6 +71,7 @@ typedef void (*rbtree_delete_func_t)(rbtree_node_t*);
 #define rbtree_max(tree)                               (rbtree_node_max(rbtree_root(tree)))
 #define rbtree_successor(tree)                         (rbtree_node_successor(rbtree_root(tree)))
 #define rbtree_predecessor(tree)                       (rbtree_node_predecessor(rbtree_root(tree)))
+#define rbtree_walk_inorder(tree, func)                (rbtree_node_walk_inorder(rbtree_root(tree), func))
 #define rbtree_parent(node)                            ((rbtree_node_t*)((uintptr_t)(node)->parent & ~RBTREE_NODE_RED))
 #define rbtree_left(node)                              ((node)->children[RBTREE_CHILD_LEFT])
 #define rbtree_right(node)                             ((node)->children[RBTREE_CHILD_RIGHT])
@@ -92,6 +94,9 @@ rbtree_node_t* rbtree_node_min(rbtree_node_t *node);
 rbtree_node_t* rbtree_node_successor(rbtree_node_t *node);
 rbtree_node_t* rbtree_node_predecessor(rbtree_node_t *node);
 
+// In-order tree walk function from the given node, calls the given function for each node visited
+void rbtree_node_walk_inorder(rbtree_node_t *node, rbtree_walk_func_t walk);
+
 // Inserts under the given parent as the specified child (left or right) and rebalances the tree
 bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t child, rbtree_node_t *node);
 bool rbtree_insert_slot(rbtree_t *tree, rbtree_slot_t slot, rbtree_node_t *node);
@@ -112,15 +117,17 @@ rbtree_node_t* rbtree_search_slot(rbtree_t *tree, rbtree_compare_func_t compare_
 // Search for the node that matches the given key (in w/e sense of the word "matches" according to the compare_func)
 rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key);
 
-// Searches for either the given node with the matching key or the predecessor or successor depending on the dir argument
+// Searches for either the given node with the matching key or the predecessor or successor depending on the dir argument. Returns true if a perfect match was found else false
 // It shall return the matching/predecessor/successor node (or NULL if the tree is empty) as well as a rbtree_slot_t which encodes the parent and child
 // position a new node with the provided key may be inserted. This saves a second tree walk if a new node with the given key needs to be inserted as a result of this search
-rbtree_node_t* rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot, rbtree_dir_t dir);
+bool rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **nearest, rbtree_slot_t *slot, rbtree_dir_t dir);
 
 // Searches for the largest node less than or equal to the given key (i.e. the predecessor to the given key if it were a node)
-rbtree_node_t* rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot);
+// Returns true if a match was found otherwise false. In either case the matching node or predecessor is stored in predecessor
+bool rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **predecessor, rbtree_slot_t *slot);
 
 // Searches for the smallest node greater than or equal to the given key (i.e. the successor to the given key if it were a node)
-rbtree_node_t* rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot);
+// Returns true if a match was found otherwise false. In either case the matching node or successor is stored in successor
+bool rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **successor, rbtree_slot_t *slot);
 
 #endif // __RBTREE_H__

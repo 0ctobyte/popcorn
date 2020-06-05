@@ -506,7 +506,7 @@ rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func,
     return rbtree_search_slot(tree, compare_func, key, &slot);
 }
 
-rbtree_node_t* rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot, rbtree_dir_t dir) {
+bool rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **nearest, rbtree_slot_t *slot, rbtree_dir_t dir) {
     rbtree_node_t *here = rbtree_root(tree), *parent = NULL;
     rbtree_child_t child;
     rbtree_compare_result_t cmp;
@@ -540,15 +540,27 @@ rbtree_node_t* rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compa
         _rbtree_emancipate(nodep);
     }
 
-    return here;
+    *nearest = here;
+    return (cmp == RBTREE_COMPARE_EQ);
 }
 
-rbtree_node_t* rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot) {
-    return rbtree_search_nearest(tree, compare_func, key, slot, RBTREE_DIR_PREDECESSOR);
+bool rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **predecessor, rbtree_slot_t *slot) {
+    return rbtree_search_nearest(tree, compare_func, key, predecessor, slot, RBTREE_DIR_PREDECESSOR);
 }
 
-rbtree_node_t* rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot) {
-    return rbtree_search_nearest(tree, compare_func, key, slot, RBTREE_DIR_SUCCESSOR);
+bool rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **successor, rbtree_slot_t *slot) {
+    return rbtree_search_nearest(tree, compare_func, key, successor, slot, RBTREE_DIR_SUCCESSOR);
+}
+
+
+void rbtree_node_walk_inorder(rbtree_node_t *node, rbtree_walk_func_t walk) {
+    if (node == NULL) return;
+
+    rbtree_node_t *left = rbtree_left(node), *right = rbtree_right(node);
+
+    if (left != NULL) rbtree_node_walk_inorder(left, walk);
+    walk(node);
+    if (right != NULL) rbtree_node_walk_inorder(right, walk);
 }
 
 #if DEBUG
@@ -571,7 +583,7 @@ void _rbtree_show_trunks(trunk_t *p) {
 
 // Recursive function to print binary tree
 // It uses inorder traversal
-void _rbtree_print_recurse(rbtree_node_t *node, trunk_t *prev, bool is_right, void (*print_func)(rbtree_node_t*)) {
+void _rbtree_print_recurse(rbtree_node_t *node, trunk_t *prev, bool is_right, rbtree_walk_func_t print_func) {
     if (node == NULL)
         return;
 
@@ -602,7 +614,7 @@ void _rbtree_print_recurse(rbtree_node_t *node, trunk_t *prev, bool is_right, vo
     _rbtree_print_recurse(rbtree_left(node), &trunk, false, print_func);
 }
 
-void _rbtree_print(rbtree_t *tree, void (*print_func)(rbtree_node_t*)) {
+void _rbtree_print(rbtree_t *tree, rbtree_walk_func_t print_func) {
     if (tree != NULL) _rbtree_print_recurse(rbtree_root(tree), NULL, false, print_func);
 }
 #endif // DEBUG

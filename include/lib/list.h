@@ -20,7 +20,7 @@ typedef void (*list_node_delete_func_t)(list_node_t*);
 typedef bool (*list_node_compare_func_t)(list_node_t*,void*);
 
 #define structof(ptr, struct_type, struct_member)    ((struct_type*)((uintptr_t)(ptr) - offsetof(struct_type, struct_member)))
-#define list_entry(node, struct_type, struct_member) (structof(node, struct_type, struct_member))
+#define list_entry(node, struct_type, struct_member) ((node) != NULL ? (structof(node, struct_type, struct_member)) : NULL)
 
 #define list_first(list)    ((list)->first)
 #define list_last(list)     ((list)->last)

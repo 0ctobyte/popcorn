@@ -11,37 +11,23 @@ void vm_km_init(void) {
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
 
     // Initialize the kernel vm_map
-    kernel_vmap.lock = SPINLOCK_INIT;
-    kernel_vmap.pmap = pmap_kernel();
-    kernel_vmap.start = kernel_virtual_start;
-    kernel_vmap.end = max_kernel_virtual_end;
-    kernel_vmap.size = 0;
+    kernel_vmap = (vm_map_t){ .lock = SPINLOCK_INIT, .pmap = pmap_kernel(), .start = kernel_virtual_start, .end = max_kernel_virtual_end, .size = 0, .refcnt = 0 };
     atomic_inc(&kernel_vmap.refcnt);
 
     // Add a mapping to the kernel_object for all of the kernel memory mapped to this point
-    vm_mapping_t *new_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
-    new_mapping->prev = NULL;
-    new_mapping->next = NULL;
-    new_mapping->vstart = kernel_virtual_start;
-    new_mapping->vend = kernel_virtual_end;
-    new_mapping->prot = VM_PROT_ALL;
-    new_mapping->object = &kernel_object;
-    new_mapping->offset = 0;
+    vm_mapping_t *kernel_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
+    *kernel_mapping = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = kernel_virtual_start, .vend = kernel_virtual_end,
+        .prot = VM_PROT_ALL, .object = &kernel_object, .offset = 0 };
 
-    kernel_vmap.mappings = new_mapping;
+    rbtree_insert_here(&kernel_vmap.rb_mappings, NULL, 0, &kernel_mapping->rb_node);
     kernel_vmap.size = kernel_virtual_end - kernel_virtual_start;
 
     // Add another mapping for Kernel memory allocators which only have read/write access
-    new_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
-    new_mapping->prev = kernel_vmap.mappings;
-    new_mapping->next = NULL;
-    new_mapping->vstart = kernel_vmap.mappings->vend;
-    new_mapping->vend = new_mapping->vstart + PAGESIZE;
-    new_mapping->prot = VM_PROT_DEFAULT;
-    new_mapping->object = &kernel_object;
-    new_mapping->offset = kernel_object.size;
+    vm_mapping_t *alloc_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
+    *alloc_mapping = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = kernel_mapping->vend, .vend = kernel_mapping->vend + PAGESIZE,
+        .prot = VM_PROT_DEFAULT, .object = &kernel_object, .offset = kernel_object.size };
 
-    kernel_vmap.mappings->next = new_mapping;
+    rbtree_insert_here(&kernel_vmap.rb_mappings, &kernel_mapping->rb_node, RBTREE_CHILD_RIGHT, &alloc_mapping->rb_node);
     kernel_vmap.size += PAGESIZE;
 }
 

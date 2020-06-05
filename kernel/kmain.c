@@ -10,10 +10,15 @@
 #include <kernel/vm_km.h>
 
 #include <lib/asm.h>
+#include <lib/rbtree.h>
 
 unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
+void vm_mapping_walk(rbtree_node_t *node) {
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
+}
 
 void kmain(void) {
     // Setup the exception vector table
@@ -29,10 +34,8 @@ void kmain(void) {
 
     kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
 
-    vaddr_t new_va = vm_km_alloc(PAGESIZE, VM_KM_FLAGS_WIRED | VM_KM_FLAGS_ZERO);
-    kprintf("new_va = %p\n", new_va);
+    //vaddr_t new_va = vm_km_alloc(PAGESIZE, VM_KM_FLAGS_WIRED | VM_KM_FLAGS_ZERO);
+    //kprintf("new_va = %p\n", new_va);
 
-    for (vm_mapping_t *mapping = vm_map_kernel()->mappings; mapping != NULL; mapping = mapping->next) {
-        kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
-    }
+    rbtree_walk_inorder(&vm_map_kernel()->rb_mappings, vm_mapping_walk);
 }
