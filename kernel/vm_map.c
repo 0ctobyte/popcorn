@@ -1,37 +1,63 @@
 #include <kernel/vm_map.h>
 #include <kernel/vm_page.h>
+#include <kernel/kmem.h>
 #include <kernel/kassert.h>
+#include <kernel/slab.h>
 #include <string.h>
 
 // Kernel vmap
 vm_map_t kernel_vmap;
+
+// Slab for kernel vm_mapping_t struct
+#define NUM_KERNEL_VM_MAPPING_STRUCTS (64)
+slab_t kernel_vm_mapping_slab;
+slab_buf_t kernel_vm_mapping_slab_buf;
 
 rbtree_compare_result_t _vm_mapping_compare(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_node), *m2 = rbtree_entry(n2, vm_mapping_t, rb_node);
     return (m1->vstart >= m2->vend) ? RBTREE_COMPARE_GT : (m1->vend <= m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
 }
 
+rbtree_compare_result_t _vm_mapping_compare_hole(rbtree_node_t *n1, rbtree_node_t *n2) {
+    vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_node), *m2 = rbtree_entry(n2, vm_mapping_t, rb_node);
+    return (m1->hole_size > m2->vend) ? RBTREE_COMPARE_GT : (m1->vend < m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_LT;
+}
+
 void _vm_mapping_destroy(rbtree_node_t *node) {
-    // FIXME free mapping here
     vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    kmem_free(mapping, sizeof(vm_mapping_t));
+}
+
+vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
+    vm_mapping_t *mapping;
+
+    if (vm_map_kernel() == vmap) {
+        // Use the slab instead of kmem for kernel vm_mapping_t structs
+        // If we're out of buffers from the slab then the kernel is in an unrecoverable state
+        mapping = (vm_mapping_t*)slab_alloc(&kernel_vm_mapping_slab);
+        kassert(mapping != NULL);
+    } else {
+        mapping = (vm_mapping_t*)kmem_alloc(sizeof(vm_mapping_t));
+    }
+
+    return mapping;
 }
 
 void vm_map_init(void) {
-    // FIXME Init vm_map module
+    // Initialize the slab to allocate kernel vm_mapping_t structs from. We can't use the general
+    // purpose allocators because of circular dependencies if we are out of kernel virtual memory
+    size_t size = NUM_KERNEL_VM_MAPPING_STRUCTS * sizeof(vm_mapping_t);
+    void *buf = (void*)pmap_steal_memory(size, NULL, NULL);
+    slab_init(&kernel_vm_mapping_slab, &kernel_vm_mapping_slab_buf, buf, size, sizeof(vm_mapping_t));
 }
 
 vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
-    // FIXME Allocate map
-    vm_map_t *map;
+    vm_map_t *map = (vm_map_t*)kmem_alloc(sizeof(vm_map_t));
 
-    map->lock = SPINLOCK_INIT;
-    map->rb_mappings = RBTREE_INITIALIZER;
-    map->pmap = pmap;
-    map->start = vmin;
-    map->end = vmax;
-    map->size = 0;
-    map->refcnt = 0;
+    *map = (vm_map_t){ .lock = SPINLOCK_INIT, .rb_mappings = RBTREE_INITIALIZER, .rb_holes = RBTREE_INITIALIZER,
+        .pmap = pmap, .start = vmin, .end = vmax, .size = 0, .refcnt = 0 };
 
+    vm_map_reference(map);
     return map;
 }
 
@@ -39,8 +65,8 @@ void vm_map_destroy(vm_map_t *vmap) {
     atomic_dec(&vmap->refcnt);
 
     if (vmap->refcnt == 0) {
-        // FIXME Free map
         rbtree_clear(&vmap->rb_mappings, _vm_mapping_destroy);
+        kmem_free(vmap, sizeof(vm_map_t));
     }
 }
 
@@ -51,9 +77,10 @@ void vm_map_reference(vm_map_t *vmap) {
 kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_t *object, vm_offset_t offset, vm_prot_t prot) {
     kassert(vmap != NULL);
 
-    rbtree_slot_t slot;
-    rbtree_node_t *predecessor_node;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = vaddr, .vend = vaddr + size, .prot = prot, .object = object, .offset = offset };
+    rbtree_slot_t slot = 0;
+    rbtree_node_t *predecessor_node = NULL;
+    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
+        .vstart = vaddr, .vend = vaddr + size, .prot = prot, .object = object, .offset = offset };
 
     // Make sure it is within the total virtual address space
     if (tmp.vend > vmap->end) {
@@ -83,8 +110,7 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
         predecessor->vend = tmp.vend;
     } else {
         // FIXME allocate and init entry
-        vaddr_t kernel_virtual_start, kernel_virtual_end;
-        vm_mapping_t *new_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
+        vm_mapping_t *new_mapping = _vm_mapping_alloc(vmap);
         memcpy(new_mapping, &tmp, sizeof(vm_mapping_t));
 
         // Insert the new mapping
@@ -103,16 +129,6 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
     rbtree_slot_t slot;
     rbtree_node_t *predecessor_node;
     vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = 0, .vend = size, .prot = prot, .object = object, .offset = offset };
-
-    spinlock_writeacquire(&vmap->lock);
-
-    // Have we found an open virtual address range that fits the specified size?
-    if (tmp.vstart == 0) {
-        spinlock_writerelease(&vmap->lock);
-        return KRESULT_NO_SPACE;
-    }
-
-    spinlock_writerelease(&vmap->lock);
 
     *vaddr = tmp.vstart;
     return KRESULT_OK;

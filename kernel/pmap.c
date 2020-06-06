@@ -682,8 +682,8 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
         }
     }
 
-    *vstartp = kernel_virtual_start;
-    *vendp = kernel_virtual_end;
+    if (vstartp != NULL) *vstartp = kernel_virtual_start;
+    if (vendp != NULL) *vendp = kernel_virtual_end;
 
     vaddr_t va = next_unused_addr;
     next_unused_addr += vsize;

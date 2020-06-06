@@ -2,33 +2,24 @@
 #include <kernel/vm_km.h>
 #include <kernel/vm_map.h>
 #include <kernel/pmap.h>
-#include <kernel/panic.h>
+#include <kernel/kassert.h>
 #include <lib/asm.h>
 
 void vm_km_init(void) {
     vaddr_t kernel_virtual_start, kernel_virtual_end;
 
-    pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
-
     // Initialize the kernel vm_map
     kernel_vmap = (vm_map_t){ .lock = SPINLOCK_INIT, .pmap = pmap_kernel(), .start = kernel_virtual_start, .end = max_kernel_virtual_end, .size = 0, .refcnt = 0 };
-    atomic_inc(&kernel_vmap.refcnt);
+
+    pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
 
     // Add a mapping to the kernel_object for all of the kernel memory mapped to this point
-    vm_mapping_t *kernel_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
-    *kernel_mapping = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = kernel_virtual_start, .vend = kernel_virtual_end,
-        .prot = VM_PROT_ALL, .object = &kernel_object, .offset = 0 };
-
-    rbtree_insert_here(&kernel_vmap.rb_mappings, NULL, 0, &kernel_mapping->rb_node);
-    kernel_vmap.size = kernel_virtual_end - kernel_virtual_start;
+    kresult_t res = vm_map_enter_at(&kernel_vmap, kernel_virtual_start, kernel_virtual_end - kernel_virtual_start, &kernel_object, 0, VM_PROT_ALL);
+    kassert(res == KRESULT_OK);
 
     // Add another mapping for Kernel memory allocators which only have read/write access
-    vm_mapping_t *alloc_mapping = (vm_mapping_t*)pmap_steal_memory(sizeof(vm_mapping_t), &kernel_virtual_start, &kernel_virtual_end);
-    *alloc_mapping = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = kernel_mapping->vend, .vend = kernel_mapping->vend + PAGESIZE,
-        .prot = VM_PROT_DEFAULT, .object = &kernel_object, .offset = kernel_object.size };
-
-    rbtree_insert_here(&kernel_vmap.rb_mappings, &kernel_mapping->rb_node, RBTREE_CHILD_RIGHT, &alloc_mapping->rb_node);
-    kernel_vmap.size += PAGESIZE;
+    res = vm_map_enter_at(&kernel_vmap, kernel_virtual_end, PAGESIZE, &kernel_object, kernel_object.size, VM_PROT_DEFAULT);
+    kassert(res == KRESULT_OK);
 }
 
 vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {

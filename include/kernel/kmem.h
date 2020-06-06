@@ -11,6 +11,6 @@ void* kmem_alloc(size_t size);
 void* kmem_zalloc(size_t size);
 
 // Free the memory previously allocated by kmem_(z)alloc
-void kmem_free(void *mem);
+void kmem_free(void *mem, size_t size);
 
 #endif // __KMEM_H__

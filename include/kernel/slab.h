@@ -22,7 +22,7 @@ typedef struct slab_s {
     size_t block_size;  // Size of a single block
 } slab_t;
 
-// Initialize a slab using the buffer given in buf of the specified size and block_size
+// Initialize a slab using the buffer given buf of the specified size and block_size
 // If slab_buf is null, the slab_buf_t struct will be embedded within the buf
 void slab_init(slab_t *slab, slab_buf_t *slab_buf, void *buf, size_t size, size_t block_size);
 

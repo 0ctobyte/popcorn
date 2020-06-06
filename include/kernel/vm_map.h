@@ -15,7 +15,9 @@
 // Mappings are linked to a virtual memory object which provides the data for the mapped virtual address range.
 // Mappings may not actually have a physical address range associated with it; physical pages are linked to mappings on demand
 typedef struct vm_mapping {
-    rbtree_node_t rb_node;  // Red/black tree linkage
+    rbtree_node_t rb_node;  // Red/black tree linkage of mappings based on starting virtual address
+    rbtree_node_t rb_hole;  // Red/black tree linkage of mappings based on the size of the virtual address space hole after the mapping
+    size_t hole_size;       // Size of the virtual address space hole after this mapping
     vaddr_t vstart, vend;   // The start and end addresses of this virtual memory region
     vm_prot_t prot;         // The region's attributes
     vm_object_t *object;    // The VM object that this vregion is mapping
@@ -27,7 +29,8 @@ typedef struct vm_mapping {
 typedef struct {
     spinlock_t lock;         // Multiple readers, single writer lock
     pmap_t *pmap;            // The pmap associated with this vmap
-    rbtree_t rb_mappings;    // All contiguous virtual memory regions assocaited with this virtual memory space rooted in a red/black tree
+    rbtree_t rb_mappings;    // All contiguous virtual memory regions associated with this virtual memory space rooted in a red/black tree
+    rbtree_t rb_holes;       // A red/black tree of all the holes in the virtual address space
     vaddr_t start, end;      // The start and end virtual addresses of the entire possible virtual space definied by this map
     size_t size;             // Total size of the current virtual address space defined by this map
     atomic_t refcnt;         // Reference count
