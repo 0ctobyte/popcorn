@@ -2,7 +2,7 @@
 #include <kernel/vm_km.h>
 #include <kernel/slab.h>
 #include <kernel/kassert.h>
-#include <string.h>
+#include <lib/asm.h>
 
 // Slab to allocate slab_buf_t structs from
 slab_t slab_buf_slab;
@@ -16,7 +16,7 @@ void* kmem_alloc(size_t size) {
 
 void* kmem_zalloc(size_t size) {
     void *mem = kmem_alloc(size);
-    if (mem != NULL) memset(mem, 0, size);
+    if (mem != NULL) _fast_zero((uintptr_t)mem, size);
     return mem;
 }
 

@@ -69,7 +69,7 @@ vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {
     }
 
     // Finally zero out the pages if required
-    if (flags & VM_KM_FLAGS_ZERO) _zero_pages(vstart, size);
+    if (flags & VM_KM_FLAGS_ZERO) _fast_zero(vstart, size);
 
     return vstart;
 }

@@ -6,10 +6,7 @@
 // Slabs must at least be this size
 #define SLAB_MIN_SIZE  (sizeof(slab_t))
 
-#define SLAB_MAGIC     (0xFEED51ABFEED51AB)
-
 typedef struct slab_buf_s {
-    unsigned long magic;            // Magic value to make sure slab buffer is valid/not corrupted
     void *buf;                      // Pointer to the buffer this slab_buf struct is managing
     void *next_free;                // Pointer to next free block
     struct slab_buf_s *next_slab;   // Next slab buffer in the linked list of slab buffers

@@ -3,7 +3,7 @@
 #include <kernel/kmem.h>
 #include <kernel/kassert.h>
 #include <kernel/slab.h>
-#include <string.h>
+#include <lib/asm.h>
 
 // Kernel vmap
 vm_map_t kernel_vmap;
@@ -20,7 +20,34 @@ rbtree_compare_result_t _vm_mapping_compare(rbtree_node_t *n1, rbtree_node_t *n2
 
 rbtree_compare_result_t _vm_mapping_compare_hole(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_node), *m2 = rbtree_entry(n2, vm_mapping_t, rb_node);
-    return (m1->hole_size > m2->vend) ? RBTREE_COMPARE_GT : (m1->vend < m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_LT;
+    return (m1->hole_size > m2->vend) ? RBTREE_COMPARE_GT : RBTREE_COMPARE_LT;
+}
+
+void _vm_mapping_hole_update(vm_map_t *vmap, vm_mapping_t *mapping, size_t new_hole_size) {
+    mapping->hole_size = new_hole_size;
+    kassert(rbtree_remove(&vmap->rb_holes, &mapping->rb_hole));
+    if (new_hole_size > 0 ) kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &mapping->rb_hole));
+}
+
+void _vm_mapping_hole_insert(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
+    kassert(new_mapping != NULL);
+
+    // Update the hole size for the predecessor
+    if (predecessor != NULL) _vm_mapping_hole_update(vmap, predecessor, new_mapping->vstart - predecessor->vend);
+
+    // Assumption is that this function is called after the new mapping has been inserted into the mapping tree and list
+    // So we should be able to get the successor if it exists
+    vm_mapping_t *successor = list_entry(list_next(&new_mapping->ll_node), vm_mapping_t, ll_node);
+    size_t new_mapping_hole_size = ((successor != NULL) ? successor->vstart : vmap->end) - new_mapping->vend;
+
+    // Insert the new mapping into the hole tree
+    new_mapping->hole_size = new_mapping_hole_size;
+    if (new_mapping_hole_size > 0) kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &new_mapping->rb_hole));
+}
+
+void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
+    kassert(rbtree_insert_slot(&vmap->rb_mappings, slot, &new_mapping->rb_node));
+    kassert(list_insert_after(&vmap->ll_mappings, &predecessor->ll_node, &new_mapping->ll_node));
 }
 
 void _vm_mapping_destroy(rbtree_node_t *node) {
@@ -108,13 +135,19 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
         // Increase the size of the map and the end vaddr of the mapping
         vmap->size += size;
         predecessor->vend = tmp.vend;
+
+        // Update the predecessor's hole size and hole tree
+        _vm_mapping_hole_update(vmap, predecessor, predecessor->hole_size -(tmp.vend - tmp.vstart));
     } else {
-        // FIXME allocate and init entry
         vm_mapping_t *new_mapping = _vm_mapping_alloc(vmap);
-        memcpy(new_mapping, &tmp, sizeof(vm_mapping_t));
+        _fast_move((uintptr_t)new_mapping, (uintptr_t)&tmp, sizeof(vm_mapping_t));
 
         // Insert the new mapping
-        kassert(rbtree_insert_slot(&vmap->rb_mappings, slot, &new_mapping->rb_node));
+        _vm_mapping_insert(vmap, slot, predecessor, new_mapping);
+
+        // Update the hole tree
+        _vm_mapping_hole_insert(vmap, predecessor, new_mapping);
+
         vmap->size += size;
         atomic_inc(&object->refcnt);
     }

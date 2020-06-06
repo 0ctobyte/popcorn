@@ -317,7 +317,7 @@ pte_t _pmap_insert_table(pmap_t *pmap, pte_t *parent_table, unsigned long index,
     if (mmu_enabled && !is_current_ttb) _pmap_map_temp_page((vaddr_t)new_table, PTE_TO_PA(pte));
 
     _pmap_update_pte((vaddr_t)new_table, pmap->asid, ptep, pte);
-    memset((void*)new_table, 0, PAGESIZE);
+    _fast_zero((vaddr_t)new_table, PAGESIZE);
 
     return pte;
 }
@@ -956,7 +956,7 @@ void pmap_deactivate(pmap_t *pmap) {
 void pmap_zero_page(paddr_t pa) {
     spinlock_writeacquire(&pmap_kernel()->lock);
     _pmap_map_temp_page(TEMP_PAGE_VA0, pa);
-    _zero_pages(TEMP_PAGE_VA0, PAGESIZE);
+    _fast_zero(TEMP_PAGE_VA0, PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
     barrier_dmb();
 }
@@ -965,7 +965,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst) {
     spinlock_writeacquire(&pmap_kernel()->lock);
     _pmap_map_temp_page(TEMP_PAGE_VA0, src);
     _pmap_map_temp_page(TEMP_PAGE_VA1, dst);
-    _copy_pages(TEMP_PAGE_VA1, TEMP_PAGE_VA0, PAGESIZE);
+    _fast_move(TEMP_PAGE_VA1, TEMP_PAGE_VA0, PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
     barrier_dmb();
 }

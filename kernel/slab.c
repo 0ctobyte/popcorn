@@ -1,6 +1,6 @@
 #include <kernel/slab.h>
 #include <kernel/kassert.h>
-#include <string.h>
+#include <lib/asm.h>
 
 // Basically, we want to shuffle a slab to be first in the search order if it has 1/4+ (25%+) more free blocks
 // than the current first slab in the search order.
@@ -17,18 +17,20 @@ slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t 
     // The slab_buf struct is placed at the beginning of the region pointed to in buf if it's not provided
     if (slab_buf == NULL) slab_buf = (slab_buf_t*)buf;
 
-    slab_buf->magic = SLAB_MAGIC;
+    // Adjust capacity and free pointer chain if slab_buf_t is embedded within the actual slab buffer
+    size_t offset = ((uintptr_t)slab_buf == (uintptr_t)buf) ? sizeof(slab_buf_t) : 0;
+
     slab_buf->buf = buf;
     slab_buf->next_free = NULL;
     slab_buf->next_slab = NULL;
-    slab_buf->capacity = (size - sizeof(slab_buf_t)) / block_size;
+    slab_buf->capacity = (size - offset) / block_size;
     slab_buf->free_blocks_remaining = slab_buf->capacity;
 
     // Create a pointer chain to link all free blocks
-    size_t offset = *((unsigned long*)slab_buf->buf) == SLAB_MAGIC ? sizeof(slab_buf_t) : 0;
     slab_buf->next_free = buf + offset;
     void *next = slab_buf->next_free;
-    for (unsigned int i = 0; i < (slab_buf->capacity-1); i++) {
+
+    for (unsigned int i = 0; i < slab_buf->free_blocks_remaining; i++) {
         void *next_block = (void*)((uintptr_t)next + block_size);
         *((uintptr_t*)next) = (uintptr_t)next_block;
         next = next_block;
@@ -55,7 +57,6 @@ void* slab_alloc(slab_t *slab) {
     void *free = NULL;
 
     for (slab_buf_t *this_slab_buf = slab->first, *prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
-        kassert(this_slab_buf->magic == SLAB_MAGIC);
         kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
 
         // Check if we have room in this slab, if not continue to the next slab
@@ -83,7 +84,7 @@ void* slab_zalloc(slab_t *slab) {
     void *free = slab_alloc(slab);
 
     // Check for no free blocks
-    if (free != NULL) memset(free, 0, slab->block_size);
+    if (free != NULL) _fast_zero((uintptr_t)free, slab->block_size);
     return free;
 }
 
@@ -92,12 +93,12 @@ void slab_free(slab_t *slab, void *block) {
 
     slab_buf_t *this_slab_buf, *prev_slab_buf;
     for (this_slab_buf = slab->first, prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
-        kassert(this_slab_buf->magic == SLAB_MAGIC);
         kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
 
-        // Check if this block is part of this slab, if not continue to the next slab
         // Offset the beginning of the slab buffer if the slab_buf_t struct is embedded within the buffer
-        size_t offset = *((unsigned long*)this_slab_buf->buf) == SLAB_MAGIC ? sizeof(slab_buf_t) : 0;
+        size_t offset = ((uintptr_t)this_slab_buf == (uintptr_t)this_slab_buf->buf) ? sizeof(slab_buf_t) : 0;
+
+        // Check if this block is part of this slab, if not continue to the next slab
         intptr_t block_bounds = (intptr_t)block - ((intptr_t)this_slab_buf->buf + offset);
         if (block_bounds >= 0 && block_bounds < (this_slab_buf->capacity * slab->block_size)) {
             // Add this block back into the linked list of free blocks
@@ -133,7 +134,6 @@ void* slab_shrink(slab_t *slab) {
 
     slab_buf_t *freed_slab = NULL;
     for (slab_buf_t *this_slab_buf = slab->first, *prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
-        kassert(this_slab_buf->magic == SLAB_MAGIC);
         kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
 
         // Check if this slab is completely full, if so we can unlink it from the slab list

@@ -9,12 +9,14 @@
 #include <kernel/atomic.h>
 #include <kernel/spinlock.h>
 #include <lib/rbtree.h>
+#include <lib/list.h>
 
 // A virtual memory mapping represents a contiguous range of virtual address space with the same
 // protections and attributes. Mappings are part of a single map and organized in a red/black tree
 // Mappings are linked to a virtual memory object which provides the data for the mapped virtual address range.
 // Mappings may not actually have a physical address range associated with it; physical pages are linked to mappings on demand
 typedef struct vm_mapping {
+    list_node_t   ll_node;  // Linked list linkage
     rbtree_node_t rb_node;  // Red/black tree linkage of mappings based on starting virtual address
     rbtree_node_t rb_hole;  // Red/black tree linkage of mappings based on the size of the virtual address space hole after the mapping
     size_t hole_size;       // Size of the virtual address space hole after this mapping
@@ -29,8 +31,9 @@ typedef struct vm_mapping {
 typedef struct {
     spinlock_t lock;         // Multiple readers, single writer lock
     pmap_t *pmap;            // The pmap associated with this vmap
+    list_t ll_mappings;      // Linked list of mappings sorted by virtual address. Used to iterate through mappings
     rbtree_t rb_mappings;    // All contiguous virtual memory regions associated with this virtual memory space rooted in a red/black tree
-    rbtree_t rb_holes;       // A red/black tree of all the holes in the virtual address space
+    rbtree_t rb_holes;       // A red/black tree of mappings ordered by the holes in the virtual address space afer the mapping
     vaddr_t start, end;      // The start and end virtual addresses of the entire possible virtual space definied by this map
     size_t size;             // Total size of the current virtual address space defined by this map
     atomic_t refcnt;         // Reference count

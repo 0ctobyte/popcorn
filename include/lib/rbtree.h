@@ -104,7 +104,7 @@ bool rbtree_insert_slot(rbtree_t *tree, rbtree_slot_t slot, rbtree_node_t *node)
 // Walks the tree to find the appropriate location to insert the node
 // This function takes a compare_func which is given two rbtree_node_t structs
 // and shall return whether the first argument is less then the second, equal to, or greater than
-bool rbtree_insert(rbtree_t *tree, rbtree_node_t *node, rbtree_compare_func_t compare_func);
+bool rbtree_insert(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *node);
 
 // Remove the node from the tree or clear the entire tree freeing the nodes resources
 bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node);

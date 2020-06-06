@@ -1,7 +1,6 @@
 #include <kernel/vm_page.h>
 #include <kernel/kassert.h>
 #include <lib/asm.h>
-#include <string.h>
 
 #define NUM_BINS                 (20)
 #define MAX_NUM_CONTIGUOUS_PAGES (1l << NUM_BINS)
@@ -143,7 +142,7 @@ void vm_page_init(paddr_t vm_page_array_addr) {
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
     // Clear the entire array
-    memset((void*)vm_page_array.pages, 0, vm_page_array.num_pages * sizeof(vm_page_t));
+    _fast_zero((uintptr_t)vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
 
     // Split the pages up into groups of the largest powers of 2 possible and place them in the appropriate bins.
     // The bins hold the pointer to the first page in the buddy. Do this until we've accounted for all the pages
