@@ -40,9 +40,6 @@ typedef list_compare_result_t (*list_compare_func_t)(list_node_t*,list_node_t*);
 #define list_end(node)        ((node) == NULL)
 #define list_is_empty(list)   ((list)->first == NULL)
 
-#define list_push(list, node) (list_insert_first(list, node))
-#define list_pop(list, node)  ({ (node) = list_first(list); list_remove(list, node); })
-
 #define LIST_INITIALIZER      (list_t){ .first = NULL, .last = NULL}
 #define LIST_NODE_INITIALIZER (list_node_t){ .next = NULL, .prev = NULL}
 
@@ -61,6 +58,9 @@ bool list_insert(list_t *list, list_compare_func_t compare_func, list_node_t *no
 
 bool list_remove(list_t *list, list_node_t *node);
 bool list_clear(list_t *list, list_delete_func_t delete_func);
+
+#define list_push(list, node)                (list_insert_first(list, node))
+#define list_pop(list, node)                 ({ (node) = list_first(list); list_remove(list, node); })
 
 // Search for an element in the list using the compare_func and key.
 // The compare_func must take as arguments the key and list node to compare to. It shall return LIST_COMPARE_EQ

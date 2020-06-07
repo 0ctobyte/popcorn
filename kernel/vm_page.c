@@ -60,9 +60,9 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
         kassert(list_push(&vm_page_array.ll_page_bins[bin_index], &buddy->ll_node));
     } else {
         // Otherwise pop this buddy off of the bin
-        list_node_t node = LIST_NODE_INITIALIZER, *nodep = &node;
-        kassert(list_pop(&vm_page_array.ll_page_bins[bin_index], nodep));
-        pages = list_entry(nodep, vm_page_t, ll_node);
+        list_node_t *node = NULL;
+        kassert(list_pop(&vm_page_array.ll_page_bins[bin_index], node));
+        pages = list_entry(node, vm_page_t, ll_node);
     }
 
     return pages;

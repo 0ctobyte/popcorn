@@ -7,10 +7,29 @@
 #define SLAB_SHUFFLE_SHIFT                  (2)
 #define SLAB_SHUFFLE_THRESHOLD(first_slab)  ((first_slab)->free_blocks_remaining + ((first_slab)->capacity >> SLAB_SHUFFLE_SHIFT))
 
-void _slab_shuffle(slab_t *slab, slab_buf_t *this_slab_buf, slab_buf_t *prev_slab_buf) {
-    prev_slab_buf->next_slab = this_slab_buf->next_slab;
-    this_slab_buf->next_slab = slab->first;
-    slab->first = this_slab_buf;
+void _slab_shuffle(slab_t *slab, slab_buf_t *this_slab_buf) {
+    kassert(list_remove(&slab->ll_slabs, &this_slab_buf->ll_node));
+    kassert(list_push(&slab->ll_slabs, &this_slab_buf->ll_node));
+}
+
+list_compare_result_t _slab_buf_find(list_node_t *n1, list_node_t *n2) {
+    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
+    return (s1->free_blocks_remaining > 0) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
+}
+
+list_compare_result_t _slab_buf_find_full(list_node_t *n1, list_node_t *n2) {
+    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
+    return (s1->free_blocks_remaining == s1->capacity) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
+}
+
+list_compare_result_t _slab_buf_compare(list_node_t *n1, list_node_t *n2) {
+    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
+    size_t offset = ((uintptr_t)s1 == (uintptr_t)s1->buf) ? sizeof(slab_buf_t) : 0, block_size = *((size_t*)n2);
+
+    uintptr_t buf_start = (uintptr_t)s1->buf + offset, buf_end = buf_start + (s1->capacity * block_size);
+    uintptr_t block_start = (uintptr_t)n2, block_end = block_start + block_size;
+
+    return (block_start < buf_start) ? LIST_COMPARE_LT : (block_end > buf_end) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
 }
 
 slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t block_size) {
@@ -21,23 +40,18 @@ slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t 
     size_t offset = ((uintptr_t)slab_buf == (uintptr_t)buf) ? sizeof(slab_buf_t) : 0;
 
     slab_buf->buf = buf;
-    slab_buf->next_free = NULL;
-    slab_buf->next_slab = NULL;
+    slab_buf->ll_free = LIST_INITIALIZER;
+    slab_buf->ll_node = LIST_NODE_INITIALIZER;
     slab_buf->capacity = (size - offset) / block_size;
     slab_buf->free_blocks_remaining = slab_buf->capacity;
 
     // Create a pointer chain to link all free blocks
-    slab_buf->next_free = buf + offset;
-    void *next = slab_buf->next_free;
-
+    list_node_t *next_free = (list_node_t*)(buf + offset);
     for (unsigned int i = 0; i < slab_buf->free_blocks_remaining; i++) {
-        void *next_block = (void*)((uintptr_t)next + block_size);
-        *((uintptr_t*)next) = (uintptr_t)next_block;
-        next = next_block;
+        list_node_init(next_free);
+        list_push(&slab_buf->ll_free, next_free);
+        next_free = (list_node_t*)((uintptr_t)next_free + block_size);
     }
-
-    // The last block points to NULL
-    *((uintptr_t*)next) = 0;
 
     return slab_buf;
 }
@@ -47,33 +61,32 @@ void slab_init(slab_t *slab, slab_buf_t *slab_buf, void *buf, size_t size, size_
 
     _slab_buf_init(slab_buf, buf, size, block_size);
 
-    slab->first = slab_buf;
+    list_init(&slab->ll_slabs);
+    list_push(&slab->ll_slabs, &slab_buf->ll_node);
     slab->block_size = block_size;
 }
 
 void* slab_alloc(slab_t *slab) {
-    kassert(slab != NULL && slab->first != NULL);
+    kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL);
 
     void *free = NULL;
 
-    for (slab_buf_t *this_slab_buf = slab->first, *prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
+    // Search for a slab buf with free blocks
+    slab_buf_t *this_slab_buf = list_entry(list_search(&slab->ll_slabs, _slab_buf_find, NULL), slab_buf_t, ll_node);
+
+    if (this_slab_buf != NULL) {
         kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
 
-        // Check if we have room in this slab, if not continue to the next slab
-        if (this_slab_buf->free_blocks_remaining > 0) {
-            // Allocate a block from this slab and update the book-keeping
-            free = this_slab_buf->next_free;
-            this_slab_buf->next_free = (void*)(*((uintptr_t*)free));
-            this_slab_buf->free_blocks_remaining--;
+        // Allocate a block from this slab and update the book-keeping
+        list_node_t *free_node;
+        kassert(list_pop(&this_slab_buf->ll_free, free_node));
 
-            // Update the first slab buf pointer to point to the latest slab that had free blocks and rearrange the linked list as needed.
-            // Basically we want this_slab_buf to be the first slab searched next time alloc is called
-            if (prev_slab_buf != NULL) {
-                _slab_shuffle(slab, this_slab_buf, prev_slab_buf);
-            }
+        free = (void*)free_node;
+        this_slab_buf->free_blocks_remaining--;
 
-            break;
-        }
+        // Update the first slab buf pointer to point to the latest slab that had free blocks and rearrange the linked list as needed.
+        // Basically we want this_slab_buf to be the first slab searched next time alloc is called
+        if ((&this_slab_buf->ll_node) != list_first(&slab->ll_slabs)) _slab_shuffle(slab, this_slab_buf);
     }
 
     return free;
@@ -89,63 +102,44 @@ void* slab_zalloc(slab_t *slab) {
 }
 
 void slab_free(slab_t *slab, void *block) {
-    kassert(slab != NULL && slab->first != NULL);
+    kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL);
 
-    slab_buf_t *this_slab_buf, *prev_slab_buf;
-    for (this_slab_buf = slab->first, prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
-        kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
-
-        // Offset the beginning of the slab buffer if the slab_buf_t struct is embedded within the buffer
-        size_t offset = ((uintptr_t)this_slab_buf == (uintptr_t)this_slab_buf->buf) ? sizeof(slab_buf_t) : 0;
-
-        // Check if this block is part of this slab, if not continue to the next slab
-        intptr_t block_bounds = (intptr_t)block - ((intptr_t)this_slab_buf->buf + offset);
-        if (block_bounds >= 0 && block_bounds < (this_slab_buf->capacity * slab->block_size)) {
-            // Add this block back into the linked list of free blocks
-            *((uintptr_t*)block) = (uintptr_t)this_slab_buf->next_free;
-            this_slab_buf->next_free = block;
-            this_slab_buf->free_blocks_remaining++;
-
-            // Now determine whether this slab should be placed first in the search order
-            // Ideally we want the slab with the most free blocks to be searched first
-            if (prev_slab_buf != NULL && this_slab_buf->free_blocks_remaining > SLAB_SHUFFLE_THRESHOLD(slab->first)) {
-                _slab_shuffle(slab, this_slab_buf, prev_slab_buf);
-            }
-
-            break;
-        }
-    }
+    // Search for the slab buf that contains this block
+    *((size_t*)block) = slab->block_size;
+    slab_buf_t *this_slab_buf = list_entry(list_search(&slab->ll_slabs, _slab_buf_compare, (list_node_t*)block), slab_buf_t, ll_node);
 
     // We must not be trying to free something that was never allocated in this slab
     kassert(this_slab_buf != NULL);
+    kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
+
+    // Add this block back into the linked list of free blocks
+    list_node_init((list_node_t*)block);
+    kassert(list_push(&this_slab_buf->ll_free, (list_node_t*)block));
+
+    // Now determine whether this slab should be placed first in the search order
+    // Ideally we want the slab with the most free blocks to be searched first
+    slab_buf_t *first = list_entry(list_first(&slab->ll_slabs), slab_buf_t, ll_node);
+    if (list_prev(&this_slab_buf->ll_node) != NULL && this_slab_buf->free_blocks_remaining > SLAB_SHUFFLE_THRESHOLD(first)) {
+        _slab_shuffle(slab, this_slab_buf);
+    }
 }
 
 void slab_grow(slab_t *slab, slab_buf_t *new_slab_buf, void *buf, size_t size) {
-    kassert(slab != NULL && slab->first != NULL && buf != NULL);
+    kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL && buf != NULL);
 
     _slab_buf_init(new_slab_buf, buf, size, slab->block_size);
-
-    new_slab_buf->next_slab = slab->first;
-    slab->first = new_slab_buf;
+    list_push(&slab->ll_slabs, &new_slab_buf->ll_node);
 }
 
 void* slab_shrink(slab_t *slab) {
-    kassert(slab != NULL && slab->first != NULL);
+    kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL);
 
-    slab_buf_t *freed_slab = NULL;
-    for (slab_buf_t *this_slab_buf = slab->first, *prev_slab_buf = NULL; this_slab_buf != NULL; prev_slab_buf = this_slab_buf, this_slab_buf = this_slab_buf->next_slab) {
-        kassert(this_slab_buf->free_blocks_remaining <= this_slab_buf->capacity);
+    // Find a slab that is completely full, if one is found remove it from the slab list
+    slab_buf_t *freed_slab = list_entry(list_search(&slab->ll_slabs, _slab_buf_find_full, NULL), slab_buf_t, ll_node);
 
-        // Check if this slab is completely full, if so we can unlink it from the slab list
-        if (this_slab_buf->free_blocks_remaining == this_slab_buf->capacity) {
-            freed_slab = this_slab_buf;
-            if (prev_slab_buf != NULL) {
-                prev_slab_buf->next_slab = this_slab_buf->next_slab;
-            } else {
-                slab->first = this_slab_buf->next_slab;
-            }
-            break;
-        }
+    if (freed_slab != NULL) {
+        kassert(freed_slab->free_blocks_remaining <= freed_slab->capacity);
+        kassert(list_remove(&slab->ll_slabs, &freed_slab->ll_node));
     }
 
     return (void*)freed_slab;
