@@ -7,6 +7,7 @@
 #include <kernel/vm_page.h>
 #include <kernel/spinlock.h>
 #include <kernel/atomic.h>
+#include <lib/list.h>
 
 typedef struct vm_page_s vm_page_t;
 
@@ -15,7 +16,7 @@ typedef struct vm_page_s vm_page_t;
 // memory. Objects can be backed by actual files or swap space if they are "anonymous" (i.e. not backed by anything)
 typedef struct vm_object_s {
     spinlock_t lock;
-    vm_page_t *resident_pages; // List of resident pages for this object
+    list_t ll_resident_pages;  // List of resident pages for this object
     atomic_t refcnt;           // How many VM regions are referencing this object
     size_t size;               // Size of the object
 } vm_object_t;

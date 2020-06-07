@@ -4,6 +4,7 @@
 #include <kernel/vmm.h>
 #include <kernel/vm_object.h>
 #include <kernel/spinlock.h>
+#include <lib/list.h>
 
 typedef struct vm_object_s vm_object_t;
 
@@ -14,9 +15,7 @@ typedef struct vm_page_s {
         unsigned int is_dirty:1;        // Has this page been modified
         unsigned int is_active:1;       // Is this page being used i.e. mapped in some virtual map
     } status;
-    struct vm_page_s *next_buddy;       // Next free buddy. Used by the buddy page allocater
-    struct vm_page_s *prev_resident;    // List of resident pages. This is used by the object that has this page mapped
-    struct vm_page_s *next_resident;    // List of resident pages. This is used by the object that has this page mapped
+    list_node_t ll_node;                // Linked list of resident pages in an object or part of the buddy free list
     vm_object_t *object;                // VM object this page belongs to if any
     vm_offset_t offset;                 // Offset in that VM object that this page refers to
 } vm_page_t;

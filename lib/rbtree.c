@@ -196,6 +196,9 @@ rbtree_node_t* rbtree_node_predecessor(rbtree_node_t *node) {
 bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t child, rbtree_node_t *node) {
     if (tree == NULL || node == NULL) return false;
 
+    // Make sure node isn't already part of a tree
+    if (rbtree_parent(node) != NULL || rbtree_left(node) != NULL || rbtree_right(node) != NULL) return false;
+
     // We can't have this condition, if parent is NULL then we are inserting in the root so root must be NULL
     if (parent == NULL && rbtree_root(tree) != NULL) return false;
 
