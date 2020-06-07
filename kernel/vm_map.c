@@ -110,7 +110,7 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
         .vstart = vaddr, .vend = vaddr + size, .prot = prot, .object = object, .offset = offset };
 
     // Make sure it is within the total virtual address space
-    if (tmp.vend > vmap->end) {
+    if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
         return KRESULT_NO_SPACE;
     }
 
