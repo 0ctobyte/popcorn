@@ -7,7 +7,7 @@
 // Slabs must at least be this size
 #define SLAB_MIN_SIZE  (sizeof(slab_buf_t)+sizeof(list_node_t))
 
-typedef struct slab_buf_s {
+typedef struct {
     void *buf;                      // Pointer to the buffer this slab_buf struct is managing
     list_node_t ll_node;            // Slab buffer linked list
     list_t ll_free;                 // Linked list of free blocks
@@ -15,7 +15,7 @@ typedef struct slab_buf_s {
     size_t free_blocks_remaining;   // Free blocks remaining in this slab buffer
 } slab_buf_t;
 
-typedef struct slab_s {
+typedef struct {
     list_t ll_slabs;    // Linked list of slab buffers
     size_t block_size;  // Size of a single block
 } slab_t;

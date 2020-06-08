@@ -325,7 +325,10 @@ pte_t _pmap_insert_table(pmap_t *pmap, pte_t *parent_table, unsigned long index,
 void _pmap_remove_table(pmap_t *pmap, pte_t *table, pte_t *parent_table_pte) {
     paddr_t table_pa = PTE_TO_PA(*parent_table_pte);
     _pmap_clear_pte((vaddr_t)table, pmap->asid, parent_table_pte);
-    vm_page_free(vm_page_from_pa(table_pa));
+
+    vm_page_t *page = vm_page_from_pa(table_pa);
+    vm_page_unwire(page);
+    vm_page_free(page);
 }
 
 bool _pmap_is_table_empty(pte_t *table) {
@@ -649,7 +652,10 @@ void pmap_bootstrap(void) {
     // Reclaim page table memory from the identity mappings that we no longer need
     mmu_clear_ttbr0();
     pmap_remove_all(&identity_pmap);
-    vm_page_free(vm_page_from_pa(identity_pmap.ttb));
+
+    vm_page_t *page = vm_page_from_pa(identity_pmap.ttb);
+    vm_page_unwire(page);
+    vm_page_free(page);
 
     // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
     pmap_reference(pmap_kernel());
