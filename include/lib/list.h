@@ -37,7 +37,7 @@ typedef list_compare_result_t (*list_compare_func_t)(list_node_t*,list_node_t*);
 #define list_last(list)       ((list)->last)
 #define list_next(node)       ((node)->next)
 #define list_prev(node)       ((node)->prev)
-#define list_end(node)        ((node) == NULL)
+#define list_end(ptr)         ((ptr) == NULL)
 #define list_is_empty(list)   ((list)->first == NULL)
 
 #define LIST_INITIALIZER      (list_t){ .first = NULL, .last = NULL}
@@ -70,7 +70,7 @@ list_node_t* list_search(list_t *list, list_compare_func_t compare_func, list_no
 
 #define list_for_each_entry(list, entry, struct_member)\
     for (entry = list_entry(list_first(list), typeof(*entry), struct_member);\
-        !list_end(&entry->struct_member);\
+        !list_end(entry);\
         entry = list_entry(list_next(&entry->struct_member), typeof(*entry), struct_member))
 
 #endif // __LIST_H__
