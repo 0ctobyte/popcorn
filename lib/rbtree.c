@@ -163,11 +163,11 @@ rbtree_node_t* rbtree_node_successor(rbtree_node_t *node) {
         rbtree_node_t *parent;
 
         for (parent = rbtree_parent(node); parent != NULL; parent = rbtree_parent(parent)) {
-            if (node == rbtree_left(parent)) break;
+            if (node == rbtree_left(parent)) return parent;
             node = parent;
         }
 
-        return parent;
+        return NULL;
     }
 }
 
@@ -185,11 +185,11 @@ rbtree_node_t* rbtree_node_predecessor(rbtree_node_t *node) {
         rbtree_node_t *parent;
 
         for (parent = rbtree_parent(node); parent != NULL; parent = rbtree_parent(parent)) {
-            if (node == rbtree_right(parent)) break;
+            if (node == rbtree_right(parent)) return parent;
             node = parent;
         }
 
-        return parent;
+        return NULL;
     }
 }
 

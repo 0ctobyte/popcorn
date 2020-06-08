@@ -18,7 +18,8 @@ void vm_km_init(void) {
     kassert(res == KRESULT_OK);
 
     // Add another mapping for Kernel memory allocators which only have read/write access
-    res = vm_map_enter_at(&kernel_vmap, kernel_virtual_end, PAGESIZE, &kernel_object, kernel_object.size, VM_PROT_DEFAULT);
+    vaddr_t km_start = 0;
+    res = vm_map_enter(&kernel_vmap, &km_start, PAGESIZE, &kernel_object, kernel_object.size, VM_PROT_DEFAULT);
     kassert(res == KRESULT_OK);
 }
 
