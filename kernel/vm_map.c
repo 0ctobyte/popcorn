@@ -13,9 +13,14 @@ vm_map_t kernel_vmap;
 slab_t kernel_vm_mapping_slab;
 slab_buf_t kernel_vm_mapping_slab_buf;
 
-rbtree_compare_result_t _vm_mapping_compare(rbtree_node_t *n1, rbtree_node_t *n2) {
+rbtree_compare_result_t _vm_mapping_overlap(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_node), *m2 = rbtree_entry(n2, vm_mapping_t, rb_node);
     return (m1->vstart >= m2->vend) ? RBTREE_COMPARE_GT : (m1->vend <= m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
+}
+
+rbtree_compare_result_t _vm_mapping_compare(rbtree_node_t *n1, rbtree_node_t *n2) {
+    vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_node), *m2 = rbtree_entry(n2, vm_mapping_t, rb_node);
+    return (m1->vstart > m2->vstart) ? RBTREE_COMPARE_GT : (m1->vstart < m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
 }
 
 rbtree_compare_result_t _vm_mapping_compare_hole(rbtree_node_t *n1, rbtree_node_t *n2) {
@@ -29,8 +34,8 @@ rbtree_compare_result_t _vm_mapping_find_hole(rbtree_node_t *n1, rbtree_node_t *
 }
 
 void _vm_mapping_hole_update(vm_map_t *vmap, vm_mapping_t *mapping, size_t new_hole_size) {
+    rbtree_remove(&vmap->rb_holes, &mapping->rb_hole);
     mapping->hole_size = new_hole_size;
-    kassert(rbtree_remove(&vmap->rb_holes, &mapping->rb_hole));
     if (new_hole_size > 0 ) kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &mapping->rb_hole));
 }
 
@@ -50,19 +55,14 @@ void _vm_mapping_hole_insert(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mappi
     if (new_mapping_hole_size > 0) kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &new_mapping->rb_hole));
 }
 
-void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
-    if (slot == 0) {
-        kassert(rbtree_insert(&vmap->rb_mappings, _vm_mapping_compare, &new_mapping->rb_node));
-    } else {
-        kassert(rbtree_insert_slot(&vmap->rb_mappings, slot, &new_mapping->rb_node));
+void _vm_mapping_hole_delete(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *mapping) {
+    // Calculate the hole size for the predecessor and update it
+    if (predecessor != NULL) {
+        size_t new_hole_size = predecessor->hole_size + (mapping->vend - mapping->vstart) + mapping->hole_size;
+        _vm_mapping_hole_update(vmap, predecessor, new_hole_size);
     }
 
-    kassert(list_insert_after(&vmap->ll_mappings, &predecessor->ll_node, &new_mapping->ll_node));
-}
-
-void _vm_mapping_destroy(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
-    kmem_free(mapping, sizeof(vm_mapping_t));
+    rbtree_remove(&vmap->rb_holes, &mapping->rb_hole);
 }
 
 vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
@@ -78,6 +78,41 @@ vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
     }
 
     return mapping;
+}
+
+void _vm_mapping_free(vm_map_t *vmap, vm_mapping_t *mapping) {
+    if (vm_map_kernel() == vmap) {
+        slab_free(&kernel_vm_mapping_slab, mapping);
+    } else {
+        kmem_free(mapping, sizeof(vm_mapping_t));
+    }
+}
+
+void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
+    if (slot == 0) {
+        kassert(rbtree_insert(&vmap->rb_mappings, _vm_mapping_compare, &new_mapping->rb_node));
+    } else {
+        kassert(rbtree_insert_slot(&vmap->rb_mappings, slot, &new_mapping->rb_node));
+    }
+
+    kassert(list_insert_after(&vmap->ll_mappings, &predecessor->ll_node, &new_mapping->ll_node));
+}
+
+void _vm_mapping_delete(vm_map_t *vmap, vm_mapping_t *mapping) {
+    kassert(rbtree_remove(&vmap->rb_mappings, &mapping->rb_node));
+    kassert(list_remove(&vmap->ll_mappings, &mapping->ll_node));
+    atomic_dec(&mapping->object->refcnt);
+    _vm_mapping_free(vmap, mapping);
+}
+
+void _vm_kernel_mapping_destroy(rbtree_node_t *node) {
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    slab_free(&kernel_vm_mapping_slab, mapping);
+}
+
+void _vm_mapping_destroy(rbtree_node_t *node) {
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    kmem_free(mapping, sizeof(vm_mapping_t));
 }
 
 void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *mapping, rbtree_slot_t slot) {
@@ -114,7 +149,7 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
 
 vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t start) {
     // Check if a split should be performed
-    if (start > mapping->vstart && start < mapping->vend) return mapping;
+    if (start <= mapping->vstart || start >= mapping->vend) return mapping;
 
     // Splits a mapping based on the given starting virtual address
     vm_mapping_t *split = _vm_mapping_alloc(vmap);
@@ -129,6 +164,7 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
     mapping->vend = start;
     split->vstart = start;
     split->offset = mapping->offset + (start - mapping->vstart);
+    atomic_inc(&split->object->refcnt);
 
     // Insert it into the various trees and lists
     _vm_mapping_insert(vmap, 0, mapping, split);
@@ -159,7 +195,11 @@ void vm_map_destroy(vm_map_t *vmap) {
     atomic_dec(&vmap->refcnt);
 
     if (vmap->refcnt == 0) {
-        rbtree_clear(&vmap->rb_mappings, _vm_mapping_destroy);
+        if (vm_map_kernel() == vmap) {
+            rbtree_clear(&vmap->rb_mappings, _vm_kernel_mapping_destroy);
+        } else {
+            rbtree_clear(&vmap->rb_mappings, _vm_mapping_destroy);
+        }
         kmem_free(vmap, sizeof(vm_map_t));
     }
 }
@@ -184,12 +224,14 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
     spinlock_writeacquire(&vmap->lock);
 
     // Make sure the address region specified isn't already mapped or partially mapped
-    if (rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &predecessor_node, &slot)) {
+    if (rbtree_search(&vmap->rb_mappings, _vm_mapping_overlap, &tmp.rb_node)) {
         spinlock_writerelease(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
+    rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &predecessor_node, &slot);
     vm_mapping_t *predecessor = rbtree_entry(predecessor_node, vm_mapping_t, rb_node);
+
     _vm_mapping_enter(vmap, predecessor, &tmp, slot);
 
     spinlock_writerelease(&vmap->lock);
@@ -275,12 +317,11 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 
         mapping = list_entry(list_next(&split->ll_node), vm_mapping_t, ll_node);
 
-        if (mapping->vend > start) {
-            // Remove from the various trees and lists
-            if (split->hole_size > 0) kassert(rbtree_remove(&vmap->rb_holes, &split->rb_hole));
-            kassert(rbtree_remove(&vmap->rb_mappings, &split->rb_node));
-            kassert(list_remove(&vmap->ll_mappings, &split->ll_node));
-            atomic_dec(&split->object->refcnt);
+        if (split->vend > start) {
+            // Remove from the various trees and lists; update the hole tree
+            vm_mapping_t *prev = list_entry(list_prev(&split->ll_node), vm_mapping_t, ll_node);
+            _vm_mapping_hole_delete(vmap, prev, split);
+            _vm_mapping_delete(vmap, split);
             // FIXME what happens when object refcnt drops to zero?
         }
     }

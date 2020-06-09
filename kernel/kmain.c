@@ -20,9 +20,19 @@ void vm_mapping_walk(rbtree_node_t *node) {
     kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
 }
 
+void _vm_mapping_walk(rbtree_node_t *node) {
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    kprintf("%x:%x:%c\n", (vaddr_t)node, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
+}
+
 void vm_mapping_hole_walk(rbtree_node_t *node) {
     vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hole);
     kprintf("mapping hole - vstart = %p, vend = %p\n", mapping->vend, mapping->vend + mapping->hole_size);
+}
+
+void _vm_mapping_hole_walk(rbtree_node_t *node) {
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hole);
+    kprintf("%x:%x:%c\n", (vaddr_t)mapping, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
 }
 
 void print_mappings(void) {
@@ -53,9 +63,6 @@ void kmain(void) {
     kresult_t res;
 
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
-
-    res = vm_map_enter_at(vm_map_kernel(), vm_map_kernel()->end - PAGESIZE, PAGESIZE, &kernel_object, 0, VM_PROT_ALL);
-    kassert(res == KRESULT_OK);
 
     print_mappings();
 }
