@@ -99,12 +99,14 @@ _fast_move:
     stp fp, lr, [sp, #-16]!
     mov fp, sp
 
-    # Check if dst < (src + num) If so we need to copy backwards
+    # Check if dst < (src + num) && dst > src If so we need to copy backwards
     mov x4, #1
+    cmp x1, x0
+    b.ge _fast_move_16
     add x3, x1, x2
     cmp x0, x3
     b.ge _fast_move_16
-    mvn x4, x4
+    mov x4, #-1
     add x1, x1, x2
     add x0, x0, x2
 
@@ -113,16 +115,23 @@ _fast_move_16:
     lsr x3, x2, #4
     cbz x3, _fast_move_8
 
-    # Setup stride (to go backwards or forwards) and adjust the byte count by the amount of bytes we are going to copy
+    # Adjust the byte count by the amount of bytes we are going to copy
     mov x5, #16
     msub x2, x3, x5, x2
-    mul x5, x5, x4
+
+    cmp x4, #1
+    b.eq _fast_move_16_loop
+
+_fast_move_16_loop_backwards:
+    ldp x5, x6, [x1, #-16]!
+    stp x5, x6, [x0, #-16]!
+    subs x3, x3, #1
+    b.ne _fast_move_16_loop_backwards
+    b _fast_move_8
 
 _fast_move_16_loop:
-    ldp x6, x7, [x1]
-    stp x6, x7, [x0]
-    add x0, x0, x5
-    add x1, x1, x5
+    ldp x5, x6, [x1], #16
+    stp x5, x6, [x0], #16
     subs x3, x3, #1
     b.ne _fast_move_16_loop
 
@@ -131,16 +140,23 @@ _fast_move_8:
     lsr x3, x2, #3
     cbz x3, _fast_move_4
 
-    # Setup stride (to go backwards or forwards) and adjust the byte count by the amount of bytes we are going to copy
+    # Adjust the byte count by the amount of bytes we are going to copy
     mov x5, #8
     msub x2, x3, x5, x2
-    mul x5, x5, x4
+
+    cmp x4, #1
+    b.eq _fast_move_8_loop
+
+_fast_move_8_loop_backwards:
+    ldr x5, [x1, #-8]!
+    str x5, [x0, #-8]!
+    subs x3, x3, #1
+    b.ne _fast_move_8_loop_backwards
+    b _fast_move_4
 
 _fast_move_8_loop:
-    ldr x6, [x1]
-    str x6, [x0]
-    add x0, x0, x5
-    add x1, x1, x5
+    ldr x5, [x1], #8
+    str x5, [x0], #8
     subs x3, x3, #1
     b.ne _fast_move_8_loop
 
@@ -149,16 +165,23 @@ _fast_move_4:
     lsr x3, x2, #2
     cbz x3, _fast_move_1
 
-    # Setup stride (to go backwards or forwards) and adjust the byte count by the amount of bytes we are going to copy
+    # Adjust the byte count by the amount of bytes we are going to copy
     mov x5, #4
     msub x2, x3, x5, x2
-    mul x5, x5, x4
+
+    cmp x4, #1
+    b.eq _fast_move_4_loop
+
+_fast_move_4_loop_backwards:
+    ldr w5, [x1, #-4]!
+    str w5, [x0, #-4]!
+    subs x3, x3, #1
+    b.ne _fast_move_4_loop_backwards
+    b _fast_move_1
 
 _fast_move_4_loop:
-    ldr w6, [x1]
-    str w6, [x0]
-    add x0, x0, x5
-    add x1, x1, x5
+    ldr w5, [x1], #4
+    str w5, [x0], #4
     subs x3, x3, #1
     b.ne _fast_move_4_loop
 
@@ -166,11 +189,19 @@ _fast_move_1:
     # Check if there's any bytes left to move
     cbz x2, _fast_move_done
 
+    cmp x4, #1
+    b.eq _fast_move_4_loop
+
+_fast_move_1_loop_backwards:
+    ldrb w5, [x1, #-1]!
+    strb w5, [x0, #-1]!
+    subs x2, x2, #1
+    b.ne _fast_move_1_loop_backwards
+    b _fast_move_done
+
 _fast_move_1_loop:
-    ldrb w6, [x1]
-    strb w6, [x0]
-    add x0, x0, x4
-    add x1, x1, x4
+    ldrb w5, [x1], #-1
+    strb w5, [x0], #-1
     subs x2, x2, #1
     b.ne _fast_move_1_loop
 
