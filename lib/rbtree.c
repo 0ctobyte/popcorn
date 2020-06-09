@@ -305,6 +305,9 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
     rbtree_node_t *parent = rbtree_parent(node), *parent_left = (parent != NULL) ? rbtree_left(parent) : NULL;
     rbtree_child_t which_child = (parent_left == node) ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
 
+    // Check if this node is not part of a tree
+    if (rbtree_root(tree) != node && left == NULL && right == NULL && parent == NULL) return false;
+
     if (left != NULL && right != NULL) {
         // If the node has both children, find it's in order successor and replace it with the successor
         rbtree_node_t *successor = rbtree_node_successor(node);
