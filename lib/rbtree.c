@@ -351,6 +351,14 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
 
         rbtree_set_colour(successor, colour);
         rbtree_set_colour(node, successor_colour);
+
+        // These variables need to be updated after the swap
+        left = rbtree_left(node);
+        right = rbtree_right(node);
+        child = (left != NULL) ? left : right;
+        parent = rbtree_parent(node);
+        parent_left = (parent != NULL) ? rbtree_left(parent) : NULL;
+        which_child = (parent_left == node) ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
     }
 
     // Rest of the conditions below handle the case where the deleted node has at most one non-null child
