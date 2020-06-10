@@ -16,11 +16,6 @@ void vm_km_init(void) {
     // Add a mapping to the kernel_object for all of the kernel memory mapped to this point
     kresult_t res = vm_map_enter_at(&kernel_vmap, kernel_virtual_start, kernel_virtual_end - kernel_virtual_start, &kernel_object, 0, VM_PROT_ALL);
     kassert(res == KRESULT_OK);
-
-    // Add another mapping for Kernel memory allocators which only have read/write access
-    vaddr_t km_start = 0;
-    res = vm_map_enter(&kernel_vmap, &km_start, PAGESIZE, &kernel_object, kernel_object.size, VM_PROT_DEFAULT);
-    kassert(res == KRESULT_OK);
 }
 
 vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {
@@ -50,7 +45,6 @@ vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {
 
         pmap_flags_t flags = PMAP_FLAGS_WRITE_BACK;
         if (flags & VM_KM_FLAGS_WIRED) {
-            vm_page_wire(page);
             flags |= PMAP_FLAGS_WIRED;
         }
 

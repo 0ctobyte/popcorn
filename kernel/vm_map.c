@@ -99,6 +99,9 @@ void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predec
 }
 
 void _vm_mapping_delete(vm_map_t *vmap, vm_mapping_t *mapping) {
+    // Remove mappings from the pmap
+    pmap_remove(vmap->pmap, mapping->vstart, mapping->vend);
+
     kassert(rbtree_remove(&vmap->rb_mappings, &mapping->rb_node));
     kassert(list_remove(&vmap->ll_mappings, &mapping->ll_node));
     atomic_dec(&mapping->object->refcnt);
@@ -195,6 +198,7 @@ void vm_map_destroy(vm_map_t *vmap) {
     atomic_dec(&vmap->refcnt);
 
     if (vmap->refcnt == 0) {
+        pmap_destroy(vmap->pmap);
         if (vm_map_kernel() == vmap) {
             rbtree_clear(&vmap->rb_mappings, _vm_kernel_mapping_destroy);
         } else {
@@ -311,19 +315,20 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     // Or, the mapping partly lies in the range. The first case is easy, remove it from the various trees and lists, decrement the associated
     // vm_object refcnt and free the mapping entry structure. For the second case, we must first split the mapping entry in two at the intersection
     // which can either happen at the start or end of the region or both.
-    for (vm_mapping_t *mapping = nearest; !list_end(mapping) && mapping->vstart < end; ) {
+    for (vm_mapping_t *mapping = _vm_mapping_split(vmap, nearest, start); !list_end(mapping) && mapping->vstart < end; ) {
         _vm_mapping_split(vmap, mapping, end);
-        vm_mapping_t *split = _vm_mapping_split(vmap, mapping, start);
 
-        mapping = list_entry(list_next(&split->ll_node), vm_mapping_t, ll_node);
+        vm_mapping_t *next = list_entry(list_next(&mapping->ll_node), vm_mapping_t, ll_node);
 
-        if (split->vend > start) {
+        if (mapping->vend > start) {
             // Remove from the various trees and lists; update the hole tree
-            vm_mapping_t *prev = list_entry(list_prev(&split->ll_node), vm_mapping_t, ll_node);
-            _vm_mapping_hole_delete(vmap, prev, split);
-            _vm_mapping_delete(vmap, split);
+            vm_mapping_t *prev = list_entry(list_prev(&mapping->ll_node), vm_mapping_t, ll_node);
+            _vm_mapping_hole_delete(vmap, prev, mapping);
+            _vm_mapping_delete(vmap, mapping);
             // FIXME what happens when object refcnt drops to zero?
         }
+
+        mapping = next;
     }
 
     spinlock_writerelease(&vmap->lock);
@@ -331,6 +336,52 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 }
 
 kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t new_prot) {
+    kassert(vmap != NULL);
+
+    rbtree_node_t *nearest_node = NULL;
+    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
+        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+
+    // Make sure it is within the total virtual address space
+    if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
+        return KRESULT_INVALID_ARGUMENT;
+    }
+
+    spinlock_writeacquire(&vmap->lock);
+
+    // Search for the first mapping entry to contain the starting virtual address of the region specified
+    rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &nearest_node, NULL);
+    vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_node);
+
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    if (nearest == NULL) {
+        rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &nearest_node, NULL);
+        nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_node);
+    }
+
+    // There's no mappings to protect
+    if (nearest == NULL) {
+        spinlock_writerelease(&vmap->lock);
+        return KRESULT_INVALID_ARGUMENT;
+    }
+
+    // Iterate through mappings and update protections. Make sure to split if start or end intersects a mapping
+    nearest = (nearest->prot != new_prot) ? _vm_mapping_split(vmap, nearest, start) : nearest;
+    for (vm_mapping_t *mapping = nearest; !list_end(mapping) && mapping->vstart < end; ) {
+        if (mapping->prot != new_prot) _vm_mapping_split(vmap, mapping, end);
+
+        vm_mapping_t *next = list_entry(list_next(&mapping->ll_node), vm_mapping_t, ll_node);
+
+        if (mapping->prot != new_prot && mapping->vend > start) {
+            mapping->prot = new_prot;
+            pmap_protect(vmap->pmap, mapping->vstart, mapping->vend, new_prot);
+        }
+
+        mapping = next;
+    }
+
+    spinlock_writerelease(&vmap->lock);
+    return KRESULT_OK;
 }
 
 kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset, vm_prot_t *prot) {

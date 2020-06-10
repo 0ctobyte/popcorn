@@ -88,7 +88,7 @@ typedef enum {
 typedef enum {
     BP_NON_CONTIGUOUS = 0,                  // Don't set contiguous bit
     BP_CONTIGUOUS     = 0x0010000000000000, // Sets the contiguous which can be used to hint the MMU hardware that this entry is part of a contiguous set of entries that the TLB can cache in a single TLB entry
-} bp_contiguous_attr_t;
+} bp_ctg_attr_t;
 
 // Lower attributes for page and block descriptors
 
@@ -140,7 +140,7 @@ typedef enum {
 typedef struct {
     bp_uxn_attr_t uxn;
     bp_pxn_attr_t pxn;
-    bp_contiguous_attr_t contiguous;
+    bp_ctg_attr_t ctg;
 } bp_uattr_t;
 
 typedef struct {
@@ -152,12 +152,12 @@ typedef struct {
     bp_ma_attr_t ma;
 } bp_lattr_t;
 
-#define BP_UATTR(bp_uattr) ((bp_uattr).uxn | (bp_uattr).pxn | (bp_uattr).contiguous)
+#define BP_UATTR(bp_uattr) ((bp_uattr).uxn | (bp_uattr).pxn | (bp_uattr).ctg)
 #define BP_UATTR_EXTRACT(pte)\
 ((bp_uattr_t){\
     .uxn = (bp_uxn_attr_t)((pte) & BP_UXN),\
     .pxn = (bp_pxn_attr_t)((pte) & BP_PXN),\
-    .contiguous = (bp_contiguous_attr_t)((pte) & BP_CONTIGUOUS),\
+    .ctg = (bp_ctg_attr_t)((pte) & BP_CONTIGUOUS),\
 })
 #define BP_LATTR(bp_lattr) ((bp_lattr).ng | (bp_lattr).af | (bp_lattr).af | (bp_lattr).sh | (bp_lattr).ap | (bp_lattr).ns | (bp_lattr).ma)
 #define BP_LATTR_EXTRACT(pte)\
@@ -265,7 +265,7 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
 }
 
 void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr) {
-    bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .contiguous = BP_NON_CONTIGUOUS};
+    bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .ctg = BP_NON_CONTIGUOUS};
     bp_lattr_t bpl = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
 
     _pmap_enter(pmap_kernel(), temp_va, paddr, bpu, bpl);
@@ -530,7 +530,7 @@ bool _pmap_lookup(pmap_t *pmap, vaddr_t vaddr, paddr_t *paddr, bp_uattr_t *bpu, 
     return true;
 }
 
-void _pmap_protect(pmap_t *pmap, vaddr_t vaddr, bp_uattr_t bpu, bp_lattr_t bpl) {
+bool _pmap_protect(pmap_t *pmap, vaddr_t vaddr, bp_uattr_t bpu, bp_lattr_t bpl) {
     unsigned long level = (PAGESIZE == _64KB) ? 1 : 0;
     unsigned long width = PAGESHIFT - 3;
     unsigned long mask = (1 << width) - 1;
@@ -546,9 +546,8 @@ void _pmap_protect(pmap_t *pmap, vaddr_t vaddr, bp_uattr_t bpu, bp_lattr_t bpl) 
 
     // Just get the next table if we are at level 0
     if (level == 0) {
-        // Since we are updating the protections for this virtual address we expect there to be a valid table here
         pte = table[index], ptep = &table[index];
-        kassert(IS_TDE_VALID(pte));
+        if (!IS_TDE_VALID(pte)) return false;
 
         // Get the address to the next table
         table = (pte_t*)(mmu_enabled ? (is_current_ttb ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : TEMP_PAGE_VA(level+1)) : PTE_TO_PA(pte));
@@ -558,32 +557,35 @@ void _pmap_protect(pmap_t *pmap, vaddr_t vaddr, bp_uattr_t bpu, bp_lattr_t bpl) 
 
     // Level 1
     pte = table[index], ptep = &table[index];
-    kassert(IS_TDE_VALID(pte));
+    if (!IS_TDE_VALID(pte)) return false;
     table = (pte_t*)(mmu_enabled ? (is_current_ttb ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : TEMP_PAGE_VA(level+1)) : PTE_TO_PA(pte));
     if (mmu_enabled && !is_current_ttb) _pmap_map_temp_page((vaddr_t)table, PTE_TO_PA(pte));
     level++, lsb -= width, index = GET_TABLE_IDX(vaddr, lsb, mask);
 
     // Level 2
     pte = table[index], ptep = &table[index];
-    kassert(IS_TDE_VALID(pte));
+    if (!IS_TDE_VALID(pte)) return false;
     table = (pte_t*)(mmu_enabled ? (is_current_ttb ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : TEMP_PAGE_VA(level+1)) : PTE_TO_PA(pte));
     if (mmu_enabled && !is_current_ttb) _pmap_map_temp_page((vaddr_t)table, PTE_TO_PA(pte));
     level++, lsb -= width, index = GET_TABLE_IDX(vaddr, lsb, mask);
 
     // Level 3 - Finally update the mapping
     pte = table[index], ptep = &table[index];
-    kassert(IS_PDE_VALID(pte));
+    if (!IS_PDE_VALID(pte)) return false;
 
     paddr_t pa = PTE_TO_PA(pte);
 
-    // Only update the AP, UXN and PXN attributes
+    // Only update the AP, AF, UXN and PXN attributes
     bp_lattr_t new_bpl = BP_LATTR_EXTRACT(pte);
     bp_uattr_t new_bpu = BP_UATTR_EXTRACT(pte);
     new_bpl.ap = bpl.ap;
+    new_bpl.af = bpl.af;
     new_bpu.uxn = bpu.uxn;
     new_bpu.pxn = bpu.pxn;
 
     _pmap_update_pte(vaddr, pmap->asid, ptep, MAKE_PDE(pa, new_bpu, new_bpl));
+
+    return true;
 }
 
 void pmap_bootstrap(void) {
@@ -635,7 +637,7 @@ void pmap_bootstrap(void) {
     _pmap_setup_table_recursive_mapping(&identity_pmap);
 
     // These mappings will be just thrown out after, use the internal _pmap_enter for this
-    bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .contiguous = BP_NON_CONTIGUOUS};
+    bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .ctg = BP_NON_CONTIGUOUS};
     bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
     for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
         _pmap_enter(&identity_pmap, kernel_physical_start + offset, kernel_physical_start + offset, bp_uattr_page, bp_lattr_page);
@@ -732,11 +734,11 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
         bpu = (bp_uattr_t){
             .uxn = BP_UXN,
             .pxn = (prot & VM_PROT_EXECUTE) ? BP_NON_PXN : BP_PXN,
-            .contiguous = BP_NON_CONTIGUOUS
+            .ctg = BP_NON_CONTIGUOUS
         };
         bpl = (bp_lattr_t){
             .ng = BP_GLOBAL,
-            .af = BP_AF,
+            .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
             .sh = BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
             .ns = BP_NON_SECURE,
@@ -746,11 +748,11 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
         bpu = (bp_uattr_t){
             .uxn = (prot & VM_PROT_EXECUTE) ? BP_NON_UXN : BP_UXN,
             .pxn = BP_PXN,
-            .contiguous = BP_NON_CONTIGUOUS
+            .ctg = BP_NON_CONTIGUOUS
         };
         bpl = (bp_lattr_t){
             .ng = BP_NON_GLOBAL,
-            .af = BP_AF,
+            .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
             .sh = BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW : BP_AP_RO,
             .ns = BP_NON_SECURE,
@@ -792,11 +794,12 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva) {
     kassert(pmap != NULL && eva >= sva);
 
     // Calculate the size of the region to remove, rounded up to the next page
-    size_t size = ROUND_PAGE_UP(eva - sva);
+    sva = ROUND_PAGE_DOWN(sva);
+    eva = ROUND_PAGE_UP(eva);
 
     spinlock_writeacquire(&pmap->lock);
-    for (size_t s = 0; s < size; s += PAGESIZE) {
-        _pmap_remove(pmap, sva + s);
+    for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
+        _pmap_remove(pmap, va);
     }
     spinlock_writerelease(&pmap->lock);
 }
@@ -810,22 +813,21 @@ void pmap_remove_all(pmap_t *pmap) {
 }
 
 void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot) {
-    kassert(pmap != NULL);
+    kassert(pmap != NULL && eva >= sva);
 
     bp_uattr_t bpu;
     bp_lattr_t bpl;
-    size_t size = ROUND_PAGE_UP(eva - sva);
 
     // Different sets of attributes for kernel vs user mappings
     if (pmap == pmap_kernel()) {
         bpu = (bp_uattr_t){
             .uxn = BP_UXN,
             .pxn = (prot & VM_PROT_EXECUTE) ? BP_NON_PXN : BP_PXN,
-            .contiguous = BP_NON_CONTIGUOUS
+            .ctg = BP_NON_CONTIGUOUS
         };
         bpl = (bp_lattr_t){
             .ng = BP_GLOBAL,
-            .af = BP_AF,
+            .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
             .sh = BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
             .ns = BP_NON_SECURE,
@@ -835,11 +837,11 @@ void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot) {
         bpu = (bp_uattr_t){
             .uxn = (prot & VM_PROT_EXECUTE) ? BP_NON_UXN : BP_UXN,
             .pxn = BP_PXN,
-            .contiguous = BP_NON_CONTIGUOUS
+            .ctg = BP_NON_CONTIGUOUS
         };
         bpl = (bp_lattr_t){
             .ng = BP_NON_GLOBAL,
-            .af = BP_AF,
+            .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
             .sh = BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW : BP_AP_RO,
             .ns = BP_NON_SECURE,
@@ -847,9 +849,12 @@ void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot) {
         };
     }
 
+    sva = ROUND_PAGE_DOWN(sva);
+    eva = ROUND_PAGE_UP(eva);
+
     spinlock_writeacquire(&pmap->lock);
-    for (size_t s = 0; s < size; s += PAGESIZE) {
-        _pmap_protect(pmap, sva + s, bpu, bpl);
+    for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
+        _pmap_protect(pmap, va, bpu, bpl);
     }
     spinlock_writerelease(&pmap->lock);
 }
@@ -888,11 +893,11 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) 
     bp_uattr_t bpu = (bp_uattr_t){
         .uxn = BP_UXN,
         .pxn = (prot & VM_PROT_EXECUTE) ? BP_NON_PXN : BP_PXN,
-        .contiguous = BP_NON_CONTIGUOUS
+        .ctg = BP_NON_CONTIGUOUS
     };
     bp_lattr_t bpl = (bp_lattr_t){
         .ng = BP_GLOBAL,
-        .af = BP_AF,
+        .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
         .sh = BP_ISH,
         .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
         .ns = BP_NON_SECURE,

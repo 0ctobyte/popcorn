@@ -63,6 +63,5 @@ void kmain(void) {
     kresult_t res;
 
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
-
     print_mappings();
 }
