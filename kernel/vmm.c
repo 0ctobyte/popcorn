@@ -2,6 +2,7 @@
 #include <kernel/pmap.h>
 #include <kernel/vm_map.h>
 #include <kernel/vm_km.h>
+#include <kernel/kmem.h>
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
@@ -18,4 +19,5 @@ void vmm_init(void) {
     vm_object_bootstrap(kernel_physical_start, kernel_physical_end);
     vm_map_init();
     vm_km_init();
+    kmem_init();
 }
