@@ -140,7 +140,6 @@ _fast_move_8:
     lsr x3, x2, #3
     cbz x3, _fast_move_4
 
-    # Adjust the byte count by the amount of bytes we are going to copy
     mov x5, #8
     msub x2, x3, x5, x2
 
@@ -165,7 +164,6 @@ _fast_move_4:
     lsr x3, x2, #2
     cbz x3, _fast_move_1
 
-    # Adjust the byte count by the amount of bytes we are going to copy
     mov x5, #4
     msub x2, x3, x5, x2
 
@@ -223,9 +221,13 @@ _fast_zero_16:
     lsr x2, x1, #4
     cbz x2, _fast_zero_8
 
+    # Adjust the byte count by the amount of bytes we are going to copy
+    mov x3, #16
+    msub x1, x2, x3, x1
+
 _fast_zero_16_loop:
     stp xzr, xzr, [x0], #16
-    subs x1, x1, #16
+    subs x2, x2, #1
     b.ne _fast_zero_16_loop
 
 _fast_zero_8:
@@ -233,9 +235,12 @@ _fast_zero_8:
     lsr x2, x1, #3
     cbz x2, _fast_zero_4
 
+    mov x3, #8
+    msub x1, x2, x3, x1
+
 _fast_zero_8_loop:
     str xzr, [x0], #8
-    subs x1, x1, #8
+    subs x2, x2, #1
     b.ne _fast_zero_8_loop
 
 _fast_zero_4:
@@ -243,9 +248,12 @@ _fast_zero_4:
     lsr x2, x1, #2
     cbz x2, _fast_zero_1
 
+    mov x3, #4
+    msub x1, x2, x3, x1
+
 _fast_zero_4_loop:
     str wzr, [x0], #4
-    subs x1, x1, #4
+    subs x2, x2, #1
     b.ne _fast_zero_4_loop
 
 _fast_zero_1:
