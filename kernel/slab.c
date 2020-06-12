@@ -59,7 +59,7 @@ slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t 
 void slab_init(slab_t *slab, slab_buf_t *slab_buf, void *buf, size_t size, size_t block_size) {
     kassert(slab != NULL && buf != NULL && size > SLAB_MIN_SIZE);
 
-    _slab_buf_init(slab_buf, buf, size, block_size);
+    slab_buf = _slab_buf_init(slab_buf, buf, size, block_size);
 
     list_init(&slab->ll_slabs);
     list_push(&slab->ll_slabs, &slab_buf->ll_node);
@@ -127,11 +127,11 @@ void slab_free(slab_t *slab, void *block) {
 void slab_grow(slab_t *slab, slab_buf_t *new_slab_buf, void *buf, size_t size) {
     kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL && buf != NULL);
 
-    _slab_buf_init(new_slab_buf, buf, size, slab->block_size);
+    new_slab_buf = _slab_buf_init(new_slab_buf, buf, size, slab->block_size);
     list_push(&slab->ll_slabs, &new_slab_buf->ll_node);
 }
 
-void* slab_shrink(slab_t *slab) {
+slab_buf_t* slab_shrink(slab_t *slab) {
     kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL);
 
     // Find a slab that is completely full, if one is found remove it from the slab list
@@ -142,5 +142,5 @@ void* slab_shrink(slab_t *slab) {
         kassert(list_remove(&slab->ll_slabs, &freed_slab->ll_node));
     }
 
-    return (void*)freed_slab;
+    return freed_slab;
 }

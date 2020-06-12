@@ -5,7 +5,8 @@
 #include <lib/list.h>
 
 // Slabs must at least be this size
-#define SLAB_MIN_SIZE  (sizeof(slab_buf_t)+sizeof(list_node_t))
+#define SLAB_MIN_SIZE                     (sizeof(slab_buf_t)+sizeof(list_node_t))
+#define SLAB_BUF_SIZE(slab, slab_buf)     (((slab_buf)->capacity * (slab)->block_size) + (((void*)(slab_buf) == (slab_buf)->buf) ? sizeof(slab_buf_t) : 0))
 
 typedef struct {
     void *buf;                      // Pointer to the buffer this slab_buf struct is managing
@@ -33,6 +34,6 @@ void slab_free(slab_t *slab, void *block);
 // slab_shrink returns the pointer to the slab buf that was removed
 // If a slab_buf_t struct is provided, that will be used instead of embedding the slab_buf_t struct within the buf
 void slab_grow(slab_t *slab, slab_buf_t *new_slab_buf, void *buf, size_t size);
-void* slab_shrink(slab_t *slab);
+slab_buf_t* slab_shrink(slab_t *slab);
 
 #endif // __SLAB_H__
