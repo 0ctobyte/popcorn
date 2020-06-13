@@ -181,24 +181,27 @@ void kmem_free(void *mem, size_t size) {
 
 void kmem_stats(void) {
     unsigned long total_alloc_size = 0;
-    unsigned long total_current_allocs = 0;
 
     kprintf("KMEM STATS\n");
     kprintf("----------\n");
-    kprintf("\tAllocations\tFrees\tCurrent Allocations\tAllocated Size\tSlab Size\tAllocated %%\tSlab %%\n");
+    kprintf("\tTotal\t\tTotal\tCurrent\t\t\t\t\t\t\tTotal\tTotal\t\tTotal\n");
+    kprintf("\tAllocations\tFrees\tAllocations\tAllocated\tSlab\t\tUsed\tUsed %%\tAllocated %%\tSlab %%\n");
 
     for (unsigned int i = 0; i < NUM_BINS; i++) {
         unsigned long current_allocs = kmem.bins[i].total_allocs - kmem.bins[i].total_frees;
         unsigned long alloc_size = current_allocs * BIN_TO_BLOCK_SIZE(i);
-        unsigned long alloc_pct = (current_allocs * 100) / kmem.total_allocs;
-        unsigned long slab_pct = (kmem.bins[i].total_slab_size * 100) / kmem.total_slab_size;
+        unsigned long used_pct = (alloc_size * 100) / kmem.bins[i].total_slab_size;
+        unsigned long total_used_pct = (alloc_size * 100) / kmem.total_slab_size;
+        unsigned long total_alloc_pct = (current_allocs * 100) / kmem.total_allocs;
+        unsigned long total_slab_pct = (kmem.bins[i].total_slab_size * 100) / kmem.total_slab_size;
 
         total_alloc_size += alloc_size;
-        total_current_allocs += current_allocs;
 
-        kprintf("%5uB:\t%u\t\t%u\t%u\t\t\t%uB\t\t%uB\t\t%u%%\t\t%u%%\n", BIN_TO_BLOCK_SIZE(i), kmem.bins[i].total_allocs, kmem.bins[i].total_frees, current_allocs,
-            alloc_size, kmem.bins[i].total_slab_size, alloc_pct, slab_pct);
+        kprintf("%5uB:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\t\t%u%%\t%u%%\t%u%%\t\t%u%%\n", BIN_TO_BLOCK_SIZE(i), kmem.bins[i].total_allocs, kmem.bins[i].total_frees, current_allocs,
+            alloc_size, kmem.bins[i].total_slab_size, used_pct, total_used_pct, total_alloc_pct, total_slab_pct);
     }
 
-    kprintf("Total:\t%u\t\t%u\t%u\t\t\t%uB\t\t%uB\n", kmem.total_allocs, kmem.total_frees, total_current_allocs, total_alloc_size, kmem.total_slab_size);
+    unsigned long total_current_allocs = kmem.total_allocs - kmem.total_frees;
+    kprintf("------\n");
+    kprintf("Total:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\n", kmem.total_allocs, kmem.total_frees, total_current_allocs, total_alloc_size, kmem.total_slab_size);
 }

@@ -67,14 +67,15 @@ void kmain(void) {
     print_mappings();
 
     size_t size = PAGESIZE;
-    void *buf[10];
+#define NUM_ALLOCS 50
+    void *buf[NUM_ALLOCS];
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < NUM_ALLOCS; i++) {
         buf[i] = kmem_alloc(size);
         kmem_stats();
     }
 
-    for (int i = 10-1; i >= 0; i--) {
+    for (int i = NUM_ALLOCS-1; i >= 0; i--) {
         kmem_free(buf[i], size);
         kmem_stats();
     }
