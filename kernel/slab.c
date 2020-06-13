@@ -132,7 +132,7 @@ void slab_grow(slab_t *slab, slab_buf_t *new_slab_buf, void *buf, size_t size) {
 }
 
 slab_buf_t* slab_shrink(slab_t *slab) {
-    kassert(slab != NULL && list_first(&slab->ll_slabs) != NULL);
+    if (slab == NULL || list_first(&slab->ll_slabs) == NULL) return NULL;
 
     // Find a slab that is completely full, if one is found remove it from the slab list
     slab_buf_t *freed_slab = list_entry(list_search(&slab->ll_slabs, _slab_buf_find_full, NULL), slab_buf_t, ll_node);

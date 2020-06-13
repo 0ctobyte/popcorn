@@ -8,6 +8,7 @@
 #include <kernel/vm_map.h>
 #include <kernel/vm_object.h>
 #include <kernel/vm_km.h>
+#include <kernel/kmem.h>
 
 #include <lib/asm.h>
 #include <lib/rbtree.h>
@@ -64,4 +65,17 @@ void kmain(void) {
 
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
     print_mappings();
+
+    size_t size = PAGESIZE;
+    void *buf[10];
+
+    for (int i = 0; i < 10; i++) {
+        buf[i] = kmem_alloc(size);
+        kmem_stats();
+    }
+
+    for (int i = 10-1; i >= 0; i--) {
+        kmem_free(buf[i], size);
+        kmem_stats();
+    }
 }

@@ -3,6 +3,7 @@
 #include <kernel/slab.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
+#include <kernel/kstdio.h>
 #include <lib/list.h>
 #include <lib/asm.h>
 
@@ -176,4 +177,28 @@ void kmem_free(void *mem, size_t size) {
     slab_free(&kmem.bins[bin].slab, mem);
 
     spinlock_release(&kmem.lock);
+}
+
+void kmem_stats(void) {
+    unsigned long total_alloc_size = 0;
+    unsigned long total_current_allocs = 0;
+
+    kprintf("KMEM STATS\n");
+    kprintf("----------\n");
+    kprintf("\tAllocations\tFrees\tCurrent Allocations\tAllocated Size\tSlab Size\tAllocated %%\tSlab %%\n");
+
+    for (unsigned int i = 0; i < NUM_BINS; i++) {
+        unsigned long current_allocs = kmem.bins[i].total_allocs - kmem.bins[i].total_frees;
+        unsigned long alloc_size = current_allocs * BIN_TO_BLOCK_SIZE(i);
+        unsigned long alloc_pct = (current_allocs * 100) / kmem.total_allocs;
+        unsigned long slab_pct = (kmem.bins[i].total_slab_size * 100) / kmem.total_slab_size;
+
+        total_alloc_size += alloc_size;
+        total_current_allocs += current_allocs;
+
+        kprintf("%5uB:\t%u\t\t%u\t%u\t\t\t%uB\t\t%uB\t\t%u%%\t\t%u%%\n", BIN_TO_BLOCK_SIZE(i), kmem.bins[i].total_allocs, kmem.bins[i].total_frees, current_allocs,
+            alloc_size, kmem.bins[i].total_slab_size, alloc_pct, slab_pct);
+    }
+
+    kprintf("Total:\t%u\t\t%u\t%u\t\t\t%uB\t\t%uB\n", kmem.total_allocs, kmem.total_frees, total_current_allocs, total_alloc_size, kmem.total_slab_size);
 }
