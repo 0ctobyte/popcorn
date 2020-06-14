@@ -608,7 +608,7 @@ void pmap_bootstrap(void) {
     // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
     size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
     vaddr_t vm_page_array_va = kernel_virtual_end;
-    vm_page_init(kernel_physical_end);
+    vm_page_bootstrap(kernel_physical_end);
     kernel_physical_end += vm_page_array_size;
     kernel_virtual_end += vm_page_array_size;
     kernel_size = kernel_virtual_end - kernel_virtual_start;
@@ -764,25 +764,7 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
     spinlock_writeacquire(&pmap->lock);
     _pmap_enter(pmap, va, pa, bpu, bpl);
 
-    // Update the vm_page struct (assume is_active is already set by a vm_page_alloc call somewhere else);
-    vm_page_t *page = vm_page_from_pa(pa);
-
-    if (flags & PMAP_FLAGS_WIRED) {
-        vm_page_wire(page);
-        pmap->stats.wired_count++;
-    }
-
-    if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
-
-    if ((flags & VM_PROT_READ) || (flags & VM_PROT_EXECUTE)) {
-        page->status.is_referenced = 1;
-    }
-
-    if (flags & VM_PROT_WRITE) {
-        page->status.is_dirty = 1;
-    }
-
-    if (page->object != NULL) spinlock_writerelease(&page->object->lock);
+    if (flags & PMAP_FLAGS_WIRED) pmap->stats.wired_count++;
 
     pmap->stats.resident_count++;
     spinlock_writerelease(&pmap->lock);
@@ -869,7 +851,7 @@ void pmap_unwire(pmap_t *pmap, vaddr_t va) {
     kassert(_pmap_lookup(pmap, va, &pa, &bpu, &bpl));
 
     vm_page_t *page = vm_page_from_pa(pa);
-    vm_page_wire(page);
+    vm_page_unwire(page);
 
     spinlock_writeacquire(&pmap->lock);
     pmap->stats.wired_count--;

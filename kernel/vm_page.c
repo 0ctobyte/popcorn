@@ -41,6 +41,11 @@ list_compare_result_t _vm_page_compare(list_node_t *n1, list_node_t *n2) {
     return (p1 < p2) ? LIST_COMPARE_LT : (p1 > p2) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
 }
 
+list_compare_result_t _vm_page_find(list_node_t *n1, list_node_t *n2) {
+    vm_page_t *p1 = list_entry(n1, vm_page_t, ll_node), *p2 = list_entry(n2, vm_page_t, ll_node);
+    return (p1->offset < p2->offset) ? LIST_COMPARE_LT : (p1->offset > p2->offset) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
+}
+
 vm_page_t* _vm_page_bin_pop(size_t num_pages) {
     unsigned long bin_index = GET_BIN_INDEX(num_pages);
 
@@ -124,7 +129,7 @@ void _vm_page_remove_from_object(vm_page_t *pages, size_t num_pages) {
     }
 }
 
-void vm_page_init(paddr_t vm_page_array_addr) {
+void vm_page_bootstrap(paddr_t vm_page_array_addr) {
     vm_page_array.lock = SPINLOCK_INIT;
     vm_page_array.pages = (vm_page_t*)vm_page_array_addr;
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
@@ -139,6 +144,19 @@ void vm_page_init(paddr_t vm_page_array_addr) {
         vm_page_group_size = ROUND_DOWN_POW2(vm_page_array.num_pages - i);
         kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_node));
     }
+}
+
+void vm_page_init(void) {
+    // FIXME Setup object/offset hash table
+}
+
+vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
+    kassert(object != NULL);
+
+    vm_page_t p = { .status = {0}, .ll_node = LIST_NODE_INITIALIZER, .object = NULL, .offset = offset };
+    list_node_t *node = list_search(&object->ll_resident_pages, _vm_page_find, &p.ll_node);
+
+    return list_entry(node, vm_page_t, ll_node);
 }
 
 vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset) {
@@ -245,7 +263,6 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
-            vm_page_wire(page);
 
             kassert(list_remove(&vm_page_array.ll_page_bins[bin], &buddy->ll_node));
 

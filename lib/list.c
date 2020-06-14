@@ -97,7 +97,7 @@ list_node_t* list_search(list_t *list, list_compare_func_t compare_func, list_no
     list_node_t *node = NULL;
 
     for (node = list_first(list); !list_end(node); node = list_next(node)) {
-        if (compare_func(node, key)) break;
+        if (compare_func(key, node)) break;
     }
 
     return node;

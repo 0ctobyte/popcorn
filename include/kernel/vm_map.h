@@ -24,6 +24,7 @@ typedef struct vm_mapping {
     vm_prot_t prot;         // The region's attributes
     vm_object_t *object;    // The VM object that this vregion is mapping
     vm_offset_t offset;     // The offset into the object that the mapping starts from
+    bool wired;             // Is this a wired mapping?
 } vm_mapping_t;
 
 // A virtual memory map represents the entire virtual address space of a process. The map contains
@@ -69,6 +70,12 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end);
 
 // Sets new protection attributes for the given virtual address range in the specified map
 kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t new_prot);
+
+// Wires a range of virtual memory. This routine will allocate and map pages in the pmap
+kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end);
+
+// Unwires a range of virtual memory. This will not free pages already mapped
+kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end);
 
 // Given the map, virtual address and fault (i.e. access) type, returns the object, offset and protection of the virtual address
 kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset, vm_prot_t *prot);

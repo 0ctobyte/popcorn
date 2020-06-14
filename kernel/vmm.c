@@ -16,6 +16,7 @@ void vmm_init(void) {
     pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
 
+    vm_page_init();
     vm_object_bootstrap(kernel_physical_start, kernel_physical_end);
     vm_map_init();
     vm_km_init();

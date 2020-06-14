@@ -384,5 +384,68 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
     return KRESULT_OK;
 }
 
+kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
+    kassert(vmap != NULL);
+
+    rbtree_node_t *nearest_node = NULL;
+    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
+        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+
+    // Make sure it is within the total virtual address space
+    if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
+        return KRESULT_INVALID_ARGUMENT;
+    }
+
+    spinlock_writeacquire(&vmap->lock);
+
+    // Search for the first mapping entry to contain the starting virtual address of the region specified
+    rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &nearest_node, NULL);
+    vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_node);
+
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    if (nearest == NULL) {
+        rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_node, &nearest_node, NULL);
+        nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_node);
+    }
+
+    // There's no mappings to wire
+    if (nearest == NULL) {
+        spinlock_writerelease(&vmap->lock);
+        return KRESULT_INVALID_ARGUMENT;
+    }
+
+    // Iterate through mappings and wire the pages. Make sure to split if start or end intersects a mapping
+    nearest = !nearest->wired ? _vm_mapping_split(vmap, nearest, start) : nearest;
+    for (vm_mapping_t *mapping = nearest; !list_end(mapping) && mapping->vstart < end; ) {
+        if (!mapping->wired) _vm_mapping_split(vmap, mapping, end);
+
+        vm_mapping_t *next = list_entry(list_next(&mapping->ll_node), vm_mapping_t, ll_node);
+
+        if (!mapping->wired) {
+            mapping->wired = true;
+
+            // Go through all pages in this mapping and wire down pages in the pmap
+            size_t vsize = mapping->vend - mapping->vstart;
+            for (vm_offset_t moffset = 0; moffset < vsize; moffset += PAGESIZE) {
+                vm_offset_t offset = moffset + mapping->offset;
+                vm_page_t *page = vm_page_lookup(mapping->object, offset);
+
+                if (page == NULL) {
+                    page = vm_page_alloc(mapping->object, offset);
+                    kassert(page != NULL);
+                    pmap_enter(vmap->pmap, moffset + mapping->vstart, vm_page_to_pa(page), mapping->prot, PMAP_FLAGS_WIRED);
+                }
+
+                vm_page_wire(page);
+            }
+        }
+
+        mapping = next;
+    }
+
+    spinlock_writerelease(&vmap->lock);
+    return KRESULT_OK;
+}
+
 kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset, vm_prot_t *prot) {
 }

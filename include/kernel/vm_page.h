@@ -20,8 +20,14 @@ typedef struct vm_page_s {
     vm_offset_t offset;                 // Offset in that VM object that this page refers to
 } vm_page_t;
 
-// Will initialize the page allocation system using the space addressed by vm_page_array_addr with the given number of pages
-void vm_page_init(paddr_t vm_page_array_addr);
+// Will bootstrap the page allocation system using the space addressed by vm_page_array_addr with the given number of pages
+void vm_page_bootstrap(paddr_t vm_page_array_addr);
+
+// Second stage initialization after pmap has been initialized and kernel is running in virtual memory mode
+void vm_page_init(void);
+
+// Lookup a vm_page given a object and offset
+vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset);
 
 // Allocate or free a contiguous range of pages
 vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset);

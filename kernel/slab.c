@@ -13,21 +13,21 @@ void _slab_shuffle(slab_t *slab, slab_buf_t *this_slab_buf) {
 }
 
 list_compare_result_t _slab_buf_find(list_node_t *n1, list_node_t *n2) {
-    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
-    return (s1->free_blocks_remaining > 0) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
+    slab_buf_t *s2 = list_entry(n2, slab_buf_t, ll_node);
+    return (s2->free_blocks_remaining > 0) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
 }
 
 list_compare_result_t _slab_buf_find_full(list_node_t *n1, list_node_t *n2) {
-    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
-    return (s1->free_blocks_remaining == s1->capacity) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
+    slab_buf_t *s2 = list_entry(n2, slab_buf_t, ll_node);
+    return (s2->free_blocks_remaining == s2->capacity) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
 }
 
 list_compare_result_t _slab_buf_compare(list_node_t *n1, list_node_t *n2) {
-    slab_buf_t *s1 = list_entry(n1, slab_buf_t, ll_node);
-    size_t offset = ((uintptr_t)s1 == (uintptr_t)s1->buf) ? sizeof(slab_buf_t) : 0, block_size = *((size_t*)n2);
+    slab_buf_t *s2 = list_entry(n2, slab_buf_t, ll_node);
+    size_t offset = ((uintptr_t)s2 == (uintptr_t)s2->buf) ? sizeof(slab_buf_t) : 0, block_size = *((size_t*)n1);
 
-    uintptr_t buf_start = (uintptr_t)s1->buf + offset, buf_end = buf_start + (s1->capacity * block_size);
-    uintptr_t block_start = (uintptr_t)n2, block_end = block_start + block_size;
+    uintptr_t buf_start = (uintptr_t)s2->buf + offset, buf_end = buf_start + (s2->capacity * block_size);
+    uintptr_t block_start = (uintptr_t)n1, block_end = block_start + block_size;
 
     return (block_start < buf_start) ? LIST_COMPARE_LT : (block_end > buf_end) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
 }
