@@ -5,6 +5,8 @@
 #include <kernel/slab.h>
 #include <lib/asm.h>
 
+#define VM_MAPPING_INITIALIZER (vm_mapping_t){0}
+
 // Kernel vmap
 vm_map_t kernel_vmap;
 
@@ -128,7 +130,7 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
     size_t size = mapping->vend - mapping->vstart;
 
     // Check if we can merge the predecessor mapping with this new mapping
-    if (predecessor != NULL && predecessor->vend == mapping->vstart && predecessor->object == mapping->object && predecessor->prot == mapping->prot) {
+    if (predecessor != NULL && predecessor->vend == mapping->vstart && predecessor->object == mapping->object && predecessor->prot == mapping->prot && predecessor->wired == mapping->wired) {
         // Increase the size of the object
         spinlock_writeacquire(&predecessor->object->lock);
         size_t new_size = predecessor->offset + (predecessor->vend - predecessor->vstart) + size;
@@ -223,8 +225,12 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
 
     rbtree_slot_t slot = 0;
     rbtree_node_t *predecessor_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
-        .vstart = vaddr, .vend = vaddr + size, .prot = prot, .object = object, .offset = offset };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vstart = vaddr;
+    tmp.vend = vaddr + size;
+    tmp.prot = prot;
+    tmp.object = object;
+    tmp.offset = offset;
 
     // Make sure it is within the total virtual address space
     if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
@@ -253,7 +259,11 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
 
     rbtree_slot_t slot = 0;
     rbtree_node_t *predecessor_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .vstart = 0, .vend = size, .prot = prot, .object = object, .offset = offset };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vend = size;
+    tmp.prot = prot;
+    tmp.object = object;
+    tmp.offset = offset;
 
     spinlock_writeacquire(&vmap->lock);
 
@@ -291,8 +301,10 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     kassert(vmap != NULL);
 
     rbtree_node_t *nearest_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
-        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vstart = start;
+    tmp.vend = end;
+    tmp.prot = VM_PROT_DEFAULT;
 
     // Make sure it is within the total virtual address space
     if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
@@ -345,8 +357,10 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
     kassert(vmap != NULL);
 
     rbtree_node_t *nearest_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
-        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vstart = start;
+    tmp.vend = end;
+    tmp.prot = VM_PROT_DEFAULT;
 
     // Make sure it is within the total virtual address space
     if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
@@ -394,8 +408,10 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     kassert(vmap != NULL);
 
     rbtree_node_t *nearest_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
-        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vstart = start;
+    tmp.vend = end;
+    tmp.prot = VM_PROT_DEFAULT;
 
     // Make sure it is within the total virtual address space
     if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
@@ -457,8 +473,10 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     kassert(vmap != NULL);
 
     rbtree_node_t *nearest_node = NULL;
-    vm_mapping_t tmp = (vm_mapping_t){ .rb_node = RBTREE_NODE_INITIALIZER, .rb_hole = RBTREE_NODE_INITIALIZER, .hole_size = 0,
-        .vstart = start, .vend = end, .prot = VM_PROT_DEFAULT, .object = NULL, .offset = 0 };
+    vm_mapping_t tmp = VM_MAPPING_INITIALIZER;
+    tmp.vstart = start;
+    tmp.vend = end;
+    tmp.prot = VM_PROT_DEFAULT;
 
     // Make sure it is within the total virtual address space
     if (tmp.vstart < vmap->start && tmp.vend > vmap->end) {
