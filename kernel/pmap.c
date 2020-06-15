@@ -264,6 +264,12 @@ pte_t _pmap_alloc_table(pmap_t *pmap) {
     return MAKE_TDE(new_table, ta, bpl_table);
 }
 
+void _pmap_free_table(paddr_t table_pa) {
+    vm_page_t *page = vm_page_from_pa(table_pa);
+    vm_page_unwire(page);
+    vm_page_free(page);
+}
+
 void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr) {
     bp_uattr_t bpu = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_PXN, .ctg = BP_NON_CONTIGUOUS};
     bp_lattr_t bpl = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
@@ -325,10 +331,7 @@ pte_t _pmap_insert_table(pmap_t *pmap, pte_t *parent_table, unsigned long index,
 void _pmap_remove_table(pmap_t *pmap, pte_t *table, pte_t *parent_table_pte) {
     paddr_t table_pa = PTE_TO_PA(*parent_table_pte);
     _pmap_clear_pte((vaddr_t)table, pmap->asid, parent_table_pte);
-
-    vm_page_t *page = vm_page_from_pa(table_pa);
-    vm_page_unwire(page);
-    vm_page_free(page);
+    _pmap_free_table(table_pa);
 }
 
 bool _pmap_is_table_empty(pte_t *table) {
@@ -711,6 +714,7 @@ void pmap_destroy(pmap_t *pmap) {
         spinlock_writeacquire(&pmap->lock);
         // FIXME free the pmap
         pmap_remove_all(pmap);
+        _pmap_free_table(pmap->ttb);
         spinlock_writerelease(&pmap->lock);
     }
 }
