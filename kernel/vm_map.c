@@ -487,6 +487,7 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     for (vm_mapping_t *mapping = nearest; !list_end(mapping) && mapping->vstart < end; ) {
         vm_mapping_t *next = list_entry(list_next(&mapping->ll_node), vm_mapping_t, ll_node);
 
+        // FIXME Try to merge this unwired mapping with surrounding mappings
         if (mapping->wired) _vm_mapping_unwire(mapping);
 
         mapping = next;
