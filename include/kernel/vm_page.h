@@ -37,10 +37,6 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages);
 vm_page_t* vm_page_alloc(vm_object_t *object, vm_offset_t offset);
 void vm_page_free(vm_page_t *page);
 
-// Steal a page of memory not associated with an object
-// FIXME Need this to allocate page tables but it doesn't seem like a great idea
-vm_page_t* vm_page_steal(void);
-
 // Increase/decrease the wire count on the page
 void vm_page_wire(vm_page_t *page);
 void vm_page_unwire(vm_page_t *page);
@@ -53,9 +49,5 @@ vm_page_t* vm_page_from_pa(paddr_t pa);
 // during boot time initialization to tell the page system what pages are being used by the kernel. These pages are wired
 // These pages should be added to the provided kernel memory object
 vm_page_t* vm_page_reserve_pa(paddr_t pa);
-
-// Relocate the page array to it's virtual address, this is called by the virtual memory subsystem in it's initialization process
-// after it has enabled the MMU
-void vm_page_relocate_array(vaddr_t va);
 
 #endif // __VM_PAGE_H__

@@ -7,11 +7,6 @@
 #include <kernel/atomic.h>
 #include <kernel/vm_page.h>
 
-/*
- * Implementation of BSD style pmap: https://nixdoc.net/man-pages/NetBSD/man9/pmap.9.html
- * Used to manage physical address maps and interface with the MMU (i.e. page tables).
- */
-
 // Flag bits. The READ, WRITE and EXECUTE bits indicate the page is being mapped in because of those
 // access types.
 typedef unsigned long pmap_flags_t;

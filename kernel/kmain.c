@@ -13,6 +13,10 @@
 #include <lib/asm.h>
 #include <lib/rbtree.h>
 
+extern paddr_t kernel_physical_start;
+extern paddr_t kernel_physical_end;
+extern void _relocate(unsigned long dst, unsigned long src, size_t size);
+
 unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
@@ -52,6 +56,14 @@ void kmain(void) {
 
     if (!devicetree_find_memory(&MEMBASEADDR, &MEMSIZE)) HALT();
 
+    // Relocate the kernel to the base of memory
+    if (kernel_physical_start != MEMBASEADDR) {
+        size_t kernel_size = kernel_physical_end - kernel_physical_start;
+        _relocate(MEMBASEADDR, kernel_physical_start, kernel_size);
+        kernel_physical_start = MEMBASEADDR;
+        kernel_physical_end = kernel_physical_start + kernel_size;
+    }
+
     kprintf("Hello World\n");
 
     vmm_init();
@@ -79,4 +91,6 @@ void kmain(void) {
         kmem_free(buf[i], size);
         kmem_stats();
     }
+
+    print_mappings();
 }

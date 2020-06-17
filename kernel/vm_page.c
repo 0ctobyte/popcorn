@@ -14,6 +14,9 @@
 #define GET_BIN_INDEX(num_pages)                     (_ctz(num_pages))
 #define WHICH_BUDDY(vm_page_index, bin)              (vm_page_index) & ~((1l << (bin)) - 1)
 
+extern paddr_t kernel_physical_start;
+extern paddr_t kernel_physical_end;
+
 // Using the buddy allocation algorithm to allow allocating contiguous sets of pages.
 // NUM_BINS limits the max contiguous set that can be allocated. For NUM_BINS = 20 and page_size = 4KB that means 4GB worth of
 // Physical pages can be allocated contiguously at one time. Each bin holds a linked list of buddies where each buddy has x number of pages
@@ -144,6 +147,11 @@ void vm_page_bootstrap(paddr_t vm_page_array_addr) {
         vm_page_group_size = ROUND_DOWN_POW2(vm_page_array.num_pages - i);
         kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_node));
     }
+
+    // Reserve the physical pages used by the kernel
+    for (size_t pa = kernel_physical_start; pa < kernel_physical_end; pa += PAGESIZE) {
+        vm_page_reserve_pa(pa);
+    }
 }
 
 void vm_page_init(void) {
@@ -223,10 +231,6 @@ void vm_page_free(vm_page_t *page) {
     vm_page_free_contiguous(page, 1);
 }
 
-vm_page_t* vm_page_steal(void) {
-    return vm_page_alloc(NULL, 0);
-}
-
 void vm_page_wire(vm_page_t *page) {
     if (page->object != NULL) spinlock_writeacquire(&page->object->lock);
     page->status.wired_count++;
@@ -280,21 +284,4 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
 
     // We should never get here otherwise we may be reserving a page that has already been allocated
     return NULL;
-}
-
-void vm_page_relocate_array(vaddr_t va) {
-    // Adjust very single buddy pointer in each bin
-    for (unsigned int i = 0; i < NUM_BINS; i++) {
-        if (!list_is_empty(&vm_page_array.ll_page_bins[i])) {
-            list_first(&vm_page_array.ll_page_bins[i]) = (list_node_t*)(((paddr_t)list_first(&vm_page_array.ll_page_bins[i]) - (paddr_t)vm_page_array.pages) + va);
-            list_last(&vm_page_array.ll_page_bins[i]) = (list_node_t*)(((paddr_t)list_last(&vm_page_array.ll_page_bins[i]) - (paddr_t)vm_page_array.pages) + va);
-
-            for (list_node_t *node = list_first(&vm_page_array.ll_page_bins[i]); !list_end(node); node = list_next(node)) {
-                if (list_next(node) != NULL) list_next(node) = (list_node_t*)(((paddr_t)list_next(node) - (paddr_t)vm_page_array.pages) + va);
-                if (list_prev(node) != NULL) list_prev(node) = (list_node_t*)(((paddr_t)list_prev(node) - (paddr_t)vm_page_array.pages) + va);
-            }
-        }
-    }
-
-    vm_page_array.pages = (vm_page_t*)va;
 }
