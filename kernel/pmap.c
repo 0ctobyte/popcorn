@@ -277,7 +277,6 @@ void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr) {
     _pmap_enter(pmap_kernel(), temp_va, paddr, bpu, bpl);
 }
 
-
 void _pmap_update_pte(vaddr_t va, unsigned int asid, pte_t *old_pte, pte_t new_pte) {
     // Use break-before-make rule if the old PTE was valid. We must do this in the following cases:
     // - Changing memory type
@@ -444,43 +443,6 @@ bool _pmap_remove(pmap_t *pmap, vaddr_t vaddr) {
     }
 
     return true;
-}
-
-void _pmap_do_remove_all(pmap_t *pmap, pte_t *parent_table_pte, pte_t *table, unsigned long level) {
-    // Calculate the table index width, mask and lsb for this levels index bits in the VA
-    // The top 16 bits of the VA are not used in translation so clear them
-    unsigned long width = PAGESHIFT - 3, mask = (1 << width) - 1, lsb = PAGESHIFT + ((3 - level) * width), max_num_ptes_ll = PAGESIZE >> 3;
-    bool mmu_enabled = mmu_is_enabled();
-    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
-
-    // Skip the last entry in level 0; this is our recursive mapping
-    for (unsigned long index = 0; index < (max_num_ptes_ll - (level == 0 ? 1 : 0)); index++) {
-        pte_t pte = table[index], *ptep = &table[index];
-
-        if (level == 3 && IS_PTE_VALID(pte)) {
-            // Defer TLBI until all entries are cleared
-            _pmap_clear_pte_no_tlbi(&table[index]);
-        } else if (IS_TDE_VALID(pte)) {
-            pte_t *next_table = (pte_t*)(mmu_enabled ? (is_current_ttb ? GET_TABLE_VA(pmap, (vaddr_t)table, index, width) : TEMP_PAGE_VA(level+1)) : PTE_TO_PA(pte));
-            if (mmu_enabled && !is_current_ttb) _pmap_map_temp_page((vaddr_t)next_table, PTE_TO_PA(pte));
-            _pmap_do_remove_all(pmap, ptep, next_table, level + 1);
-        }
-    }
-
-    // Now remove it from the parent table and free the page if it's completely empty
-    if (parent_table_pte != NULL) _pmap_remove_table(pmap, table, parent_table_pte);
-}
-
-void _pmap_remove_all(pmap_t *pmap) {
-    bool mmu_enabled = mmu_is_enabled();
-    bool is_current_ttb = pmap->ttb == (mmu_get_ttbr0() & 0xFFFFFFFFFFFF) || pmap->ttb == (mmu_get_ttbr1() & 0xFFFFFFFFFFFF);
-
-    pte_t *table = (pte_t*)(mmu_enabled ? (is_current_ttb ? GET_TTB_VA(pmap) : TEMP_PAGE_VA(0)) : pmap->ttb);
-    if (mmu_enabled && !is_current_ttb) _pmap_map_temp_page((vaddr_t)table, pmap->ttb);
-
-    _pmap_do_remove_all(pmap, NULL, table, 0);
-    barrier_dsb();
-    tlb_invalidate_asid(pmap->asid);
 }
 
 bool _pmap_lookup(pmap_t *pmap, vaddr_t vaddr, paddr_t *paddr, bp_uattr_t *bpu, bp_lattr_t *bpl) {
@@ -656,7 +618,9 @@ void pmap_bootstrap(void) {
 
     // Reclaim page table memory from the identity mappings that we no longer need
     mmu_clear_ttbr0();
-    pmap_remove_all(&identity_pmap);
+    for (size_t offset = 0; offset < kernel_size; offset += PAGESIZE) {
+        _pmap_remove(&identity_pmap, kernel_physical_start + offset);
+    }
 
     vm_page_t *page = vm_page_from_pa(identity_pmap.ttb);
     vm_page_unwire(page);
@@ -713,7 +677,6 @@ void pmap_destroy(pmap_t *pmap) {
     if (pmap->refcount == 0) {
         spinlock_writeacquire(&pmap->lock);
         // FIXME free the pmap
-        pmap_remove_all(pmap);
         _pmap_free_table(pmap->ttb);
         spinlock_writerelease(&pmap->lock);
     }
@@ -787,14 +750,6 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva) {
     for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
         _pmap_remove(pmap, va);
     }
-    spinlock_writerelease(&pmap->lock);
-}
-
-void pmap_remove_all(pmap_t *pmap) {
-    kassert(pmap != NULL);
-
-    spinlock_writeacquire(&pmap->lock);
-    _pmap_remove_all(pmap);
     spinlock_writerelease(&pmap->lock);
 }
 

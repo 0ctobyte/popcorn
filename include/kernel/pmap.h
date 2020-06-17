@@ -82,9 +82,6 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
 // Removes a range of virtual to physical page mappings from the specified pmap
 void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva);
 
-// Removes all mappings from the pmap
-void pmap_remove_all(pmap_t *pmap);
-
 // Changes the protection of all mappings in the specified range in the pmap
 void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot);
 
