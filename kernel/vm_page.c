@@ -3,7 +3,7 @@
 #include <lib/asm.h>
 
 #define NUM_BINS                 (20)
-#define MAX_NUM_CONTIGUOUS_PAGES (1l << NUM_BINS)
+#define MAX_NUM_CONTIGUOUS_PAGES (1l << (NUM_BINS - 1))
 
 #define IS_POW2(n)                                   (((n) & ((n)-1)) == 0 && (n) != 0)
 #define ROUND_DOWN_POW2(n)                           (_rbit(_rbit(n) & ~(_rbit(n) - 1l)))
@@ -137,6 +137,10 @@ void vm_page_bootstrap(paddr_t vm_page_array_addr) {
     vm_page_array.pages = (vm_page_t*)vm_page_array_addr;
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
+    for (unsigned long i = 0; i < NUM_BINS; i++) {
+        vm_page_array.ll_page_bins[i] = LIST_INITIALIZER;
+    }
+
     // Clear the entire array
     _fast_zero((uintptr_t)vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
 
@@ -145,6 +149,7 @@ void vm_page_bootstrap(paddr_t vm_page_array_addr) {
     size_t vm_page_group_size = 0;
     for (unsigned long i = 0; i < vm_page_array.num_pages; i += vm_page_group_size) {
         vm_page_group_size = ROUND_DOWN_POW2(vm_page_array.num_pages - i);
+        vm_page_group_size = vm_page_group_size > MAX_NUM_CONTIGUOUS_PAGES ? MAX_NUM_CONTIGUOUS_PAGES : vm_page_group_size;
         kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_node));
     }
 
@@ -168,7 +173,7 @@ vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
 }
 
 vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset) {
-    kassert(num_pages <= vm_page_array.num_pages && num_pages < MAX_NUM_CONTIGUOUS_PAGES);
+    kassert(num_pages <= vm_page_array.num_pages && num_pages <= MAX_NUM_CONTIGUOUS_PAGES);
 
     spinlock_irqacquire(&vm_page_array.lock);
 
@@ -196,7 +201,7 @@ vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_of
 }
 
 void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
-    kassert(pages != NULL && num_pages <= vm_page_array.num_pages && num_pages < MAX_NUM_CONTIGUOUS_PAGES);
+    kassert(pages != NULL && num_pages <= vm_page_array.num_pages && num_pages <= MAX_NUM_CONTIGUOUS_PAGES);
 
     num_pages = ROUND_UP_POW2(num_pages);
 
