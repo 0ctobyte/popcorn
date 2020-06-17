@@ -121,13 +121,13 @@ void pmap_copy_page(paddr_t src, paddr_t dst);
 
 // Lower the permissions for all mappings of vpg to prot. Used by the vmm to implement copy-on-write by setting page as read-only
 // and to invalidate all mappings when prot = 0. Access permissions will never be added by this function.
-void pmap_page_protect(vm_page_t *vpg, vm_prot_t prot);
+void pmap_page_protect(paddr_t pa, vm_prot_t prot);
 
-// Clear the modified attribute on vpg. Returns old value of the modified attribute
-bool pmap_clear_modify(vm_page_t *vpg);
+// Clear the modified attribute on the given page. Returns old value of the modified attribute
+bool pmap_clear_modify(vm_page_t *page);
 
-// Clear the referenced attribute on vpg. Returns old value of the referenced attribute
-bool pmap_clear_reference(vm_page_t *vpg);
+// Clear the referenced attribute on the given page. Returns old value of the referenced attribute
+bool pmap_clear_reference(vm_page_t *page);
 
 // Check whether modified attribute is set
 #define pmap_is_modified(vpg) ((vpg)->status.modified)

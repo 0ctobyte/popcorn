@@ -4,7 +4,7 @@
 #include <kernel/kassert.h>
 #include <kernel/vm_object.h>
 #include <lib/asm.h>
-#include <string.h>
+#include <lib/list.h>
 
 #define _4KB   (0x1000)
 #define _16KB  (0x4000)
@@ -225,6 +225,15 @@ vaddr_t max_kernel_virtual_end;
 
 unsigned long PAGESIZE;
 unsigned long PAGESHIFT;
+
+// Struct to keep track of all PTEs mapping a specific page
+typedef struct {
+    pte_t *ptep;            // Pointer to this PTE
+    list_node_t ll_node;    // Linked list linkage
+} ptep_pa_t;
+
+// Array of all ptep_pa lists, one per page
+list_t *ptep_pa;
 
 void _pmap_enter(pmap_t *pmap, vaddr_t vaddr, paddr_t paddr, bp_uattr_t bpu, bp_lattr_t bpl);
 void _pmap_map_temp_page(vaddr_t temp_va, paddr_t paddr);
@@ -922,22 +931,22 @@ void pmap_copy_page(paddr_t src, paddr_t dst) {
     barrier_dmb();
 }
 
-void pmap_page_protect(vm_page_t *vpg, vm_prot_t prot) {
+void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
     // FIXME implement this
 }
 
-bool pmap_clear_modify(vm_page_t *vpg) {
-    spinlock_writeacquire(&vpg->object->lock);
-    bool dirty = vpg->status.is_dirty;
-    vpg->status.is_dirty = 0;
-    spinlock_writerelease(&vpg->object->lock);
+bool pmap_clear_modify(vm_page_t *page) {
+    spinlock_writeacquire(&page->object->lock);
+    bool dirty = page->status.is_dirty;
+    page->status.is_dirty = 0;
+    spinlock_writerelease(&page->object->lock);
     return dirty;
 }
 
-bool pmap_clear_reference(vm_page_t *vpg) {
-    spinlock_writeacquire(&vpg->object->lock);
-    bool referenced = vpg->status.is_referenced;
-    vpg->status.is_referenced = 0;
-    spinlock_writerelease(&vpg->object->lock);
+bool pmap_clear_reference(vm_page_t *page) {
+    spinlock_writeacquire(&page->object->lock);
+    bool referenced = page->status.is_referenced;
+    page->status.is_referenced = 0;
+    spinlock_writerelease(&page->object->lock);
     return referenced;
 }
