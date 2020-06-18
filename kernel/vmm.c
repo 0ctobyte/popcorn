@@ -20,6 +20,7 @@ void vmm_init(void) {
 
     vm_page_init();
     vm_object_bootstrap(kernel_physical_start, kernel_physical_end);
+    pmap_init();
     vm_map_init();
     vm_km_init();
     kmem_init();

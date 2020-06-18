@@ -4,6 +4,7 @@
 #include <kernel/kassert.h>
 #include <kernel/vm_object.h>
 #include <kernel/slab.h>
+#include <kernel/kmem.h>
 #include <lib/asm.h>
 #include <lib/list.h>
 
@@ -206,11 +207,6 @@ typedef uint64_t pte_t;
 // Kernel pmap
 pmap_t kernel_pmap;
 
-// Kernel page table slab
-#define KERNEL_PAGE_TABLE_SLAB_SIZE  (0x400000)
-slab_t kernel_page_table_slab;
-slab_buf_t kernel_page_table_slab_buf;
-
 // Linker symbols
 extern uintptr_t __kernel_virtual_start;
 extern uintptr_t __kernel_physical_start;
@@ -242,23 +238,83 @@ typedef struct {
 } pte_page_t;
 
 // Array of all ptep_page_t lists, one per page
-list_t *pte_page;
+typedef struct {
+    spinlock_t lock;
+    list_t *list;
+} pte_page_list_t;
+pte_page_list_t pte_page_list = {0};
 
-#define GET_PTE_PAGE_IDX(pa) ((pa) >> PAGESHIFT)
+#define GET_PTE_PAGE_LIST_IDX(pa) (((pa) - MEMBASEADDR) >> PAGESHIFT)
 
-pte_t _pmap_alloc_table(pmap_t *pmap) {
-    // FIXME Use kmem for non-kernel tables
-    kassert(pmap == pmap_kernel());
-    vaddr_t new_table = (vaddr_t)slab_alloc(&kernel_page_table_slab);
+// pte_page_t slab
+#define PTE_PAGE_SLAB_SIZE        (sizeof(pte_page_t) * 8192)
+typedef struct {
+    spinlock_t lock;
+    slab_t slab;
+} pte_page_slab_t;
+pte_page_slab_t pte_page_slab = {0};
+
+// Page table slab
+#define PAGE_TABLE_SLAB_SIZE      (MEMSIZE / 64)
+typedef struct {
+    spinlock_t lock;
+    slab_t slab;
+    slab_buf_t slab_buf;
+} page_table_slab_t;
+page_table_slab_t page_table_slab = {0};
+
+list_compare_result_t _pmap_pte_page_search(list_node_t *n1, list_node_t *n2) {
+    pte_page_t *p1 = list_entry(n1, pte_page_t, ll_node), *p2 = list_entry(n2, pte_page_t, ll_node);
+    return (p1->ptep < p2->ptep) ? LIST_COMPARE_LT : (p1->ptep > p2->ptep) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
+}
+
+void _pmap_pte_page_insert(paddr_t pa, vaddr_t va, pte_t *ptep) {
+    spinlock_acquire(&pte_page_slab.lock);
+    pte_page_t *pte_page = (pte_page_t*)slab_alloc(&pte_page_slab.slab);
+    spinlock_release(&pte_page_slab.lock);
+
+    kassert(pte_page != NULL);
+    pte_page->ptep = ptep;
+    pte_page->va = va;
+    pte_page->ll_node = LIST_NODE_INITIALIZER;
+
+    spinlock_acquire(&pte_page_list.lock);
+    kassert(list_push(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
+    spinlock_release(&pte_page_list.lock);
+}
+
+void _pmap_pte_page_remove(paddr_t pa, pte_t *ptep) {
+    spinlock_acquire(&pte_page_list.lock);
+
+    pte_page_t tmp = (pte_page_t){ .ll_node = LIST_NODE_INITIALIZER, .ptep = ptep };
+    list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search, &tmp.ll_node);
+    pte_page_t *pte_page = list_entry(node, pte_page_t, ll_node);
+
+    kassert(pte_page != NULL);
+    kassert(list_remove(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
+
+    spinlock_release(&pte_page_list.lock);
+
+    spinlock_acquire(&pte_page_slab.lock);
+    slab_free(&pte_page_slab.slab, pte_page);
+    spinlock_release(&pte_page_slab.lock);
+}
+
+paddr_t _pmap_alloc_table(pmap_t *pmap) {
+    spinlock_acquire(&page_table_slab.lock);
+    vaddr_t new_table = (vaddr_t)slab_alloc(&page_table_slab.slab);
+    spinlock_release(&page_table_slab.lock);
+
     kassert(new_table != 0);
     _fast_zero(new_table, PAGESIZE);
-    return MAKE_TDE(TABLE_KVA_TO_PA(new_table));
+
+    return TABLE_KVA_TO_PA(new_table);
 }
 
 void _pmap_free_table(pmap_t *pmap, paddr_t table_pa) {
-    // FIXME use kmem for non-kernel tables
-    kassert(pmap == pmap_kernel());
-    slab_free(&kernel_page_table_slab, (void*)TABLE_PA_TO_KVA(table_pa));
+    spinlock_acquire(&page_table_slab.lock);
+    slab_free(&page_table_slab.slab, (void*)TABLE_PA_TO_KVA(table_pa));
+    spinlock_release(&page_table_slab.lock);
 }
 
 void _pmap_update_pte(vaddr_t va, unsigned int asid, pte_t *old_pte, pte_t new_pte) {
@@ -299,9 +355,9 @@ void _pmap_clear_pte_no_tlbi(pte_t *old_pte) {
 }
 
 pte_t _pmap_insert_table(pmap_t *pmap, pte_t *parent_table_pte) {
-    pte_t pte = _pmap_alloc_table(pmap);
-    *parent_table_pte = pte;
-    return pte;
+    paddr_t new_table = _pmap_alloc_table(pmap);
+    *parent_table_pte = MAKE_TDE(new_table);
+    return *parent_table_pte;
 }
 
 void _pmap_remove_table(pmap_t *pmap, pte_t *parent_table_pte) {
@@ -321,7 +377,7 @@ bool _pmap_is_table_empty(pte_t *table) {
     return empty;
 }
 
-void _pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, bp_uattr_t bpu, bp_lattr_t bpl) {
+pte_t* _pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, bp_uattr_t bpu, bp_lattr_t bpl) {
     unsigned long level = (PAGESIZE == _64KB) ? 1 : 0, width = PAGESHIFT - 3, mask = (1 << width) - 1;
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep;
@@ -354,9 +410,11 @@ void _pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, bp_uattr_t bpu, bp_lattr_
     // Level 3 - Finally enter the mapping
     pte = table[index], ptep = &table[index];
     _pmap_update_pte(va, pmap->asid, ptep, MAKE_PDE(pa, bpu, bpl));
+
+    return ptep;
 }
 
-bool _pmap_remove(pmap_t *pmap, vaddr_t va) {
+pte_t* _pmap_remove(pmap_t *pmap, vaddr_t va) {
     unsigned long level = (PAGESIZE == _64KB) ? 1 : 0, width = PAGESHIFT - 3, mask = (1 << width) - 1;
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep[4];
@@ -368,7 +426,7 @@ bool _pmap_remove(pmap_t *pmap, vaddr_t va) {
     if (level == 0) {
         // Check that a page table exists here
         pte = table[level][index], ptep[level] = &table[level][index];
-        if (!IS_TDE_VALID(pte)) return false;
+        if (!IS_TDE_VALID(pte)) return NULL;
 
         // Get the address to the next table
         table[level+1] = (pte_t*)TABLE_PA_TO_KVA(PTE_TO_PA(pte));
@@ -377,19 +435,19 @@ bool _pmap_remove(pmap_t *pmap, vaddr_t va) {
 
     // Level 1
     pte = table[level][index], ptep[level] = &table[level][index];
-    if (!IS_TDE_VALID(pte)) return false;
+    if (!IS_TDE_VALID(pte)) return NULL;
     table[level+1] = (pte_t*)TABLE_PA_TO_KVA(PTE_TO_PA(pte));
     level++, lsb -= width, index = GET_TABLE_IDX(va, lsb, mask);
 
     // Level 2
     pte = table[level][index], ptep[level] = &table[level][index];
-    if (!IS_TDE_VALID(pte)) return false;
+    if (!IS_TDE_VALID(pte)) return NULL;
     table[level+1] = (pte_t*)TABLE_PA_TO_KVA(PTE_TO_PA(pte));
     level++, lsb -= width, index = GET_TABLE_IDX(va, lsb, mask);
 
     // Level 3 - Finally remove the mapping
     pte = table[level][index], ptep[level] = &table[level][index];
-    if (!IS_PDE_VALID(pte)) return false;
+    if (!IS_PDE_VALID(pte)) return NULL;
     _pmap_clear_pte(va, pmap->asid, ptep[level]);
 
     // Now scan the tables in the table walk hierarchy in reverse order, if the table is empty remove it from the parent table and the scan the parent table
@@ -399,7 +457,7 @@ bool _pmap_remove(pmap_t *pmap, vaddr_t va) {
         }
     }
 
-    return true;
+    return ptep[level];
 }
 
 bool _pmap_lookup(pmap_t *pmap, vaddr_t va, paddr_t *pa, bp_uattr_t *bpu, bp_lattr_t *bpl) {
@@ -515,18 +573,11 @@ void pmap_bootstrap(void) {
     kernel_virtual_end += vm_page_array_size;
     kernel_size += vm_page_array_size;
 
-    // Pre-allocate memory for the pte_page array
-    size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
-    pte_page = (list_t*)kernel_virtual_end;
-    kernel_physical_end += pte_page_array_size;
-    kernel_virtual_end += pte_page_array_size;
-    kernel_size += pte_page_array_size;
-
-    // Leave some room for the kernel page tables slab
-    vaddr_t kernel_page_table_slab_va = kernel_virtual_end;
-    kernel_physical_end += KERNEL_PAGE_TABLE_SLAB_SIZE;
-    kernel_virtual_end += KERNEL_PAGE_TABLE_SLAB_SIZE;
-    kernel_size += KERNEL_PAGE_TABLE_SLAB_SIZE;
+    // Leave some room for the page tables slab
+    vaddr_t page_table_slab_va = kernel_virtual_end;
+    kernel_physical_end += PAGE_TABLE_SLAB_SIZE;
+    kernel_virtual_end += PAGE_TABLE_SLAB_SIZE;
+    kernel_size += PAGE_TABLE_SLAB_SIZE;
 
     // Pre-allocate enough page tables to linearly map all of memory
     size_t num_l3_tables = (MEMSIZE >> PAGESHIFT) / MAX_NUM_PTES_LL;
@@ -670,8 +721,8 @@ void pmap_bootstrap(void) {
 
     mmu_clear_ttbr0();
 
-    // Setup the kernel page table slab
-    slab_init(&kernel_page_table_slab, &kernel_page_table_slab_buf, (void*)kernel_page_table_slab_va, KERNEL_PAGE_TABLE_SLAB_SIZE, PAGESIZE);
+    // Setup the page table slab
+    slab_init(&page_table_slab.slab, &page_table_slab.slab_buf, (void*)page_table_slab_va, PAGE_TABLE_SLAB_SIZE, PAGESIZE);
 
     // We just linearly mapped all of memory so adjust kernel_virtual_end to recognize this
     kernel_virtual_end = kernel_virtual_start + MEMSIZE;
@@ -681,7 +732,15 @@ void pmap_bootstrap(void) {
 }
 
 void pmap_init(void) {
-    // FIXME do pmap module init
+    // Allocate memory for the pte_page array
+    size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
+    pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
+    _fast_zero((uintptr_t)pte_page_list.list, pte_page_array_size);
+
+    // Setup the pte_page_t slab
+    vaddr_t pte_page_slab_va = pmap_steal_memory(PTE_PAGE_SLAB_SIZE, NULL, NULL);
+    slab_buf_t *pte_page_slab_buf = (slab_buf_t*)pmap_steal_memory(sizeof(slab_buf_t), NULL, NULL);
+    slab_init(&pte_page_slab.slab, pte_page_slab_buf, (void*)pte_page_slab_va, PTE_PAGE_SLAB_SIZE, sizeof(pte_page_t));
 }
 
 void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
@@ -779,7 +838,8 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
 
     // Map in one page
     spinlock_writeacquire(&pmap->lock);
-    _pmap_enter(pmap, va, pa, bpu, bpl);
+    pte_t *ptep = _pmap_enter(pmap, va, pa, bpu, bpl);
+    _pmap_pte_page_insert(pa, va, ptep);
 
     if (flags & PMAP_FLAGS_WIRED) pmap->stats.wired_count++;
 
@@ -796,9 +856,16 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva) {
     sva = ROUND_PAGE_DOWN(sva);
     eva = ROUND_PAGE_UP(eva);
 
+    paddr_t pa = 0;
+    bp_uattr_t bpu = {0};
+    bp_lattr_t bpl = {0};
+
     spinlock_writeacquire(&pmap->lock);
     for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
-        _pmap_remove(pmap, va);
+        if (_pmap_lookup(pmap, va, &pa, &bpu, &bpl)) {
+            pte_t *ptep = _pmap_remove(pmap, va);
+            _pmap_pte_page_remove(pa, ptep);
+        }
     }
     spinlock_writerelease(&pmap->lock);
 }
