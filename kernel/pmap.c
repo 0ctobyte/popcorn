@@ -237,11 +237,14 @@ unsigned long PAGESHIFT;
 // Struct to keep track of all PTEs mapping a specific page
 typedef struct {
     pte_t *ptep;            // Pointer to this PTE
+    vaddr_t va;             // Virtual address mapping this page
     list_node_t ll_node;    // Linked list linkage
-} ptep_pa_t;
+} pte_page_t;
 
-// Array of all ptep_pa lists, one per page
-list_t *ptep_pa;
+// Array of all ptep_page_t lists, one per page
+list_t *pte_page;
+
+#define GET_PTE_PAGE_IDX(pa) ((pa) >> PAGESHIFT)
 
 pte_t _pmap_alloc_table(pmap_t *pmap) {
     // FIXME Use kmem for non-kernel tables
@@ -505,12 +508,19 @@ void pmap_bootstrap(void) {
     kernel_virtual_end = kernel_virtual_start + kernel_size;
     max_kernel_virtual_end = 0xFFFFFFFF00000000;
 
-    // The page allocation sub-system won't have any way to allocate memory this early in the boot process so pre-allocate memory for it
+    // Pre-allocate memory for the vm_page array
     size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
     vm_page_array_va = kernel_virtual_end;
     kernel_physical_end += vm_page_array_size;
     kernel_virtual_end += vm_page_array_size;
     kernel_size += vm_page_array_size;
+
+    // Pre-allocate memory for the pte_page array
+    size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
+    pte_page = (list_t*)kernel_virtual_end;
+    kernel_physical_end += pte_page_array_size;
+    kernel_virtual_end += pte_page_array_size;
+    kernel_size += pte_page_array_size;
 
     // Leave some room for the kernel page tables slab
     vaddr_t kernel_page_table_slab_va = kernel_virtual_end;
