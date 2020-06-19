@@ -10,6 +10,23 @@ _start:
     adr x2, fdt_header
     str x0, [x2]
 
+    # Check if we are running in EL2 and switch to EL1
+    mrs x0, CurrentEL
+    cmp x0, #4
+    beq _not_el2
+    # Enable AARCH64 mode in EL1
+    mov x0, #1
+    mrs x1, HCR_EL2
+    bfi x1, x0, #31, #1
+    msr HCR_EL2, x1
+    # Switch to EL1
+    mov x0, #0x3c4
+    msr SPSR_EL2, x0
+    adr x2, _not_el2
+    msr ELR_EL2, x2
+    eret
+
+_not_el2:
     # Disable the MMU
     mrs x0, SCTLR_EL1
     mov x1, #1

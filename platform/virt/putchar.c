@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 // UART0
+//#define R_UART0_BASE (0x3F201000) // Raspberry Pi 3 UART0
 #define R_UART0_BASE (0x09000000)
 #define O_UART0_DR (0x0)
 #define O_UART0_FR (0x18)

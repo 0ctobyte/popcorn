@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description="QEMU run tool", formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("bin", help="Kernel binary image to load")
 parser.add_argument("-debug", help="Enable QEMU GDB mode and halt execution after reset", default=False, action="store_true")
-parser.add_argument("-memsize", help="RAM size", default="512M")
+parser.add_argument("-memsize", help="RAM size", default="1G")
 parser.add_argument("-cpu", help='''
                                 Type of CPU. Select from:
                                 - cortex-a53
