@@ -230,6 +230,10 @@ extern vaddr_t vm_page_array_va;
 unsigned long PAGESIZE;
 unsigned long PAGESHIFT;
 
+#define ASID_ALLOC()   (atomic_inc(&asid_num))
+#define GET_ASID(pmap) ((pmap->asid) & 0xff)
+unsigned long asid_num;
+
 // Struct to keep track of all PTEs mapping a specific page
 typedef struct {
     pmap_t *pmap;           // Pointer to pmap mapping this page
@@ -796,7 +800,7 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
 
 pmap_t* pmap_create(void) {
     pmap_t *pmap = kmem_alloc(sizeof(pmap_t));
-    *pmap = (pmap_t){ .lock = SPINLOCK_INIT, .ttb = 0, .asid = 0, .refcnt = 0, .stats = {0} };
+    *pmap = (pmap_t){ .lock = SPINLOCK_INIT, .ttb = 0, .asid = ASID_ALLOC(), .refcnt = 0, .stats = {0} };
     return pmap;
 }
 
@@ -1025,7 +1029,7 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
 void pmap_activate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
     spinlock_readacquire(&pmap->lock);
-    mmu_set_ttbr0(pmap->ttb, pmap->asid);
+    mmu_set_ttbr0(pmap->ttb, GET_ASID(pmap));
     spinlock_readrelease(&pmap->lock);
 }
 
