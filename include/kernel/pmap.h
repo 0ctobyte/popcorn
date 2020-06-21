@@ -31,7 +31,7 @@ typedef struct {
     spinlock_t lock;
     paddr_t ttb;                     // Translation table base address
     unsigned int asid;               // ASID associated with this pmap
-    atomic_t refcount;               // Reference count on the pmap
+    atomic_t refcnt;                 // Reference count on the pmap
     pmap_statistics_t stats;
 } pmap_t;
 

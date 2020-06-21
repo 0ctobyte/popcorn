@@ -36,24 +36,28 @@ _atomic_test_and_set_bit_exit:
 
 # Atomically increment the value
 # x0 [in] - Memory location of atomic value
+# x0 [out] - Value before increment
 .global atomic_inc
 .align 2
 atomic_inc:
     ldxr x1, [x0]
-    add x1, x1, #1
-    stxr w2, x1, [x0]
+    add x2, x1, #1
+    stxr w2, x2, [x0]
     cbnz w2, atomic_inc
 
+    mov x0, x1
     ret lr
 
 # Atomically decrement the value
 # x0 [in] - Memory location of atomic value
+# x0 [out] - Value before decrement
 .global atomic_dec
 .align 2
 atomic_dec:
     ldxr x1, [x0]
-    add x1, x1, #1
-    stxr w2, x1, [x0]
-    cbnz w2, atomic_inc
+    sub x2, x1, #1
+    stxr w2, x2, [x0]
+    cbnz w2, atomic_dec
 
+    mov x0, x1
     ret lr

@@ -232,7 +232,7 @@ unsigned long PAGESHIFT;
 
 // Struct to keep track of all PTEs mapping a specific page
 typedef struct {
-    pte_t *ptep;            // Pointer to this PTE
+    pmap_t *pmap;           // Pointer to pmap mapping this page
     vaddr_t va;             // Virtual address mapping this page
     list_node_t ll_node;    // Linked list linkage
 } pte_page_t;
@@ -265,28 +265,36 @@ page_table_slab_t page_table_slab = {0};
 
 list_compare_result_t _pmap_pte_page_search(list_node_t *n1, list_node_t *n2) {
     pte_page_t *p1 = list_entry(n1, pte_page_t, ll_node), *p2 = list_entry(n2, pte_page_t, ll_node);
-    return (p1->ptep < p2->ptep) ? LIST_COMPARE_LT : (p1->ptep > p2->ptep) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
+    return (p1->pmap < p2->pmap) ? LIST_COMPARE_LT : (p1->pmap > p2->pmap) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
 }
 
-void _pmap_pte_page_insert(paddr_t pa, vaddr_t va, pte_t *ptep) {
+void _pmap_pte_page_insert(pmap_t *pmap, paddr_t pa, vaddr_t va) {
     spinlock_acquire(&pte_page_slab.lock);
     pte_page_t *pte_page = (pte_page_t*)slab_alloc(&pte_page_slab.slab);
     spinlock_release(&pte_page_slab.lock);
 
     kassert(pte_page != NULL);
-    pte_page->ptep = ptep;
+    pte_page->pmap = pmap;
     pte_page->va = va;
     pte_page->ll_node = LIST_NODE_INITIALIZER;
+
+    // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
+    spinlock_writerelease(&pmap->lock);
 
     spinlock_acquire(&pte_page_list.lock);
     kassert(list_push(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
     spinlock_release(&pte_page_list.lock);
+
+    spinlock_writeacquire(&pmap->lock);
 }
 
-void _pmap_pte_page_remove(paddr_t pa, pte_t *ptep) {
+void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
+    // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
+    spinlock_writerelease(&pmap->lock);
+
     spinlock_acquire(&pte_page_list.lock);
 
-    pte_page_t tmp = (pte_page_t){ .ll_node = LIST_NODE_INITIALIZER, .ptep = ptep };
+    pte_page_t tmp = (pte_page_t){ .ll_node = LIST_NODE_INITIALIZER, .pmap = pmap };
     list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search, &tmp.ll_node);
     pte_page_t *pte_page = list_entry(node, pte_page_t, ll_node);
 
@@ -294,6 +302,8 @@ void _pmap_pte_page_remove(paddr_t pa, pte_t *ptep) {
     kassert(list_remove(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
 
     spinlock_release(&pte_page_list.lock);
+
+    spinlock_writeacquire(&pmap->lock);
 
     spinlock_acquire(&pte_page_slab.lock);
     slab_free(&pte_page_slab.slab, pte_page);
@@ -382,6 +392,7 @@ pte_t* _pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, bp_uattr_t bpu, bp_latt
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep;
 
+    if (pmap->ttb == 0) pmap->ttb = _pmap_alloc_table(pmap);
     pte_t *table = (pte_t*)TABLE_PA_TO_KVA(pmap->ttb);
 
     // Just get the next table if we are at level 0
@@ -418,8 +429,9 @@ pte_t* _pmap_remove(pmap_t *pmap, vaddr_t va) {
     unsigned long level = (PAGESIZE == _64KB) ? 1 : 0, width = PAGESHIFT - 3, mask = (1 << width) - 1;
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep[4];
-
     pte_t *table[4];
+
+    if (pmap->ttb == 0) return NULL;
     table[level] = (pte_t*)TABLE_PA_TO_KVA(pmap->ttb);
 
     // Just get the next table if we are at level 0
@@ -451,9 +463,15 @@ pte_t* _pmap_remove(pmap_t *pmap, vaddr_t va) {
     _pmap_clear_pte(va, pmap->asid, ptep[level]);
 
     // Now scan the tables in the table walk hierarchy in reverse order, if the table is empty remove it from the parent table and the scan the parent table
-    for (unsigned int l = 3; l > 0; l--) {
+    for (unsigned int l = 3; l >= 0; l--) {
         if (_pmap_is_table_empty(table[l])) {
-            _pmap_remove_table(pmap, ptep[l-1]);
+            // Just free the base translation table
+            if (l == 0) {
+                _pmap_free_table(pmap, pmap->ttb);
+                pmap->ttb = 0;
+            } else {
+                _pmap_remove_table(pmap, ptep[l-1]);
+            }
         }
     }
 
@@ -465,6 +483,7 @@ bool _pmap_lookup(pmap_t *pmap, vaddr_t va, paddr_t *pa, bp_uattr_t *bpu, bp_lat
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte;
 
+    if (pmap->ttb == 0) return false;
     pte_t *table = (pte_t*)TABLE_PA_TO_KVA(pmap->ttb);
 
     // Just get the next table if we are at level 0
@@ -505,6 +524,7 @@ bool _pmap_protect(pmap_t *pmap, vaddr_t va, bp_uattr_t bpu, bp_lattr_t bpl) {
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep;
 
+    if (pmap->ttb == 0) return false;
     pte_t *table = (pte_t*)TABLE_PA_TO_KVA(pmap->ttb);
 
     // Just get the next table if we are at level 0
@@ -727,7 +747,7 @@ void pmap_bootstrap(void) {
     // We just linearly mapped all of memory so adjust kernel_virtual_end to recognize this
     kernel_virtual_end = kernel_virtual_start + MEMSIZE;
 
-    // Finally increment the reference count on the pmap. The refcount for kernel_pmap should never be 0.
+    // Finally increment the reference count on the pmap. The refcnt for kernel_pmap should never be 0.
     pmap_reference(pmap_kernel());
 }
 
@@ -775,25 +795,26 @@ vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
 }
 
 pmap_t* pmap_create(void) {
-    // FIXME create the pmap
-    return NULL;
+    pmap_t *pmap = kmem_alloc(sizeof(pmap_t));
+    *pmap = (pmap_t){ .lock = SPINLOCK_INIT, .ttb = 0, .asid = 0, .refcnt = 0, .stats = {0} };
+    return pmap;
 }
 
 void pmap_destroy(pmap_t *pmap) {
-    kassert(pmap != NULL);
-    atomic_dec(&pmap->refcount);
+    kassert(pmap != NULL && pmap != pmap_kernel());
+    atomic_dec(&pmap->refcnt);
 
-    if (pmap->refcount == 0) {
+    if (pmap->refcnt == 0) {
+        // Assuming all mappings have been removed prior to calling this function i.e. all tables have been freed
         spinlock_writeacquire(&pmap->lock);
-        // FIXME free the pmap
-        _pmap_free_table(pmap, pmap->ttb);
+        kmem_free(pmap, sizeof(pmap_t));
         spinlock_writerelease(&pmap->lock);
     }
 }
 
 void pmap_reference(pmap_t *pmap) {
     kassert(pmap != NULL);
-    atomic_inc(&pmap->refcount);
+    atomic_inc(&pmap->refcnt);
 }
 
 int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) {
@@ -839,7 +860,7 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
     // Map in one page
     spinlock_writeacquire(&pmap->lock);
     pte_t *ptep = _pmap_enter(pmap, va, pa, bpu, bpl);
-    _pmap_pte_page_insert(pa, va, ptep);
+    _pmap_pte_page_insert(pmap, pa, va);
 
     if (flags & PMAP_FLAGS_WIRED) pmap->stats.wired_count++;
 
@@ -864,7 +885,7 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva) {
     for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
         if (_pmap_lookup(pmap, va, &pa, &bpu, &bpl)) {
             pte_t *ptep = _pmap_remove(pmap, va);
-            _pmap_pte_page_remove(pa, ptep);
+            _pmap_pte_page_remove(pmap, pa);
         }
     }
     spinlock_writerelease(&pmap->lock);
@@ -1037,7 +1058,17 @@ void pmap_copy_page(paddr_t src, paddr_t dst) {
 }
 
 void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
-    // FIXME implement this
+    if (prot == VM_PROT_ALL) return;
+
+    spinlock_acquire(&pte_page_list.lock);
+
+    pte_page_t *entry = NULL;
+    list_for_each_entry(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], entry, ll_node) {
+        vaddr_t eva = entry->va + PAGESIZE;
+        pmap_protect(entry->pmap, entry->va, eva, prot);
+    }
+
+    spinlock_release(&pte_page_list.lock);
 }
 
 bool pmap_clear_modify(vm_page_t *page) {
