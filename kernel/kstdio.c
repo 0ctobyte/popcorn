@@ -1,8 +1,7 @@
-#include <kernel/kstdio.h>
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <kernel/kstdio.h>
 
 long kputc(const char c) {
     while(putchar(c) == -1) continue;

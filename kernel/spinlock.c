@@ -1,8 +1,8 @@
-#include <kernel/spinlock.h>
-#include <kernel/atomic.h>
-#include <kernel/barrier.h>
 #include <kernel/kassert.h>
-#include <kernel/interrupts.h>
+#include <kernel/arch/atomic.h>
+#include <kernel/arch/barrier.h>
+#include <kernel/arch/interrupts.h>
+#include <kernel/spinlock.h>
 
 // Meaning of the bits in the spinlock's lock variable
 // Bit 0 is the lock value: 0 for unlocked, 1 for acquired

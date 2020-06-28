@@ -7,4 +7,3 @@
     panic("Assertion failed: %s:%d: '%s'\n", __FILE__, __LINE__, #b)
 
 #endif // __KASSERT_H__
-

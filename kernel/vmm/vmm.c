@@ -1,8 +1,8 @@
-#include <kernel/vmm.h>
-#include <kernel/pmap.h>
-#include <kernel/vm_map.h>
-#include <kernel/vm_km.h>
 #include <kernel/kmem.h>
+#include <kernel/arch/pmap.h>
+#include <kernel/vmm/vm_map.h>
+#include <kernel/vmm/vm_km.h>
+#include <kernel/vmm/vmm.h>
 
 vaddr_t vm_page_array_va;
 extern paddr_t kernel_physical_start;

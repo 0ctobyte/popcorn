@@ -1,7 +1,6 @@
-#include <lib/bitmap.h>
-#include <lib/asm.h>
-
 #include <limits.h>
+#include <kernel/arch/asm.h>
+#include <kernel/bitmap.h>
 
 #define BITS (sizeof(bitmap_t) * CHAR_BIT)
 

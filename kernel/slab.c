@@ -1,6 +1,6 @@
-#include <kernel/slab.h>
 #include <kernel/kassert.h>
-#include <lib/asm.h>
+#include <kernel/arch/asm.h>
+#include <kernel/slab.h>
 
 // Basically, we want to shuffle a slab to be first in the search order if it has 1/4+ (25%+) more free blocks
 // than the current first slab in the search order.

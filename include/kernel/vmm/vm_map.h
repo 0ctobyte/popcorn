@@ -2,14 +2,13 @@
 #define __VM_MAP_H__
 
 #include <sys/types.h>
-
-#include <kernel/vmm.h>
-#include <kernel/pmap.h>
-#include <kernel/vm_object.h>
-#include <kernel/atomic.h>
 #include <kernel/spinlock.h>
-#include <lib/rbtree.h>
-#include <lib/list.h>
+#include <kernel/rbtree.h>
+#include <kernel/list.h>
+#include <kernel/arch/atomic.h>
+#include <kernel/arch/pmap.h>
+#include <kernel/vmm/vmm.h>
+#include <kernel/vmm/vm_object.h>
 
 // A virtual memory mapping represents a contiguous range of virtual address space with the same
 // protections and attributes. Mappings are part of a single map and organized in a red/black tree

@@ -1,4 +1,4 @@
-#include <lib/rbtree.h>
+#include <kernel/rbtree.h>
 
 rbtree_node_t* _rbtree_deepest(rbtree_node_t *node) {
     if (node == NULL) return NULL;

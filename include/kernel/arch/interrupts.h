@@ -1,6 +1,8 @@
 #ifndef __INTERRUPTS_H__
 #define __INTERRUPTS_H__
 
+#include <sys/types.h>
+
 #define INTERRUPT_LOCK bool __en = interrupts_enabled(); interrupts_disable();
 #define INTERRUPT_UNLOCK if(__en) interrupts_enable();
 
@@ -14,4 +16,3 @@ void interrupts_disable(void);
 bool interrupts_enabled(void);
 
 #endif // __INTERRUPTS_H__
-

@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include <lib/asm.h>
+extern unsigned long _umod(unsigned long n, unsigned long m);
 
 // Length sub specifiers
 #define _hh (0x1)

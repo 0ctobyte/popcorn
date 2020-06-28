@@ -36,20 +36,13 @@ target_link_options(${target} PRIVATE
     -T ${linker_script}
 )
 target_compile_definitions(${target} PRIVATE ${platform_def})
-
 target_include_directories(${target} PRIVATE include)
-
-file(GLOB kernel_srcs CONFIGURE_DEPENDS "kernel/*.c" "kernel/*.s")
-file(GLOB lib_srcs CONFIGURE_DEPENDS "lib/*.c" "lib/*.s")
-file(GLOB platform_common_srcs CONFIGURE_DEPENDS "platform/*.c" "platform/*.s")
-file(GLOB platform_srcs CONFIGURE_DEPENDS "platform/${platform}/*.c" "platform/${platform}/*.s")
-
-target_sources(${target} PRIVATE ${kernel_srcs})
-target_sources(${target} PRIVATE ${lib_srcs})
-target_sources(${target} PRIVATE ${platform_common_srcs})
-target_sources(${target} PRIVATE ${platform_srcs})
 
 add_custom_command(TARGET ${target} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} ${OC_FLAGS} ${target} ${target_bin}
     COMMENT "Generating ${target_bin}"
 )
+
+add_subdirectory(kernel)
+add_subdirectory(utils)
+add_subdirectory(platform/${platform})

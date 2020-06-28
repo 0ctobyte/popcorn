@@ -2,10 +2,10 @@
 #define __PMAP_H__
 
 #include <sys/types.h>
-#include <kernel/vmm.h>
 #include <kernel/spinlock.h>
-#include <kernel/atomic.h>
-#include <kernel/vm_page.h>
+#include <kernel/arch/atomic.h>
+#include <kernel/vmm/vmm.h>
+#include <kernel/vmm/vm_page.h>
 
 // Flag bits. The READ, WRITE and EXECUTE bits indicate the page is being mapped in because of those
 // access types.

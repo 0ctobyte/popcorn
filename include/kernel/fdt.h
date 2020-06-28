@@ -2,8 +2,7 @@
 #define __FDT_H__
 
 // Flattened Device Tree parsing support
-#include <stdint.h>
-#include <stdbool.h>
+#include <sys/types.h>
 
 typedef uint32_t fdt_token_t;
 

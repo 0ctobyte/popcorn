@@ -1,6 +1,6 @@
-#include <kernel/exceptions.h>
 #include <kernel/panic.h>
 #include <kernel/kstdio.h>
+#include <kernel/arch/exceptions.h>
 
 #define STRINGIFY(s) #s
 

@@ -1,4 +1,4 @@
-#include <lib/list.h>
+#include <kernel/list.h>
 
 void list_init(list_t *list) {
     *list = LIST_INITIALIZER;

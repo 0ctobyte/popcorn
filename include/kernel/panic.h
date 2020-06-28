@@ -6,4 +6,3 @@
 void panic(const char *fmt, ...);
 
 #endif // __PANIC_H__
-

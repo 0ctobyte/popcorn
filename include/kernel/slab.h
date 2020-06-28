@@ -2,7 +2,7 @@
 #define __SLAB_H__
 
 #include <sys/types.h>
-#include <lib/list.h>
+#include <kernel/list.h>
 
 // Slabs must at least be this size
 #define SLAB_MIN_SIZE                     (sizeof(slab_buf_t)+sizeof(list_node_t))

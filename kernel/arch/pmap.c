@@ -1,12 +1,12 @@
-#include <kernel/pmap.h>
-#include <kernel/mmu.h>
-#include <kernel/barrier.h>
 #include <kernel/kassert.h>
-#include <kernel/vm_object.h>
+#include <kernel/list.h>
 #include <kernel/slab.h>
 #include <kernel/kmem.h>
-#include <lib/asm.h>
-#include <lib/list.h>
+#include <kernel/vmm/vm_object.h>
+#include <kernel/arch/asm.h>
+#include <kernel/arch/mmu.h>
+#include <kernel/arch/barrier.h>
+#include <kernel/arch/pmap.h>
 
 #define _4KB   (0x1000)
 #define _16KB  (0x4000)

@@ -10,4 +10,3 @@ void icache_invalidate_all(void);
 void dcache_flush_all(void);
 
 #endif // __CACHE_H__
-

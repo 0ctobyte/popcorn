@@ -1,7 +1,7 @@
 #ifndef __BITMAP_H__
 #define __BITMAP_H__
 
-#include <stdint.h>
+#include <sys/types.h>
 
 typedef unsigned long bitmap_t;
 
@@ -22,4 +22,3 @@ bitmap_t bitmap_field_set(bitmap_t bitmap, unsigned long index, unsigned long wi
 bitmap_t bitmap_field_clear(bitmap_t bitmap, unsigned long index, unsigned long width);
 
 #endif // __BITMAP_H__
-

@@ -1,11 +1,11 @@
-#include <kernel/kmem.h>
-#include <kernel/vm_km.h>
-#include <kernel/slab.h>
 #include <kernel/kassert.h>
 #include <kernel/spinlock.h>
 #include <kernel/kstdio.h>
-#include <lib/list.h>
-#include <lib/asm.h>
+#include <kernel/list.h>
+#include <kernel/arch/asm.h>
+#include <kernel/slab.h>
+#include <kernel/vmm/vm_km.h>
+#include <kernel/kmem.h>
 
 #define INITIAL_SLAB_BUF_COUNT         (64)
 

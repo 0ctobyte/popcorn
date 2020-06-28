@@ -1,17 +1,16 @@
 #include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
-#include <kernel/exceptions.h>
-#include <kernel/interrupts.h>
 #include <kernel/devicetree.h>
-#include <kernel/vmm.h>
-#include <kernel/vm_map.h>
-#include <kernel/vm_object.h>
-#include <kernel/vm_km.h>
+#include <kernel/rbtree.h>
 #include <kernel/kmem.h>
-
-#include <lib/asm.h>
-#include <lib/rbtree.h>
+#include <kernel/arch/asm.h>
+#include <kernel/arch/exceptions.h>
+#include <kernel/arch/interrupts.h>
+#include <kernel/vmm/vmm.h>
+#include <kernel/vmm/vm_map.h>
+#include <kernel/vmm/vm_object.h>
+#include <kernel/vmm/vm_km.h>
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;

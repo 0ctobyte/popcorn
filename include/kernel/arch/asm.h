@@ -1,8 +1,7 @@
 #ifndef __ASM_H__
 #define __ASM_H__
 
-#include <stdint.h>
-#include <stddef.h>
+#include <sys/types.h>
 
 // Unsigned integer modulo
 unsigned long _umod(unsigned long n, unsigned long m);
@@ -31,4 +30,3 @@ void _fast_move(unsigned long dst_addr, unsigned long src_addr, size_t num);
 void _fast_zero(unsigned long addr, size_t num);
 
 #endif // __ASM_H__
-

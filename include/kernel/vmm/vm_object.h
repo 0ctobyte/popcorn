@@ -2,12 +2,11 @@
 #define __VM_OBJECT_H__
 
 #include <sys/types.h>
-
-#include <kernel/vmm.h>
-#include <kernel/vm_page.h>
 #include <kernel/spinlock.h>
-#include <kernel/atomic.h>
-#include <lib/list.h>
+#include <kernel/list.h>
+#include <kernel/arch/atomic.h>
+#include <kernel/vmm/vm_page.h>
+#include <kernel/vmm/vmm.h>
 
 typedef struct vm_page_s vm_page_t;
 

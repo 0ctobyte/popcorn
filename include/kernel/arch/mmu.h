@@ -30,11 +30,10 @@ void mmu_kernel_longjmp(uintptr_t pa_base, uintptr_t va_base);
 // MMU context switching
 unsigned long mmu_get_ttbr0(void);
 unsigned long mmu_get_ttbr1(void);
-void mmu_set_ttbr0(unsigned long ttb0, unsigned int asid);
+void mmu_set_ttbr0(uintptr_t ttb0, unsigned int asid);
 void mmu_clear_ttbr0(void);
 
 // Given a VA, translates it to a PA using the current MMU context. Returns a valid PA or -1 if the translation cannot be performed
-unsigned long mmu_translate_va(unsigned long va);
+uintptr_t mmu_translate_va(uintptr_t va);
 
-#endif // __EVT_H__
-
+#endif // __MMU_H__

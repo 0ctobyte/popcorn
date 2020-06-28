@@ -1,9 +1,9 @@
-#include <kernel/kstdio.h>
-#include <kernel/panic.h>
-#include <lib/fdt.h>
-#include <lib/asm.h>
 #include <string.h>
 #include <ctype.h>
+#include <kernel/kstdio.h>
+#include <kernel/panic.h>
+#include <kernel/arch/asm.h>
+#include <kernel/fdt.h>
 
 #define FDT_MAGIC (0xd00dfeed)
 

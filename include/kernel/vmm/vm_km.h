@@ -2,8 +2,7 @@
 #define __VM_KM_H__
 
 #include <sys/types.h>
-
-#include <kernel/vmm.h>
+#include <kernel/vmm/vmm.h>
 
 // Kernel virtual address space allocator. This module allows allocating/freeing virtual address space in the kernel's virtual memory map
 

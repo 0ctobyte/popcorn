@@ -1,10 +1,10 @@
 #ifndef __VM_PAGE_H__
 #define __VM_PAGE_H__
 
-#include <kernel/vmm.h>
-#include <kernel/vm_object.h>
 #include <kernel/spinlock.h>
-#include <lib/list.h>
+#include <kernel/list.h>
+#include <kernel/vmm/vmm.h>
+#include <kernel/vmm/vm_object.h>
 
 typedef struct vm_object_s vm_object_t;
 

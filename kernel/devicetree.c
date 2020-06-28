@@ -1,5 +1,5 @@
+#include <kernel/fdt.h>
 #include <kernel/devicetree.h>
-#include <lib/fdt.h>
 
 extern fdt_header_t *fdt_header;
 

@@ -17,4 +17,3 @@ void barrier_dsb(void);
 void barrier_isb(void);
 
 #endif // __BARRIER_H__
-

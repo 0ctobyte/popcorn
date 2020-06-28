@@ -18,4 +18,3 @@ atomic_t atomic_inc(atomic_t *v);
 atomic_t atomic_dec(atomic_t *v);
 
 #endif // __ATOMIC_H__
-

@@ -1,9 +1,8 @@
-#include <kernel/panic.h>
-#include <kernel/kstdio.h>
-#include <kernel/interrupts.h>
-
 #include <stdarg.h>
 #include <stdio.h>
+#include <kernel/kstdio.h>
+#include <kernel/arch/interrupts.h>
+#include <kernel/panic.h>
 
 void __attribute__((noreturn)) panic(const char *fmt, ...) {
     char __panic_buffer[1024];
