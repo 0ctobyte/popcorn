@@ -14,7 +14,7 @@
 // protections and attributes. Mappings are part of a single map and organized in a red/black tree
 // Mappings are linked to a virtual memory object which provides the data for the mapped virtual address range.
 // Mappings may not actually have a physical address range associated with it; physical pages are linked to mappings on demand
-typedef struct vm_mapping {
+typedef struct {
     list_node_t   ll_node;  // Linked list linkage
     rbtree_node_t rb_node;  // Red/black tree linkage of mappings based on starting virtual address
     rbtree_node_t rb_hole;  // Red/black tree linkage of mappings based on the size of the virtual address space hole after the mapping

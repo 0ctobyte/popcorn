@@ -5,15 +5,12 @@
 #include <kernel/spinlock.h>
 #include <kernel/list.h>
 #include <kernel/arch/atomic.h>
-#include <kernel/vmm/vm_page.h>
 #include <kernel/vmm/vmm.h>
-
-typedef struct vm_page_s vm_page_t;
 
 // A virtual memory object represents any thing that can be allocated and referenced in a virtual address space
 // An object can be mapped in multiple virtual address maps (i.e. shared) and may not be completely resident in
 // memory. Objects can be backed by actual files or swap space if they are "anonymous" (i.e. not backed by anything)
-typedef struct vm_object_s {
+typedef struct {
     spinlock_t lock;
     list_t ll_resident_pages;  // List of resident pages for this object
     atomic_t refcnt;           // How many VM regions are referencing this object

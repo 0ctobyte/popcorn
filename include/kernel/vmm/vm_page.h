@@ -6,9 +6,7 @@
 #include <kernel/vmm/vmm.h>
 #include <kernel/vmm/vm_object.h>
 
-typedef struct vm_object_s vm_object_t;
-
-typedef struct vm_page_s {
+typedef struct {
     struct vm_page_status_s {           // Status bits indicating the state of this page
         unsigned int wired_count:16;    // How many virtual maps have wired this page
         unsigned int is_referenced:1;   // Has this page been referenced recently
