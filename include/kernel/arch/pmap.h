@@ -4,8 +4,8 @@
 #include <sys/types.h>
 #include <kernel/spinlock.h>
 #include <kernel/arch/atomic.h>
-#include <kernel/vmm/vmm.h>
-#include <kernel/vmm/vm_page.h>
+#include <kernel/vm/vm_types.h>
+#include <kernel/vm/vm_page.h>
 
 // Flag bits. The READ, WRITE and EXECUTE bits indicate the page is being mapped in because of those
 // access types.

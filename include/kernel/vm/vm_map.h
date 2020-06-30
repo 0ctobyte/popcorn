@@ -5,10 +5,11 @@
 #include <kernel/spinlock.h>
 #include <kernel/rbtree.h>
 #include <kernel/list.h>
+#include <kernel/kresult.h>
 #include <kernel/arch/atomic.h>
 #include <kernel/arch/pmap.h>
-#include <kernel/vmm/vmm.h>
-#include <kernel/vmm/vm_object.h>
+#include <kernel/vm/vm_types.h>
+#include <kernel/vm/vm_object.h>
 
 // A virtual memory mapping represents a contiguous range of virtual address space with the same
 // protections and attributes. Mappings are part of a single map and organized in a red/black tree

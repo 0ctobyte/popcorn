@@ -1,14 +1,14 @@
 #include <kernel/kmem.h>
 #include <kernel/arch/pmap.h>
-#include <kernel/vmm/vm_map.h>
-#include <kernel/vmm/vm_km.h>
-#include <kernel/vmm/vmm.h>
+#include <kernel/vm/vm_map.h>
+#include <kernel/vm/vm_km.h>
+#include <kernel/vm/vm_init.h>
 
 vaddr_t vm_page_array_va;
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
 
-void vmm_init(void) {
+void vm_init(void) {
     pmap_bootstrap();
     vm_page_bootstrap(vm_page_array_va);
 

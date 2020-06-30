@@ -3,8 +3,8 @@
 
 #include <kernel/spinlock.h>
 #include <kernel/list.h>
-#include <kernel/vmm/vmm.h>
-#include <kernel/vmm/vm_object.h>
+#include <kernel/vm/vm_types.h>
+#include <kernel/vm/vm_object.h>
 
 typedef struct {
     struct vm_page_status_s {           // Status bits indicating the state of this page

@@ -2,7 +2,7 @@
 #include <kernel/list.h>
 #include <kernel/slab.h>
 #include <kernel/kmem.h>
-#include <kernel/vmm/vm_object.h>
+#include <kernel/vm/vm_object.h>
 #include <kernel/arch/asm.h>
 #include <kernel/arch/mmu.h>
 #include <kernel/arch/barrier.h>

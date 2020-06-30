@@ -7,10 +7,10 @@
 #include <kernel/arch/asm.h>
 #include <kernel/arch/exceptions.h>
 #include <kernel/arch/interrupts.h>
-#include <kernel/vmm/vmm.h>
-#include <kernel/vmm/vm_map.h>
-#include <kernel/vmm/vm_object.h>
-#include <kernel/vmm/vm_km.h>
+#include <kernel/vm/vm_init.h>
+#include <kernel/vm/vm_map.h>
+#include <kernel/vm/vm_object.h>
+#include <kernel/vm/vm_km.h>
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
@@ -65,9 +65,9 @@ void kmain(void) {
 
     kprintf("Hello World\n");
 
-    vmm_init();
+    vm_init();
 
-    kprintf("vmm_init() - done!\n");
+    kprintf("vm_init() - done!\n");
 
     kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
 

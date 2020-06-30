@@ -1,9 +1,9 @@
 #include <kernel/kassert.h>
 #include <kernel/arch/asm.h>
 #include <kernel/arch/pmap.h>
-#include <kernel/vmm/vmm.h>
-#include <kernel/vmm/vm_map.h>
-#include <kernel/vmm/vm_km.h>
+#include <kernel/vm/vm_types.h>
+#include <kernel/vm/vm_map.h>
+#include <kernel/vm/vm_km.h>
 
 void vm_km_init(void) {
     vaddr_t kernel_virtual_start, kernel_virtual_end;

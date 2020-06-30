@@ -2,8 +2,8 @@
 #include <kernel/slab.h>
 #include <kernel/kmem.h>
 #include <kernel/arch/asm.h>
-#include <kernel/vmm/vm_page.h>
-#include <kernel/vmm/vm_map.h>
+#include <kernel/vm/vm_page.h>
+#include <kernel/vm/vm_map.h>
 
 #define VM_MAPPING_INITIALIZER (vm_mapping_t){0}
 

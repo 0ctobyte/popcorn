@@ -4,5 +4,5 @@ target_sources(${target}
         ${CMAKE_CURRENT_SOURCE_DIR}/vm_map
         ${CMAKE_CURRENT_SOURCE_DIR}/vm_object
         ${CMAKE_CURRENT_SOURCE_DIR}/vm_page
-        ${CMAKE_CURRENT_SOURCE_DIR}/vmm
+        ${CMAKE_CURRENT_SOURCE_DIR}/vm_init
 )

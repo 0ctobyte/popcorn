@@ -5,7 +5,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/list.h>
 #include <kernel/arch/atomic.h>
-#include <kernel/vmm/vmm.h>
+#include <kernel/vm/vm_types.h>
 
 // A virtual memory object represents any thing that can be allocated and referenced in a virtual address space
 // An object can be mapped in multiple virtual address maps (i.e. shared) and may not be completely resident in

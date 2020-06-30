@@ -1,5 +1,5 @@
 add_subdirectory(arch)
-add_subdirectory(vmm)
+add_subdirectory(vm)
 
 target_sources(${target}
     PRIVATE

@@ -1,6 +1,6 @@
 #include <kernel/kassert.h>
 #include <kernel/arch/asm.h>
-#include <kernel/vmm/vm_page.h>
+#include <kernel/vm/vm_page.h>
 
 #define NUM_BINS                 (20)
 #define MAX_NUM_CONTIGUOUS_PAGES (1l << (NUM_BINS - 1))

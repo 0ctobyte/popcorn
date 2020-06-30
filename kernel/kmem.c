@@ -4,7 +4,7 @@
 #include <kernel/list.h>
 #include <kernel/arch/asm.h>
 #include <kernel/slab.h>
-#include <kernel/vmm/vm_km.h>
+#include <kernel/vm/vm_km.h>
 #include <kernel/kmem.h>
 
 #define INITIAL_SLAB_BUF_COUNT         (64)
