@@ -127,10 +127,11 @@ typedef struct vfs_node_s {
     list_t ll_buf_clean;              // List of clean buffers
     list_t ll_buf_dirty;              // List of dirty buffers
     unsigned int num_writes;          // Number of writes in progress
+    list_node_t ll_vnc_node;          // VFS node cache hash table bucket linkage
     list_node_t ll_mount_node;        // VFS mount node list linkage
-    list_node_t ll_nc_node;           // Name cache hash table linkage
-    list_t ll_nc_refs;                // List of name cache entries that reference this node as the parent
-    list_node_t ll_cache_node;        // VFS node table linkage
+    list_node_t ll_nc_node;           // Name cache hash table bucket linkage
+    list_t ll_nc_refs;                // List of name cache entries that reference this node (in case of hard links and '..' and '.')
+    list_t ll_nc_prefs;               // List of name cache entries that reference this node as the parent node
     vfs_node_ops_t *ops;              // Pointer to VFS node ops structure
     void *data;                       // File system node specific data
 } vfs_node_t;
