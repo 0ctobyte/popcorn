@@ -26,7 +26,7 @@ unsigned long _rev64(unsigned long n);
 unsigned long _popcnt(unsigned long n);
 
 // Fast versions of memset 0 and memmove
-void _fast_move(unsigned long dst_addr, unsigned long src_addr, size_t num);
-void _fast_zero(unsigned long addr, size_t num);
+void _fast_move(uintptr_t dst_addr, uintptr_t src_addr, size_t num);
+void _fast_zero(uintptr_t addr, size_t num);
 
 #endif // __ASM_H__

@@ -9,8 +9,8 @@
 
 #define INITIAL_SLAB_BUF_COUNT         (64)
 
-// Minimum block size of 32B and maximum block size of 4*PAGESIZE
-#define NUM_BINS                       (10)
+// Minimum block size of 32B and maximum block size of 64KB
+#define NUM_BINS                       (12)
 #define MIN_BLOCK_SIZE                 (0x20)
 #define MAX_BLOCK_SIZE                 (1ul << ((NUM_BINS-1) + _ctz(MIN_BLOCK_SIZE)))
 #define BIN_TO_BLOCK_SIZE(x)           (1ul << ((x) + _ctz(MIN_BLOCK_SIZE)))
