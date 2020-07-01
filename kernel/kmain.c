@@ -11,6 +11,8 @@
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_object.h>
 #include <kernel/vm/vm_km.h>
+#include <kernel/vfs/vfs_mount.h>
+#include <kernel/vfs/vfs_node.h>
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
@@ -69,27 +71,30 @@ void kmain(void) {
 
     kprintf("vm_init() - done!\n");
 
-    kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
+    kprintf("sizeof(vfs_node_t) == %llu, sizeof(vfs_mount_t) == %llu\n", sizeof(vfs_node_t), sizeof(vfs_mount_t));
+    kmem_stats();
 
-    vaddr_t kernel_virtual_start, kernel_virtual_end;
-    kresult_t res;
+    // kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
 
-    pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
-    print_mappings();
+    // vaddr_t kernel_virtual_start, kernel_virtual_end;
+    // kresult_t res;
 
-    size_t size = PAGESIZE;
-#define NUM_ALLOCS 50
-    void *buf[NUM_ALLOCS];
+    // pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
+    // print_mappings();
 
-    for (int i = 0; i < NUM_ALLOCS; i++) {
-        buf[i] = kmem_alloc(size);
-        kmem_stats();
-    }
+    // size_t size = PAGESIZE;
+    // #define NUM_ALLOCS 50
+    // void *buf[NUM_ALLOCS];
 
-    for (int i = NUM_ALLOCS-1; i >= 0; i--) {
-        kmem_free(buf[i], size);
-        kmem_stats();
-    }
+    // for (int i = 0; i < NUM_ALLOCS; i++) {
+    //     buf[i] = kmem_alloc(size);
+    //     kmem_stats();
+    // }
 
-    print_mappings();
+    // for (int i = NUM_ALLOCS-1; i >= 0; i--) {
+    //     kmem_free(buf[i], size);
+    //     kmem_stats();
+    // }
+
+    // print_mappings();
 }
