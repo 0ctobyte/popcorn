@@ -259,7 +259,7 @@ typedef struct {
 pte_page_slab_t pte_page_slab = {0};
 
 // Page table slab
-#define PAGE_TABLE_SLAB_SIZE      (MEMSIZE / 64)
+#define PAGE_TABLE_SLAB_SIZE      (1024 * PAGESIZE)
 typedef struct {
     spinlock_t lock;
     slab_t slab;
