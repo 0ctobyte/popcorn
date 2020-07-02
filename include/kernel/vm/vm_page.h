@@ -12,8 +12,10 @@ typedef struct {
         unsigned int is_referenced:1;   // Has this page been referenced recently
         unsigned int is_dirty:1;        // Has this page been modified
         unsigned int is_active:1;       // Is this page being used i.e. mapped in some virtual map
+        unsigned int is_busy:1;         // This page is busy for I/O
     } status;
-    list_node_t ll_node;                // Linked list of resident pages in an object or part of the buddy free list
+    list_node_t ll_bnode;               // Object/offset hash table bucket linkage
+    list_node_t ll_onode;               // Linked list of resident pages in an object or part of the buddy free list
     vm_object_t *object;                // VM object this page belongs to if any
     vm_offset_t offset;                 // Offset in that VM object that this page refers to
 } vm_page_t;

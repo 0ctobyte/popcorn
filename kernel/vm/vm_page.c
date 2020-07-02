@@ -45,7 +45,7 @@ list_compare_result_t _vm_page_compare(list_node_t *n1, list_node_t *n2) {
 }
 
 list_compare_result_t _vm_page_find(list_node_t *n1, list_node_t *n2) {
-    vm_page_t *p1 = list_entry(n1, vm_page_t, ll_node), *p2 = list_entry(n2, vm_page_t, ll_node);
+    vm_page_t *p1 = list_entry(n1, vm_page_t, ll_onode), *p2 = list_entry(n2, vm_page_t, ll_onode);
     return (p1->offset < p2->offset) ? LIST_COMPARE_LT : (p1->offset > p2->offset) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
 }
 
@@ -65,12 +65,12 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
         if (pages == NULL) return NULL;
 
         vm_page_t *buddy = GET_CONTIGUOUS_BUDDY(pages, num_pages);
-        kassert(list_push(&vm_page_array.ll_page_bins[bin_index], &buddy->ll_node));
+        kassert(list_push(&vm_page_array.ll_page_bins[bin_index], &buddy->ll_onode));
     } else {
         // Otherwise pop this buddy off of the bin
         list_node_t *node = NULL;
         kassert(list_pop(&vm_page_array.ll_page_bins[bin_index], node));
-        pages = list_entry(node, vm_page_t, ll_node);
+        pages = list_entry(node, vm_page_t, ll_onode);
     }
 
     return pages;
@@ -82,24 +82,24 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
     // Don't do anything if bin_index is past the max number of bins we have
     if (bin_index < NUM_BINS) {
         // The buddy list is ordered by ascending page number, search for the position to insert these freed pages
-        kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_node, LIST_ORDER_ASCENDING));
+        kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_onode, LIST_ORDER_ASCENDING));
 
-        vm_page_t *next = list_entry(list_next(&pages->ll_node), vm_page_t, ll_node);
-        vm_page_t *prev = list_entry(list_prev(&pages->ll_node), vm_page_t, ll_node);
+        vm_page_t *next = list_entry(list_next(&pages->ll_onode), vm_page_t, ll_onode);
+        vm_page_t *prev = list_entry(list_prev(&pages->ll_onode), vm_page_t, ll_onode);
 
         // Check if the previous or next buddies are contiguous and can be merged
         unsigned long buddy_index = GET_BUDDY_INDEX(pages, num_pages);
         if (next != NULL && buddy_index == GET_PAGE_INDEX(next)) {
             // Next is a buddy that can be merged. Re-arrange the linked list to pull pages and next out of the list
-            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &next->ll_node));
-            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_node));
+            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &next->ll_onode));
+            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_onode));
 
             // Push this contiguous block of free pages in the next higher up bin
             _vm_page_bin_push(pages, num_pages << 1);
         } else if (prev != NULL && buddy_index == GET_PAGE_INDEX(prev)) {
             // The previous buddy can be merged. Re-arrange the linked list to pull these pages out of the list
-            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &prev->ll_node));
-            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_node));
+            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &prev->ll_onode));
+            kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_onode));
 
             // Push this new contiguous block of free pages in the next higher up bin
             _vm_page_bin_push(prev, num_pages << 1);
@@ -116,7 +116,7 @@ void _vm_page_insert_in_object(vm_page_t *pages, size_t num_pages, vm_object_t *
         pages[p].object = object;
         pages[p].offset = offset;
 
-        kassert(list_insert_last(&object->ll_resident_pages, &pages[p].ll_node));
+        kassert(list_insert_last(&object->ll_resident, &pages[p].ll_onode));
     }
 }
 
@@ -125,7 +125,7 @@ void _vm_page_remove_from_object(vm_page_t *pages, size_t num_pages) {
     for (unsigned int p = 0; p < num_pages; p++) {
         vm_object_t *object = pages[p].object;
 
-        kassert(list_remove(&object->ll_resident_pages, &pages[p].ll_node));
+        kassert(list_remove(&object->ll_resident, &pages[p].ll_onode));
 
         pages[p].object = NULL;
         pages[p].offset = 0;
@@ -150,7 +150,7 @@ void vm_page_bootstrap(paddr_t vm_page_array_addr) {
     for (unsigned long i = 0; i < vm_page_array.num_pages; i += vm_page_group_size) {
         vm_page_group_size = ROUND_DOWN_POW2(vm_page_array.num_pages - i);
         vm_page_group_size = vm_page_group_size > MAX_NUM_CONTIGUOUS_PAGES ? MAX_NUM_CONTIGUOUS_PAGES : vm_page_group_size;
-        kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_node));
+        kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_onode));
     }
 
     // Reserve the physical pages used by the kernel
@@ -166,10 +166,10 @@ void vm_page_init(void) {
 vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
     kassert(object != NULL);
 
-    vm_page_t p = { .status = {0}, .ll_node = LIST_NODE_INITIALIZER, .object = NULL, .offset = offset };
-    list_node_t *node = list_search(&object->ll_resident_pages, _vm_page_find, &p.ll_node);
+    vm_page_t p = { .status = {0}, .ll_onode = LIST_NODE_INITIALIZER, .object = NULL, .offset = offset };
+    list_node_t *node = list_search(&object->ll_resident, _vm_page_find, &p.ll_onode);
 
-    return list_entry(node, vm_page_t, ll_node);
+    return list_entry(node, vm_page_t, ll_onode);
 }
 
 vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset) {
@@ -267,13 +267,13 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
     for (int bin = 0; bin < NUM_BINS; bin++) {
         // This is the buddy we are looking for in this bin
         unsigned long buddy_index = WHICH_BUDDY(vm_page_index, bin);
-        vm_page_t *buddy = list_entry(list_search(&vm_page_array.ll_page_bins[bin], _vm_page_compare, &vm_page_array.pages[buddy_index].ll_node), vm_page_t, ll_node);
+        vm_page_t *buddy = list_entry(list_search(&vm_page_array.ll_page_bins[bin], _vm_page_compare, &vm_page_array.pages[buddy_index].ll_onode), vm_page_t, ll_onode);
 
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
 
-            kassert(list_remove(&vm_page_array.ll_page_bins[bin], &buddy->ll_node));
+            kassert(list_remove(&vm_page_array.ll_page_bins[bin], &buddy->ll_onode));
 
             // Loop through the lower bins splitting the buddy in two, keeping the buddy that has the page we want to reserve and freeing the other buddy
             for (unsigned long i = bin; i > 0; i--) {

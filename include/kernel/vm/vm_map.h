@@ -16,15 +16,15 @@
 // Mappings are linked to a virtual memory object which provides the data for the mapped virtual address range.
 // Mappings may not actually have a physical address range associated with it; physical pages are linked to mappings on demand
 typedef struct {
-    list_node_t   ll_node;  // Linked list linkage
-    rbtree_node_t rb_node;  // Red/black tree linkage of mappings based on starting virtual address
-    rbtree_node_t rb_hole;  // Red/black tree linkage of mappings based on the size of the virtual address space hole after the mapping
-    size_t hole_size;       // Size of the virtual address space hole after this mapping
-    vaddr_t vstart, vend;   // The start and end addresses of this virtual memory region
-    vm_prot_t prot;         // The region's attributes
-    vm_object_t *object;    // The VM object that this vregion is mapping
-    vm_offset_t offset;     // The offset into the object that the mapping starts from
-    bool wired;             // Is this a wired mapping?
+    list_node_t   ll_node;   // Linked list linkage
+    rbtree_node_t rb_snode;  // Red/black tree linkage of mappings based on starting virtual address
+    rbtree_node_t rb_hnode;  // Red/black tree linkage of mappings based on the size of the virtual address space hole after the mapping
+    size_t hole_size;        // Size of the virtual address space hole after this mapping
+    vaddr_t vstart, vend;    // The start and end addresses of this virtual memory region
+    vm_prot_t prot;          // The region's attributes
+    vm_object_t *object;     // The VM object that this vregion is mapping
+    vm_offset_t offset;      // The offset into the object that the mapping starts from
+    bool wired;              // Is this a wired mapping?
 } vm_mapping_t;
 
 // A virtual memory map represents the entire virtual address space of a process. The map contains

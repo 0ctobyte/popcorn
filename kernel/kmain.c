@@ -22,22 +22,22 @@ unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
 void vm_mapping_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_snode);
     kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
 }
 
 void _vm_mapping_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_node);
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_snode);
     kprintf("%x:%x:%c\n", (vaddr_t)node, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
 }
 
 void vm_mapping_hole_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hole);
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hnode);
     kprintf("mapping hole - vstart = %p, vend = %p\n", mapping->vend, mapping->vend + mapping->hole_size);
 }
 
 void _vm_mapping_hole_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hole);
+    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hnode);
     kprintf("%x:%x:%c\n", (vaddr_t)mapping, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
 }
 
@@ -72,6 +72,7 @@ void kmain(void) {
     kprintf("vm_init() - done!\n");
 
     kprintf("sizeof(vfs_node_t) == %llu, sizeof(vfs_mount_t) == %llu\n", sizeof(vfs_node_t), sizeof(vfs_mount_t));
+    kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
     kmem_stats();
 
     // kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
