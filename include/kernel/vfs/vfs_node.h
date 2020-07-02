@@ -84,9 +84,9 @@ typedef struct {
     // Perform open protocol on file
     int (*open)(struct vfs_node_s *vn, vfs_access_mode_t mode);
 
-    // Read count bytes of data into buf from the given offset into the file
+    // Read one block of data into buf from the given logical block number into the file
     // Returns 0 on EOF or the number of bytes read
-    int (*read)(struct vfs_node_s *vn, unsigned int offset, void *buf, size_t count);
+    int (*read)(struct vfs_node_s *vn, unsigned int blk_num, void *buf);
 
     // Reads one file record from the directory at the given offset. Returns the results in dir_entry
     // Also returns 0 on EOF or the number of bytes read
@@ -110,8 +110,8 @@ typedef struct {
     // Write out all dirty buffers; operation is synchronous
     int (*sync)(struct vfs_node_s *vn);
 
-    // Write count bytes of data from buf into the file starting at the given offset
-    int (*write)(struct vfs_node_s *vn, unsigned int offset, void *buf, size_t count);
+    // Write one block of data from buf into the file starting at the given logical block number
+    int (*write)(struct vfs_node_s *vn, unsigned int blk_num, void *buf);
 } vfs_node_ops_t;
 
 typedef struct vfs_node_s {
