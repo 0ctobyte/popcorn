@@ -42,8 +42,8 @@ _atomic_test_and_set_bit_exit:
 atomic_inc:
     ldxr x1, [x0]
     add x2, x1, #1
-    stxr w2, x2, [x0]
-    cbnz w2, atomic_inc
+    stxr w3, x2, [x0]
+    cbnz w3, atomic_inc
 
     mov x0, x1
     ret lr
@@ -56,8 +56,8 @@ atomic_inc:
 atomic_dec:
     ldxr x1, [x0]
     sub x2, x1, #1
-    stxr w2, x2, [x0]
-    cbnz w2, atomic_dec
+    stxr w3, x2, [x0]
+    cbnz w3, atomic_dec
 
     mov x0, x1
     ret lr
