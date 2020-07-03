@@ -69,6 +69,12 @@ void kmain(void) {
 
     vm_init();
 
+    // FIXME switching UART to VA address
+    extern unsigned long uart_base_addr;
+    vaddr_t uart_base_va = 0xFFFFFFFFC0000000;
+    pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+    uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
+
     kprintf("vm_init() - done!\n");
 
     kprintf("sizeof(vfs_node_t) == %llu, sizeof(vfs_mount_t) == %llu\n", sizeof(vfs_node_t), sizeof(vfs_mount_t));
@@ -97,5 +103,5 @@ void kmain(void) {
     //     kmem_stats();
     // }
 
-    // print_mappings();
+    print_mappings();
 }

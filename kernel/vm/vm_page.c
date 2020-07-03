@@ -1,5 +1,7 @@
 #include <kernel/kassert.h>
+#include <kernel/hash.h>
 #include <kernel/arch/asm.h>
+#include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_page.h>
 
 #define NUM_BINS                 (20)
@@ -38,6 +40,15 @@ typedef struct {
 } vm_page_array_t;
 
 vm_page_array_t vm_page_array;
+
+// The hash table keeps track of every single allocated page. Pages are looked up by vm_object_t pointer and offset in that object
+typedef struct {
+    spinlock_t lock;
+    list_t *ll_pages;   // Array of lists; each list contains a chain of vm_page_t's in the same hash bucket
+    size_t num_buckets; // Number of buckets
+} vm_page_hash_table_t;
+
+vm_page_hash_table_t vm_page_hash_table;
 
 list_compare_result_t _vm_page_compare(list_node_t *n1, list_node_t *n2) {
     unsigned long p1 = (uintptr_t)n1, p2 = (uintptr_t)n2;
@@ -107,7 +118,7 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
     }
 }
 
-void _vm_page_insert_in_object(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm_offset_t starting_offset) {
+void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm_offset_t starting_offset) {
     // Add each page in the list to the object and update the pages object and offset fields
     for (unsigned int p = 0; p < num_pages; p++) {
         vm_offset_t offset = starting_offset + (p << PAGESHIFT);
@@ -120,7 +131,7 @@ void _vm_page_insert_in_object(vm_page_t *pages, size_t num_pages, vm_object_t *
     }
 }
 
-void _vm_page_remove_from_object(vm_page_t *pages, size_t num_pages) {
+void _vm_page_remove(vm_page_t *pages, size_t num_pages) {
     // Remove each page from the list
     for (unsigned int p = 0; p < num_pages; p++) {
         vm_object_t *object = pages[p].object;
@@ -132,7 +143,11 @@ void _vm_page_remove_from_object(vm_page_t *pages, size_t num_pages) {
     }
 }
 
-void vm_page_bootstrap(paddr_t vm_page_array_addr) {
+void vm_page_init(void) {
+    // Allocate space for the vm_page_array
+    size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
+    vaddr_t vm_page_array_addr = (vaddr_t)pmap_steal_memory(vm_page_array_size, NULL, NULL);
+
     vm_page_array.lock = SPINLOCK_INIT;
     vm_page_array.pages = (vm_page_t*)vm_page_array_addr;
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
@@ -153,14 +168,24 @@ void vm_page_bootstrap(paddr_t vm_page_array_addr) {
         kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_onode));
     }
 
+    // Allocate space for the vm_page_t hash table. No kmem at this point so use pmap_steal_memory
+    // Hash table size is 1.5 times the number of pages
+    vm_page_hash_table.lock = SPINLOCK_INIT;
+    vm_page_hash_table.num_buckets = vm_page_array.num_pages + (vm_page_array.num_pages >> 1);
+    size_t size = vm_page_hash_table.num_buckets * sizeof(list_t);
+
+    vm_page_hash_table.ll_pages = (list_t*)pmap_steal_memory(size, NULL, NULL);
+    _fast_zero((uintptr_t)vm_page_hash_table.ll_pages, size);
+
     // Reserve the physical pages used by the kernel
     for (size_t pa = kernel_physical_start; pa < kernel_physical_end; pa += PAGESIZE) {
         vm_page_reserve_pa(pa);
     }
-}
 
-void vm_page_init(void) {
-    // FIXME Setup object/offset hash table
+    // Add all the pages allocated for the kernel up to this point to the kernel object
+    size_t num_pages = (kernel_physical_end - kernel_physical_start) >> PAGESHIFT;
+    vm_page_t *pages = vm_page_from_pa(kernel_physical_start);
+    _vm_page_insert(pages, num_pages, &kernel_object, 0);
 }
 
 vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
@@ -193,7 +218,7 @@ vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_of
     // If an object is specified, add the page(s) to that object
     if (first_page != NULL && object != NULL) {
         spinlock_writeacquire(&object->lock);
-        _vm_page_insert_in_object(first_page, num_pages, object, offset);
+        _vm_page_insert(first_page, num_pages, object, offset);
         spinlock_writerelease(&object->lock);
     }
 
@@ -212,7 +237,7 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
     vm_object_t *object = pages[0].object;
     if (object != NULL) {
         spinlock_writeacquire(&object->lock);
-        _vm_page_remove_from_object(pages, num_pages);
+        _vm_page_remove(pages, num_pages);
         spinlock_writerelease(&object->lock);
     }
 
@@ -272,6 +297,7 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
         // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
+            page->status.wired_count++;
 
             kassert(list_remove(&vm_page_array.ll_page_bins[bin], &buddy->ll_onode));
 

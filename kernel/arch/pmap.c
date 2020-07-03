@@ -590,19 +590,6 @@ void pmap_bootstrap(void) {
     kernel_virtual_end = kernel_virtual_start + kernel_size;
     max_kernel_virtual_end = 0xFFFFFFFF00000000;
 
-    // Pre-allocate memory for the vm_page array
-    size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
-    vm_page_array_va = kernel_virtual_end;
-    kernel_physical_end += vm_page_array_size;
-    kernel_virtual_end += vm_page_array_size;
-    kernel_size += vm_page_array_size;
-
-    // Leave some room for the page tables slab
-    vaddr_t page_table_slab_va = kernel_virtual_end;
-    kernel_physical_end += PAGE_TABLE_SLAB_SIZE;
-    kernel_virtual_end += PAGE_TABLE_SLAB_SIZE;
-    kernel_size += PAGE_TABLE_SLAB_SIZE;
-
     // Pre-allocate enough page tables to linearly map all of memory
     size_t num_l3_tables = (MEMSIZE >> PAGESHIFT) / MAX_NUM_PTES_LL;
     size_t num_l2_tables = (num_l3_tables > MAX_NUM_PTES_LL) ? num_l3_tables / MAX_NUM_PTES_LL : 1;
@@ -666,12 +653,6 @@ void pmap_bootstrap(void) {
         }
         table = (pte_t*)PTE_TO_PA(pte);
         level++, lsb -= width, index = GET_TABLE_IDX(va, lsb, mask);
-
-        // Just reserve an empty L3 table once we're done completely mapping the kernel
-        if (offset >= kernel_size) {
-            offset += (PAGESIZE * MAX_NUM_PTES_LL);
-            continue;
-        }
 
         // Level 3 - Finally enter the mapping
         pte = table[index];
@@ -745,9 +726,6 @@ void pmap_bootstrap(void) {
 
     mmu_clear_ttbr0();
 
-    // Setup the page table slab
-    slab_init(&page_table_slab.slab, &page_table_slab.slab_buf, (void*)page_table_slab_va, PAGE_TABLE_SLAB_SIZE, PAGESIZE);
-
     // We just linearly mapped all of memory so adjust kernel_virtual_end to recognize this
     kernel_virtual_end = kernel_virtual_start + MEMSIZE;
 
@@ -756,6 +734,10 @@ void pmap_bootstrap(void) {
 }
 
 void pmap_init(void) {
+    // Setup the page table slab
+    vaddr_t page_table_slab_va = (vaddr_t)pmap_steal_memory(PAGE_TABLE_SLAB_SIZE, NULL, NULL);;
+    slab_init(&page_table_slab.slab, &page_table_slab.slab_buf, (void*)page_table_slab_va, PAGE_TABLE_SLAB_SIZE, PAGESIZE);
+
     // Allocate memory for the pte_page array
     size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
     pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
@@ -774,27 +756,25 @@ void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp) {
 }
 
 vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp) {
-    static vaddr_t next_unused_addr = 0;
-    if (next_unused_addr == 0) next_unused_addr = kernel_virtual_end;
+    static paddr_t next_unused_addr = 0;
+    if (next_unused_addr == 0) next_unused_addr = kernel_physical_end;
 
-    if ((next_unused_addr + vsize) > kernel_virtual_end) {
+    if ((next_unused_addr + vsize) > kernel_physical_end) {
         // Allocate some more pages if we don't have more room at the end of the kernel for vsize
-        size_t num_pages = ROUND_PAGE_UP(vsize - (kernel_virtual_end - next_unused_addr)) >> PAGESHIFT;
+        size_t num_pages = ROUND_PAGE_UP(vsize - (kernel_physical_end - next_unused_addr)) >> PAGESHIFT;
         for (unsigned long i = 0; i < num_pages; i++) {
-            vm_page_t *page = vm_page_alloc(&kernel_object, kernel_virtual_end - kernel_virtual_start);
-            kassert(page != NULL);
-
-            vm_page_wire(page);
-            pmap_kenter_pa(kernel_virtual_end, vm_page_to_pa(page), VM_PROT_DEFAULT, PMAP_FLAGS_WRITE_BACK | PMAP_FLAGS_WIRED);
-            kernel_virtual_end += PAGESIZE;
+            kernel_physical_end += PAGESIZE;
         }
+
+        kassert((kernel_physical_end - MEMBASEADDR) <= MEMSIZE);
     }
 
     if (vstartp != NULL) *vstartp = kernel_virtual_start;
     if (vendp != NULL) *vendp = kernel_virtual_end;
 
-    vaddr_t va = next_unused_addr;
+    vaddr_t va = PA_TO_KVA(next_unused_addr);
     next_unused_addr += vsize;
+
     return va;
 }
 

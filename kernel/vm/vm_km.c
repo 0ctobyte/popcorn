@@ -5,6 +5,9 @@
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_km.h>
 
+extern paddr_t kernel_physical_start;
+extern paddr_t kernel_physical_end;
+
 void vm_km_init(void) {
     vaddr_t kernel_virtual_start, kernel_virtual_end;
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
@@ -12,8 +15,13 @@ void vm_km_init(void) {
     // Initialize the kernel vm_map
     kernel_vmap = (vm_map_t){ .lock = SPINLOCK_INIT, .pmap = pmap_kernel(), .start = kernel_virtual_start, .end = max_kernel_virtual_end, .size = 0, .refcnt = 0 };
 
-    // Add a mapping to the kernel_object for all of the kernel memory mapped to this point
-    kresult_t res = vm_map_enter_at(&kernel_vmap, kernel_virtual_start, kernel_virtual_end - kernel_virtual_start, &kernel_object, 0, VM_PROT_ALL);
+    // Add a mapping to the kernel_object for the kernel code/data area
+    size_t size = kernel_physical_end - kernel_physical_start;
+    kresult_t res = vm_map_enter_at(vm_map_kernel(), kernel_virtual_start, size, &kernel_object, 0, VM_PROT_ALL);
+    kassert(res == KRESULT_OK);
+
+    // Add a mapping to the linear mapped KVA space
+    res = vm_map_enter_at(vm_map_kernel(), kernel_virtual_start + size, MEMSIZE - size, &kernel_lva_object, 0, VM_PROT_DEFAULT);
     kassert(res == KRESULT_OK);
 }
 

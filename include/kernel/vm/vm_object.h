@@ -20,7 +20,10 @@ typedef struct {
 // All wired kernel memory belongs to this object
 extern vm_object_t kernel_object;
 
-// Bootstraps the kernel object
-void vm_object_bootstrap(paddr_t kernel_physical_start, paddr_t kernel_physical_end);
+// The linear mapped KVA space (not including the kernel code/data area) belongs to this object
+extern vm_object_t kernel_lva_object;
+
+// Initializes the vm_object module
+void vm_object_init(void);
 
 #endif // __VM_OBJECT_H__
