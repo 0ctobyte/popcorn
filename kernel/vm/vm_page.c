@@ -16,6 +16,8 @@
 #define GET_BIN_INDEX(num_pages)                     (_ctz(num_pages))
 #define WHICH_BUDDY(vm_page_index, bin)              (vm_page_index) & ~((1l << (bin)) - 1)
 
+#define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets)
+
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
 
@@ -132,7 +134,7 @@ void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm
 
         kassert(list_insert_last(&object->ll_resident, &pages[p].ll_rnode));
 
-        unsigned long hash_bkt = hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets;
+        unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
         kassert(list_insert_last(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
     }
 
@@ -147,7 +149,7 @@ void _vm_page_remove(vm_page_t *pages, size_t num_pages) {
         vm_object_t *object = pages[p].object;
         vm_offset_t offset = pages[p].offset;
 
-        unsigned long hash_bkt = hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets;
+        unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
         kassert(list_remove(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
 
         kassert(list_remove(&object->ll_resident, &pages[p].ll_rnode));
@@ -232,7 +234,7 @@ vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
     spinlock_readacquire(&vm_page_hash_table.lock);
 
     offset = ROUND_PAGE_DOWN(offset);
-    unsigned long hash_bkt = hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets;
+    unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
 
     vm_page_t p = { .status = {0}, .ll_onode = LIST_NODE_INITIALIZER, .ll_rnode = LIST_NODE_INITIALIZER, .object = object, .offset = offset };
     list_node_t *node = list_search(&vm_page_hash_table.ll_pages[hash_bkt], _vm_page_find, &p.ll_onode);

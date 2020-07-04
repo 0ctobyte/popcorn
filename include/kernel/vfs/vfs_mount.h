@@ -36,7 +36,7 @@ typedef struct {
     // After this call the file system should have no open buffers/data/vfs nodes
     int (*unmount)(struct vfs_mount_s *mnt);
 
-    // Get the roout vfs_node for the file system
+    // Get the root vfs_node for the file system
     int (*root)(struct vfs_mount_s *mnt, struct vfs_node_s **node);
 
     // Forces all cached data to be written back to the file system. Could potentially be asynchronous
@@ -55,5 +55,17 @@ typedef struct vfs_mount_s {
     size_t block_size;             // File system block size
     void *data;                    // Pointer to file system specific data structure
 } vfs_mount_t;
+
+// Initialize the VFS mount system and the root file system
+void vfs_mount_init(void);
+
+// Mount the file system on the given node
+vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on);
+
+// Unmount the file system
+void vfs_mount_destroy(vfs_mount_t *mnt);
+
+// Get the root file system
+vfs_mount_t* vfs_mount_root(void);
 
 #endif // __VFS_MOUNT_H__

@@ -5,6 +5,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/list.h>
 #include <kernel/arch/atomic.h>
+#include <kernel/vm/vm_object.h>
 
 struct vfs_node_s;
 struct vfs_mount_s;
@@ -135,5 +136,16 @@ typedef struct vfs_node_s {
     vfs_node_ops_t *ops;              // Pointer to VFS node ops structure
     void *data;                       // File system node specific data
 } vfs_node_t;
+
+// Setup the vfs node system
+void vfs_node_init(void);
+
+// Either lookup an existing vfs_node using the mnt and ino or, if it doesn't already exist, allocate a new vfs_node
+vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id);
+
+// De-reference a vfs_node, if the reference count is zero this will free the node
+void vfs_node_put(vfs_node_t *vn);
+
+#define vfs_node_ref(vn) (atomic_inc(&vn->refcnt))
 
 #endif // __VFS_NODE_H__
