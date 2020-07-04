@@ -1,4 +1,4 @@
-# 64-Bit ARM Kernel
+# Popcorn: 64-Bit ARM Kernel
 
 This is (or will be) a 64-bit micro-kernel targeting ARMv8-A based systems
 
