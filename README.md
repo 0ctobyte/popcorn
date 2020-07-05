@@ -45,5 +45,5 @@ The code is still incomplete. As of now, the kernel boots and runs in virtual me
 
 Next steps:
 * Virtual memory management system and pmap
-* process control block
+* process and threads
 * Virtual file system
