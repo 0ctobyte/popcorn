@@ -3,7 +3,6 @@
 #include <kernel/panic.h>
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
-#include <kernel/kmem.h>
 #include <kernel/arch/arch_exceptions.h>
 #include <kernel/vm/vm_init.h>
 #include <kernel/vm/vm_map.h>
@@ -77,29 +76,6 @@ void kmain(void) {
 
     kprintf("sizeof(vfs_node_t) == %llu, sizeof(vfs_mount_t) == %llu\n", sizeof(vfs_node_t), sizeof(vfs_mount_t));
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
-    kmem_stats();
-
-    // kprintf("vmap - start = %p, end = %p\n", vm_map_kernel()->start, vm_map_kernel()->end);
-
-    // vaddr_t kernel_virtual_start, kernel_virtual_end;
-    // kresult_t res;
-
-    // pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
-    // print_mappings();
-
-    // size_t size = PAGESIZE;
-    // #define NUM_ALLOCS 50
-    // void *buf[NUM_ALLOCS];
-
-    // for (int i = 0; i < NUM_ALLOCS; i++) {
-    //     buf[i] = kmem_alloc(size);
-    //     kmem_stats();
-    // }
-
-    // for (int i = NUM_ALLOCS-1; i >= 0; i--) {
-    //     kmem_free(buf[i], size);
-    //     kmem_stats();
-    // }
 
     print_mappings();
 }

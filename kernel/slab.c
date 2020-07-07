@@ -19,7 +19,7 @@ list_compare_result_t _slab_buf_find(list_node_t *n1, list_node_t *n2) {
 
 list_compare_result_t _slab_buf_find_full(list_node_t *n1, list_node_t *n2) {
     slab_buf_t *s2 = list_entry(n2, slab_buf_t, ll_node);
-    return (s2->free_blocks_remaining == s2->capacity) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
+    return slab_buf_is_full(s2) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
 }
 
 list_compare_result_t _slab_buf_compare(list_node_t *n1, list_node_t *n2) {

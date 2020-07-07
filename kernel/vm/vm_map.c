@@ -1,6 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/slab.h>
-#include <kernel/kmem.h>
+#include <kernel/kmem_slab.h>
 #include <kernel/arch/arch_asm.h>
 #include <kernel/vm/vm_page.h>
 #include <kernel/vm/vm_map.h>
@@ -16,9 +15,13 @@ typedef struct {
     slab_buf_t slab_buf;
 } vm_mapping_slab_t;
 
-// Slab for kernel vm_mapping_t struct
-vm_mapping_slab_t vm_mapping_slab;
-#define NUM_KERNEL_VM_MAPPING_STRUCTS (64)
+// vm_mapping_t slab
+#define VM_MAPPING_SLAB_NUM (1024)
+kmem_slab_t vm_mapping_slab;
+
+// vm_map_t slab
+#define VM_MAP_SLAB_NUM     (256)
+kmem_slab_t vm_map_slab;
 
 rbtree_compare_result_t _vm_mapping_overlap(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_snode), *m2 = rbtree_entry(n2, vm_mapping_t, rb_snode);
@@ -73,30 +76,14 @@ void _vm_mapping_hole_delete(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mappi
 }
 
 vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
-    vm_mapping_t *mapping;
-
-    if (vm_map_kernel() == vmap) {
-        // Use the slab instead of kmem for kernel vm_mapping_t structs
-        // If we're out of buffers from the slab then the kernel is in an unrecoverable state
-        spinlock_acquire(&vm_mapping_slab.lock);
-        mapping = (vm_mapping_t*)slab_alloc(&vm_mapping_slab.slab);
-        spinlock_release(&vm_mapping_slab.lock);
-        kassert(mapping != NULL);
-    } else {
-        mapping = (vm_mapping_t*)kmem_alloc(sizeof(vm_mapping_t));
-    }
+    vm_mapping_t *mapping = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
+    kassert(mapping != NULL);
 
     return mapping;
 }
 
 void _vm_mapping_free(vm_map_t *vmap, vm_mapping_t *mapping) {
-    if (vm_map_kernel() == vmap) {
-        spinlock_acquire(&vm_mapping_slab.lock);
-        slab_free(&vm_mapping_slab.slab, mapping);
-        spinlock_release(&vm_mapping_slab.lock);
-    } else {
-        kmem_free(mapping, sizeof(vm_mapping_t));
-    }
+    kmem_slab_free(&vm_mapping_slab, mapping);
 }
 
 void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
@@ -194,15 +181,18 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
 }
 
 void vm_map_init(void) {
-    // Initialize the slab to allocate kernel vm_mapping_t structs from. We can't use the general
-    // purpose allocators because of circular dependencies if we are out of kernel virtual memory
-    size_t size = NUM_KERNEL_VM_MAPPING_STRUCTS * sizeof(vm_mapping_t);
-    void *buf = (void*)pmap_steal_memory(size, NULL, NULL);
-    slab_init(&vm_mapping_slab.slab, &vm_mapping_slab.slab_buf, buf, size, sizeof(vm_mapping_t));
+    // Create the slab for the vm_mapping_t structs
+    void *buf = (void*)pmap_steal_memory(VM_MAPPING_SLAB_NUM * sizeof(vm_mapping_t), NULL, NULL);
+    kmem_slab_create_no_vm(&vm_mapping_slab, sizeof(vm_mapping_t), VM_MAPPING_SLAB_NUM, buf);
+
+    // Create slab for the vm_map_t structs
+    buf = (void*)pmap_steal_memory(VM_MAP_SLAB_NUM * sizeof(vm_map_t), NULL, NULL);
+    kmem_slab_create_no_vm(&vm_map_slab, sizeof(vm_map_t), VM_MAP_SLAB_NUM, buf);
 }
 
 vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
-    vm_map_t *map = (vm_map_t*)kmem_alloc(sizeof(vm_map_t));
+    vm_map_t *map = (vm_map_t*)kmem_slab_alloc(&vm_map_slab);
+    kassert(map != NULL);
 
     *map = (vm_map_t){ .lock = SPINLOCK_INIT, .rb_mappings = RBTREE_INITIALIZER, .rb_holes = RBTREE_INITIALIZER,
         .pmap = pmap, .start = vmin, .end = vmax, .size = 0, .refcnt = 0 };
@@ -225,7 +215,7 @@ void vm_map_destroy(vm_map_t *vmap) {
 
         pmap_destroy(vmap->pmap);
 
-        kmem_free(vmap, sizeof(vm_map_t));
+        kmem_slab_free(&vm_map_slab, vmap);
 
         return;
     }

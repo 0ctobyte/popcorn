@@ -1,5 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/kmem.h>
+#include <kernel/kmem_slab.h>
 #include <kernel/vfs/vfs_node.h>
 #include <kernel/vfs/vfs_mount.h>
 
@@ -10,7 +10,15 @@ typedef struct {
 
 vfs_mount_list_t vfs_mount_list;
 
+// vfs_mount_t slab
+#define VFS_MOUNT_SLAB_NUM (32)
+kmem_slab_t vfs_mount_slab;
+
 void vfs_mount_init(void) {
+    // Create slab for the vfs_mount_t structs
+    kmem_slab_create(&vfs_mount_slab, sizeof(vfs_mount_t), VFS_MOUNT_SLAB_NUM);
+
+    // Init the vfs mount list
     vfs_mount_list.lock = SPINLOCK_INIT;
     vfs_mount_list.mounts = LIST_INITIALIZER;
 }
@@ -18,7 +26,9 @@ void vfs_mount_init(void) {
 vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on) {
     // FIXME Find FS ops from table of supported file systems
 
-    vfs_mount_t *mnt = (vfs_mount_t*)kmem_alloc(sizeof(vfs_mount_t));
+    vfs_mount_t *mnt = (vfs_mount_t*)kmem_slab_alloc(&vfs_mount_slab);
+    kassert(mnt != NULL);
+
     mnt->lock = SPINLOCK_INIT;
     mnt->mounted_on = mounted_on;
     mounted_on->mounted_here = mnt;
@@ -54,7 +64,7 @@ void vfs_mount_destroy(vfs_mount_t *mnt) {
 
     spinlock_writerelease(&mnt->lock);
 
-    kmem_free(mnt, sizeof(vfs_mount_t));
+    kmem_slab_free(&vfs_mount_slab, mnt);
 }
 
 vfs_mount_t* vfs_mount_root(void) {

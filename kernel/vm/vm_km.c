@@ -75,3 +75,6 @@ vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {
 
     return vstart;
 }
+
+void vm_km_free(vaddr_t va, size_t size, vm_km_flags_t flags) {
+}

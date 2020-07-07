@@ -1,4 +1,3 @@
-#include <kernel/kmem.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_km.h>
@@ -12,5 +11,4 @@ void vm_init(void) {
     vm_object_init();
     vm_page_init();
     vm_km_init();
-    kmem_init();
 }

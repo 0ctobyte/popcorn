@@ -1,5 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/kmem.h>
+#include <kernel/kmem_slab.h>
 #include <kernel/hash.h>
 #include <kernel/arch/arch_asm.h>
 #include <kernel/vfs/vfs_mount.h>
@@ -21,13 +21,17 @@ typedef struct {
 
 vfs_node_hash_table_t vfs_node_hash_table;
 
+// Slab for vfs_node_t
+#define VFS_NODE_SLAB_NUM (1024)
+kmem_slab_t vfs_node_slab;
+
 list_compare_result_t _vfs_node_find(list_node_t *n1, list_node_t *n2) {
     vfs_node_t *v1 = list_entry(n1, vfs_node_t, ll_vnode), *v2 = list_entry(n2, vfs_node_t, ll_vnode);
     return (v1->id == v2->id && v1->mount == v2->mount) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
 }
 
 void _vfs_node_free(vfs_node_t *vn) {
-    kmem_free((void*)vn, sizeof(vfs_node_t));
+    kmem_slab_free(&vfs_node_slab, (void*)vn);
 
     spinlock_writeacquire(&vfs_node_hash_table.lock);
     vfs_node_hash_table.vn_available++;
@@ -40,12 +44,17 @@ vfs_node_t* _vfs_node_alloc(void) {
     vfs_node_hash_table.vn_available--;
     spinlock_writerelease(&vfs_node_hash_table.lock);
 
-    vfs_node_t *vn = (vfs_node_t*)kmem_alloc(sizeof(vfs_node_t));
+    vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
+    kassert(vn != NULL);
 
     return vn;
 }
 
 void vfs_node_init(void) {
+    // Setup the slab for the vfs_node_t structs
+    kmem_slab_create(&vfs_node_slab, sizeof(vfs_node_t), VFS_NODE_SLAB_NUM);
+
+    // Initialize the hash table
     vfs_node_hash_table.lock = SPINLOCK_INIT;
     vfs_node_hash_table.vn_available = VN_AVAIL_MAX;
 
@@ -54,7 +63,6 @@ void vfs_node_init(void) {
 }
 
 vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
-
     // Lookup hash table for existing node
     unsigned long hash_bkt = VFS_NODE_HASH(mnt, id);
 
