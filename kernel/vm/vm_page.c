@@ -35,7 +35,7 @@ extern paddr_t kernel_physical_end;
 // it is no longer possible to do so. Note that this only allows allocating power-of-2 number of contiguous pages. Anything else is rounded
 // up to the next power of 2 and we will have wasted pages.
 typedef struct {
-    spinlock_t lock;
+    spinlock_t lock[NUM_BINS];       // One lock per bin
     vm_page_t *pages;                // Contiguous array of all pages
     list_t ll_page_bins[NUM_BINS];   // Buddy allocation bins
     size_t num_pages;                // Total # of pages
@@ -45,7 +45,7 @@ vm_page_array_t vm_page_array;
 
 // The hash table keeps track of every single allocated page. Pages are looked up by vm_object_t pointer and offset in that object
 typedef struct {
-    spinlock_t lock;    // Multiple readers, single writer lock
+    spinlock_t *lock;   // Multiple readers, single writer lock per bucket
     list_t *ll_pages;   // Array of lists; each list contains a chain of vm_page_t's in the same hash bucket
     size_t num_buckets; // Number of buckets
 } vm_page_hash_table_t;
@@ -70,14 +70,19 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
 
     vm_page_t *pages = NULL;
 
+    spinlock_acquire(&vm_page_array.lock[bin_index]);
+
     if (list_is_empty(&vm_page_array.ll_page_bins[bin_index])) {
         // If the bin corresponding to num_pages doesn't have a free buddy check the next bin up
         // Split the contiguous pages into two buddies, place one in the current bin, return the other
         // Just return NULL if we couldn't find a contiguous range of pages of size num_pages
+        spinlock_release(&vm_page_array.lock[bin_index]);
         pages = _vm_page_bin_pop(num_pages << 1);
         if (pages == NULL) return NULL;
 
         vm_page_t *buddy = GET_CONTIGUOUS_BUDDY(pages, num_pages);
+
+        spinlock_acquire(&vm_page_array.lock[bin_index]);
         kassert(list_push(&vm_page_array.ll_page_bins[bin_index], &buddy->ll_rnode));
     } else {
         // Otherwise pop this buddy off of the bin
@@ -85,6 +90,8 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
         kassert(list_pop(&vm_page_array.ll_page_bins[bin_index], node));
         pages = list_entry(node, vm_page_t, ll_rnode);
     }
+
+    spinlock_release(&vm_page_array.lock[bin_index]);
 
     return pages;
 }
@@ -94,6 +101,8 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
 
     // Don't do anything if bin_index is past the max number of bins we have
     if (bin_index < NUM_BINS) {
+        spinlock_acquire(&vm_page_array.lock[bin_index]);
+
         // The buddy list is ordered by ascending page number, search for the position to insert these freed pages
         kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_rnode, LIST_ORDER_ASCENDING));
 
@@ -102,29 +111,33 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
 
         // Check if the previous or next buddies are contiguous and can be merged
         unsigned long buddy_index = GET_BUDDY_INDEX(pages, num_pages);
+        bool merge_buddy = false;
+
         if (next != NULL && buddy_index == GET_PAGE_INDEX(next)) {
             // Next is a buddy that can be merged. Re-arrange the linked list to pull pages and next out of the list
             kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &next->ll_rnode));
             kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_rnode));
 
-            // Push this contiguous block of free pages in the next higher up bin
-            _vm_page_bin_push(pages, num_pages << 1);
+            merge_buddy = true;
         } else if (prev != NULL && buddy_index == GET_PAGE_INDEX(prev)) {
             // The previous buddy can be merged. Re-arrange the linked list to pull these pages out of the list
             kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &prev->ll_rnode));
             kassert(list_remove(&vm_page_array.ll_page_bins[bin_index], &pages->ll_rnode));
 
-            // Push this new contiguous block of free pages in the next higher up bin
-            _vm_page_bin_push(prev, num_pages << 1);
+            merge_buddy = true;
+            pages = prev;
         }
+
+        spinlock_release(&vm_page_array.lock[bin_index]);
+
+        // Push this contiguous block of free pages in the next higher up bin
+        if (merge_buddy) _vm_page_bin_push(pages, num_pages << 1);
     }
 }
 
 void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm_offset_t starting_offset) {
     // Add each page in the list to the object and update the pages object and offset fields
     // Also add the page to the hash table
-    spinlock_writeacquire(&vm_page_hash_table.lock);
-
     for (unsigned int p = 0; p < num_pages; p++) {
         vm_offset_t offset = starting_offset + (p << PAGESHIFT);
         if (offset >= object->size) object->size += (offset - object->size) + PAGESIZE;
@@ -135,30 +148,30 @@ void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm
         kassert(list_insert_last(&object->ll_resident, &pages[p].ll_rnode));
 
         unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
-        kassert(list_insert_last(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
-    }
 
-    spinlock_writerelease(&vm_page_hash_table.lock);
+        spinlock_writeacquire(&vm_page_hash_table.lock[hash_bkt]);
+        kassert(list_insert_last(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
+        spinlock_writerelease(&vm_page_hash_table.lock[hash_bkt]);
+    }
 }
 
 void _vm_page_remove(vm_page_t *pages, size_t num_pages) {
     // Remove each page from the list and the hash table
-    spinlock_writeacquire(&vm_page_hash_table.lock);
-
     for (unsigned int p = 0; p < num_pages; p++) {
         vm_object_t *object = pages[p].object;
         vm_offset_t offset = pages[p].offset;
 
         unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
+
+        spinlock_writeacquire(&vm_page_hash_table.lock[hash_bkt]);
         kassert(list_remove(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
+        spinlock_writerelease(&vm_page_hash_table.lock[hash_bkt]);
 
         kassert(list_remove(&object->ll_resident, &pages[p].ll_rnode));
 
         pages[p].object = NULL;
         pages[p].offset = 0;
     }
-
-    spinlock_writerelease(&vm_page_hash_table.lock);
 }
 
 void vm_page_init(void) {
@@ -166,11 +179,11 @@ void vm_page_init(void) {
     size_t vm_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(vm_page_t));
     vaddr_t vm_page_array_addr = (vaddr_t)pmap_steal_memory(vm_page_array_size, NULL, NULL);
 
-    vm_page_array.lock = SPINLOCK_INIT;
     vm_page_array.pages = (vm_page_t*)vm_page_array_addr;
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
     for (unsigned long i = 0; i < NUM_BINS; i++) {
+        vm_page_array.lock[i] = SPINLOCK_INIT;
         vm_page_array.ll_page_bins[i] = LIST_INITIALIZER;
     }
 
@@ -188,12 +201,14 @@ void vm_page_init(void) {
 
     // Allocate space for the vm_page_t hash table. No kmem at this point so use pmap_steal_memory
     // Hash table size is 1.5 times the number of pages
-    vm_page_hash_table.lock = SPINLOCK_INIT;
     vm_page_hash_table.num_buckets = vm_page_array.num_pages + (vm_page_array.num_pages >> 1);
     size_t size = vm_page_hash_table.num_buckets * sizeof(list_t);
+    size_t lock_size = vm_page_hash_table.num_buckets * sizeof(spinlock_t);
 
+    vm_page_hash_table.lock = (spinlock_t*)pmap_steal_memory(lock_size, NULL, NULL);
     vm_page_hash_table.ll_pages = (list_t*)pmap_steal_memory(size, NULL, NULL);
     arch_fast_zero((uintptr_t)vm_page_hash_table.ll_pages, size);
+    arch_fast_zero((uintptr_t)vm_page_hash_table.lock, lock_size);
 
     // Reserve the physical pages used by the kernel
     for (size_t pa = kernel_physical_start; pa < kernel_physical_end; pa += PAGESIZE) {
@@ -208,11 +223,14 @@ void vm_page_init(void) {
 
 #if DEBUG
 void vm_page_hash_table_dump(void) {
-    spinlock_readacquire(&vm_page_hash_table.lock);
-
     extern void kprintf(const char *s, ...);
     for (unsigned long i = 0; i < vm_page_hash_table.num_buckets; i++) {
-        if (list_is_empty(&vm_page_hash_table.ll_pages[i])) continue;
+        spinlock_readacquire(&vm_page_hash_table.lock[i]);
+
+        if (list_is_empty(&vm_page_hash_table.ll_pages[i])) {
+            spinlock_readrelease(&vm_page_hash_table.lock[i]);
+            continue;
+        }
 
         kprintf("%u", i);
 
@@ -221,33 +239,31 @@ void vm_page_hash_table_dump(void) {
             kprintf(" -> %p", vm_page_to_pa(page));
         }
 
+        spinlock_readrelease(&vm_page_hash_table.lock[i]);
+
         kprintf("\n");
     }
-
-    spinlock_readrelease(&vm_page_hash_table.lock);
 }
 #endif // DEBUG
 
 vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
     kassert(object != NULL);
 
-    spinlock_readacquire(&vm_page_hash_table.lock);
-
     offset = ROUND_PAGE_DOWN(offset);
     unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
+
+    spinlock_readacquire(&vm_page_hash_table.lock[hash_bkt]);
 
     vm_page_t p = { .status = {0}, .ll_onode = LIST_NODE_INITIALIZER, .ll_rnode = LIST_NODE_INITIALIZER, .object = object, .offset = offset };
     list_node_t *node = list_search(&vm_page_hash_table.ll_pages[hash_bkt], _vm_page_find, &p.ll_onode);
 
-    spinlock_readrelease(&vm_page_hash_table.lock);
+    spinlock_readrelease(&vm_page_hash_table.lock[hash_bkt]);
 
     return list_entry(node, vm_page_t, ll_onode);
 }
 
 vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_offset_t offset) {
     kassert(num_pages <= vm_page_array.num_pages && num_pages <= MAX_NUM_CONTIGUOUS_PAGES);
-
-    spinlock_acquire(&vm_page_array.lock);
 
     // Make sure num_pages is a power of 2
     num_pages = ROUND_UP_POW2(num_pages);
@@ -259,8 +275,6 @@ vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_of
             first_page[i].status.is_active = 1;
         }
     }
-
-    spinlock_release(&vm_page_array.lock);
 
     // If an object is specified, add the page(s) to that object
     if (first_page != NULL && object != NULL) {
@@ -288,16 +302,12 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
         spinlock_writerelease(&object->lock);
     }
 
-    spinlock_acquire(&vm_page_array.lock);
-
     _vm_page_bin_push(pages, num_pages);
 
     // Clear the active bit
     for (unsigned long i = 0; i < num_pages; i++) {
         pages[i].status.is_active = 0;
     }
-
-    spinlock_release(&vm_page_array.lock);
 }
 
 vm_page_t* vm_page_alloc(vm_object_t *object, vm_offset_t offset) {

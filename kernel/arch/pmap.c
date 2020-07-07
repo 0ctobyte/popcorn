@@ -244,10 +244,11 @@ typedef struct {
 
 // Array of all ptep_page_t lists, one per page
 typedef struct {
-    spinlock_t lock;
+    spinlock_t *lock;
     list_t *list;
 } pte_page_list_t;
-pte_page_list_t pte_page_list = {0};
+
+pte_page_list_t pte_page_list;
 
 #define GET_PTE_PAGE_LIST_IDX(pa) (((pa) - MEMBASEADDR) >> PAGESHIFT)
 
@@ -286,9 +287,9 @@ void _pmap_pte_page_insert(pmap_t *pmap, paddr_t pa, vaddr_t va) {
     // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
     spinlock_writerelease(&pmap->lock);
 
-    spinlock_acquire(&pte_page_list.lock);
+    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
     kassert(list_push(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
-    spinlock_release(&pte_page_list.lock);
+    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     spinlock_writeacquire(&pmap->lock);
 }
@@ -297,7 +298,7 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
     spinlock_writerelease(&pmap->lock);
 
-    spinlock_acquire(&pte_page_list.lock);
+    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     pte_page_t tmp = (pte_page_t){ .ll_node = LIST_NODE_INITIALIZER, .pmap = pmap };
     list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search, &tmp.ll_node);
@@ -306,7 +307,7 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     kassert(pte_page != NULL);
     kassert(list_remove(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
 
-    spinlock_release(&pte_page_list.lock);
+    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     spinlock_writeacquire(&pmap->lock);
 
@@ -740,9 +741,12 @@ void pmap_init(void) {
     slab_init(&page_table_slab.slab, &page_table_slab.slab_buf, (void*)page_table_slab_va, PAGE_TABLE_SLAB_SIZE, PAGESIZE);
 
     // Allocate memory for the pte_page array
-    size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
+    size_t pte_page_array_size = (MEMSIZE >> PAGESHIFT) * sizeof(list_t);
+    size_t pte_page_lock_size = (MEMSIZE >> PAGESHIFT) * sizeof(spinlock_t);
     pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
+    pte_page_list.lock = (spinlock_t*)pmap_steal_memory(pte_page_lock_size, NULL, NULL);
     arch_fast_zero((uintptr_t)pte_page_list.list, pte_page_array_size);
+    arch_fast_zero((uintptr_t)pte_page_list.lock, pte_page_lock_size);
 
     // Setup the pte_page_t slab
     vaddr_t pte_page_slab_va = pmap_steal_memory(PTE_PAGE_SLAB_SIZE, NULL, NULL);
@@ -1050,7 +1054,7 @@ void pmap_copy_page(paddr_t src, paddr_t dst) {
 void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
     if (prot == VM_PROT_ALL) return;
 
-    spinlock_acquire(&pte_page_list.lock);
+    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     pte_page_t *entry = NULL;
     list_for_each_entry(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], entry, ll_node) {
@@ -1058,7 +1062,7 @@ void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
         pmap_protect(entry->pmap, entry->va, eva, prot);
     }
 
-    spinlock_release(&pte_page_list.lock);
+    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 }
 
 bool pmap_clear_modify(vm_page_t *page) {
