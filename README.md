@@ -1,6 +1,6 @@
 # Popcorn: 64-Bit ARM Kernel
 
-This is (or will be) a 64-bit micro-kernel targeting ARMv8-A based systems
+This is (or will be) a 64-bit micro-kernel targeting ARMv8-A based systems. The kernel is heavily inspired by the CMU Mach kernel.
 
 Currently the kernel is able to boot and run in virtual memory mode on the following systems:
 
