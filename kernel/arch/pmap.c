@@ -987,8 +987,13 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
     src_addr = ROUND_PAGE_DOWN(src_addr);
     dst_addr = ROUND_PAGE_DOWN(dst_addr);
 
-    spinlock_writeacquire(&dst_map->lock);
-    spinlock_readacquire(&src_map->lock);
+    if (src_map < dst_map) {
+        spinlock_writeacquire(&dst_map->lock);
+        spinlock_readacquire(&src_map->lock);
+    } else {
+        spinlock_readacquire(&src_map->lock);
+        spinlock_writeacquire(&dst_map->lock);
+    }
 
     size_t stride_size = 0;
     for (unsigned long s = 0; s < len; s += PAGESIZE) {
@@ -1000,8 +1005,13 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
         _pmap_enter(dst_map, dst_addr + s, pa & (PAGESIZE - 1), bpu, bpl);
     }
 
-    spinlock_readrelease(&src_map->lock);
-    spinlock_writerelease(&dst_map->lock);
+    if (src_map < dst_map) {
+        spinlock_readrelease(&src_map->lock);
+        spinlock_writerelease(&dst_map->lock);
+    } else {
+        spinlock_writerelease(&dst_map->lock);
+        spinlock_readrelease(&src_map->lock);
+    }
 }
 
 void pmap_activate(pmap_t *pmap) {
