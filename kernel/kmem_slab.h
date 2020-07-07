@@ -13,8 +13,8 @@ typedef struct {
     size_t size;
 } kmem_slab_t;
 
-// Create a new allocation zone. The no_vm version takes the pointer to the slab buffer instead
-// of allocating a zone using VM_KM.
+// Create a new slab. The no_vm version takes the pointer to the slab buffer instead
+// of allocating kernel virtual address space for it.
 void kmem_slab_create_no_vm(kmem_slab_t *kmem_slab, size_t object_size, size_t num_objects, void *buf);
 void kmem_slab_create(kmem_slab_t *kmem_slab, size_t object_size, size_t num_objects);
 
