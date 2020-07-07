@@ -75,17 +75,6 @@ void _vm_mapping_hole_delete(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mappi
     rbtree_remove(&vmap->rb_holes, &mapping->rb_hnode);
 }
 
-vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
-    vm_mapping_t *mapping = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
-    kassert(mapping != NULL);
-
-    return mapping;
-}
-
-void _vm_mapping_free(vm_map_t *vmap, vm_mapping_t *mapping) {
-    kmem_slab_free(&vm_mapping_slab, mapping);
-}
-
 void _vm_mapping_insert(vm_map_t *vmap, rbtree_slot_t slot, vm_mapping_t *predecessor, vm_mapping_t *new_mapping) {
     if (slot == 0) {
         kassert(rbtree_insert(&vmap->rb_mappings, _vm_mapping_compare, &new_mapping->rb_snode));
@@ -121,7 +110,7 @@ void _vm_mapping_delete(vm_map_t *vmap, vm_mapping_t *mapping) {
 
     vm_object_destroy(mapping->object);
 
-    _vm_mapping_free(vmap, mapping);
+    kmem_slab_free(&vm_mapping_slab, mapping);
 }
 
 void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *mapping, rbtree_slot_t slot) {
@@ -140,7 +129,9 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
         // Update the predecessor's hole size and hole tree
         _vm_mapping_hole_update(vmap, predecessor, predecessor->hole_size - size);
     } else {
-        vm_mapping_t *new_mapping = _vm_mapping_alloc(vmap);
+        vm_mapping_t *new_mapping = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
+        kassert(new_mapping != NULL);
+
         arch_fast_move((uintptr_t)new_mapping, (uintptr_t)mapping, sizeof(vm_mapping_t));
         vm_object_reference(new_mapping->object);
 
@@ -159,7 +150,9 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
     if (start <= mapping->vstart || start >= mapping->vend) return mapping;
 
     // Splits a mapping based on the given starting virtual address
-    vm_mapping_t *split = _vm_mapping_alloc(vmap);
+    vm_mapping_t *split = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
+    kassert(split != NULL);
+
     arch_fast_move((vaddr_t)split, (vaddr_t)mapping, sizeof(vm_mapping_t));
 
     split->ll_node = LIST_NODE_INITIALIZER;

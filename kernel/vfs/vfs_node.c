@@ -26,17 +26,6 @@ list_compare_result_t _vfs_node_find(list_node_t *n1, list_node_t *n2) {
     return (v1->id == v2->id && v1->mount == v2->mount) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
 }
 
-void _vfs_node_free(vfs_node_t *vn) {
-    kmem_slab_free(&vfs_node_slab, (void*)vn);
-}
-
-vfs_node_t* _vfs_node_alloc(void) {
-    vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
-    kassert(vn != NULL);
-
-    return vn;
-}
-
 void vfs_node_init(void) {
     // Setup the slab for the vfs_node_t structs
     kmem_slab_create(&vfs_node_slab, sizeof(vfs_node_t), VFS_NODE_SLAB_NUM);
@@ -59,7 +48,11 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
     spinlock_readrelease(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
     // If it didn't exist in the hash table then allocate a new vfs_node object
-    if (vn == NULL) vn = _vfs_node_alloc();
+    if (vn == NULL) {
+        vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
+        kassert(vn != NULL);
+    }
+
     vfs_node_ref(vn);
 
     return vn;
@@ -79,7 +72,7 @@ void vfs_node_put(vfs_node_t *vn) {
         list_remove(&vfs_node_hash_table.ll_vn_buckets[hash_bkt], &vn->ll_vnode);
         spinlock_readrelease(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
-        _vfs_node_free(vn);
+        kmem_slab_free(&vfs_node_slab, (void*)vn);
         return;
     }
 

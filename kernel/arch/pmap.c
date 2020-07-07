@@ -303,19 +303,6 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     kmem_slab_free(&pte_page_slab, pte_page);
 }
 
-paddr_t _pmap_alloc_table(pmap_t *pmap) {
-    vaddr_t new_table = (vaddr_t)kmem_slab_alloc(&page_table_slab);
-    kassert(new_table != 0);
-
-    arch_fast_zero(new_table, PAGESIZE);
-
-    return TABLE_KVA_TO_PA(new_table);
-}
-
-void _pmap_free_table(pmap_t *pmap, paddr_t table_pa) {
-    kmem_slab_free(&page_table_slab, (void*)TABLE_PA_TO_KVA(table_pa));
-}
-
 void _pmap_update_pte(vaddr_t va, unsigned int asid, pte_t *old_pte, pte_t new_pte) {
     // Use break-before-make rule if the old PTE was valid. We must do this in the following cases:
     // - Changing memory type
@@ -354,15 +341,17 @@ void _pmap_clear_pte_no_tlbi(pte_t *old_pte) {
 }
 
 pte_t _pmap_insert_table(pmap_t *pmap, pte_t *parent_table_pte) {
-    paddr_t new_table = _pmap_alloc_table(pmap);
-    *parent_table_pte = MAKE_TDE(new_table);
+    vaddr_t new_table_va = (vaddr_t)kmem_slab_zalloc(&page_table_slab);
+    kassert(new_table_va != 0);
+
+    *parent_table_pte = MAKE_TDE(TABLE_KVA_TO_PA(new_table_va));
     return *parent_table_pte;
 }
 
 void _pmap_remove_table(pmap_t *pmap, pte_t *parent_table_pte) {
     paddr_t table_pa = PTE_TO_PA(*parent_table_pte);
     *parent_table_pte = 0;
-    _pmap_free_table(pmap, table_pa);
+    kmem_slab_free(&page_table_slab, (void*)TABLE_PA_TO_KVA(table_pa));
 }
 
 bool _pmap_is_table_empty(pte_t *table) {
@@ -381,7 +370,13 @@ pte_t* _pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, bp_uattr_t bpu, bp_latt
     unsigned long lsb = PAGESHIFT + ((3 - level) * width), index = GET_TABLE_IDX(va, lsb, mask);
     pte_t pte, *ptep;
 
-    if (pmap->ttb == 0) pmap->ttb = _pmap_alloc_table(pmap);
+    if (pmap->ttb == 0) {
+        vaddr_t ttb_va = (vaddr_t)kmem_slab_zalloc(&page_table_slab);
+        kassert(ttb_va != 0);
+
+        pmap->ttb = TABLE_KVA_TO_PA(ttb_va);
+    }
+
     pte_t *table = (pte_t*)TABLE_PA_TO_KVA(pmap->ttb);
 
     // Just get the next table if we are at level 0
@@ -456,7 +451,7 @@ pte_t* _pmap_remove(pmap_t *pmap, vaddr_t va) {
         if (_pmap_is_table_empty(table[l])) {
             // Just free the base translation table
             if (l == 0) {
-                _pmap_free_table(pmap, pmap->ttb);
+                kmem_slab_free(&page_table_slab, (void*)TABLE_PA_TO_KVA(pmap->ttb));
                 pmap->ttb = 0;
             } else {
                 _pmap_remove_table(pmap, ptep[l-1]);

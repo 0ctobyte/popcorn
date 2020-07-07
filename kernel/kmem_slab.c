@@ -2,7 +2,6 @@
 #include <kernel/spinlock.h>
 #include <kernel/kstdio.h>
 #include <kernel/list.h>
-#include <kernel/arch/arch_asm.h>
 #include <kernel/slab.h>
 #include <kernel/vm/vm_km.h>
 #include <kernel/kmem_slab.h>
@@ -45,9 +44,13 @@ void* kmem_slab_alloc(kmem_slab_t *kmem_slab) {
 }
 
 void* kmem_slab_zalloc(kmem_slab_t *kmem_slab) {
-    void *mem = kmem_slab_alloc(kmem_slab);
-    if (mem != NULL) arch_fast_zero((uintptr_t)mem, kmem_slab->slab.block_size);
-    return mem;
+    kassert(kmem_slab != NULL);
+
+    spinlock_acquire(&kmem_slab->lock);
+    void *ptr = slab_zalloc(&kmem_slab->slab);
+    spinlock_release(&kmem_slab->lock);
+
+    return ptr;
 }
 
 void kmem_slab_free(kmem_slab_t *kmem_slab, void *ptr) {
