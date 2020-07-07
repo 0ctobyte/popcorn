@@ -1,6 +1,6 @@
 #include <kernel/kassert.h>
 #include <kernel/hash.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_page.h>
 
@@ -8,12 +8,12 @@
 #define MAX_NUM_CONTIGUOUS_PAGES (1l << (NUM_BINS - 1))
 
 #define IS_POW2(n)                                   (((n) & ((n)-1)) == 0 && (n) != 0)
-#define ROUND_DOWN_POW2(n)                           (_rbit(_rbit(n) & ~(_rbit(n) - 1l)))
-#define ROUND_UP_POW2(n)                             IS_POW2(n) ? (n) : _rbit(1l << (_ctz(_rbit(n)) - 1))
+#define ROUND_DOWN_POW2(n)                           (arch_rbit(arch_rbit(n) & ~(arch_rbit(n) - 1l)))
+#define ROUND_UP_POW2(n)                             IS_POW2(n) ? (n) : arch_rbit(1l << (arch_ctz(arch_rbit(n)) - 1))
 #define GET_PAGE_INDEX(page)                         ((page) - vm_page_array.pages)
 #define GET_BUDDY_INDEX(page, num_pages)             (GET_PAGE_INDEX(page) ^ (num_pages))
 #define GET_CONTIGUOUS_BUDDY(page, num_pages)        (&vm_page_array.pages[GET_BUDDY_INDEX(page, num_pages)]);
-#define GET_BIN_INDEX(num_pages)                     (_ctz(num_pages))
+#define GET_BIN_INDEX(num_pages)                     (arch_ctz(num_pages))
 #define WHICH_BUDDY(vm_page_index, bin)              (vm_page_index) & ~((1l << (bin)) - 1)
 
 #define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets)
@@ -175,7 +175,7 @@ void vm_page_init(void) {
     }
 
     // Clear the entire array
-    _fast_zero((uintptr_t)vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
+    arch_fast_zero((uintptr_t)vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
 
     // Split the pages up into groups of the largest powers of 2 possible and place them in the appropriate bins.
     // The bins hold the pointer to the first page in the buddy. Do this until we've accounted for all the pages
@@ -193,7 +193,7 @@ void vm_page_init(void) {
     size_t size = vm_page_hash_table.num_buckets * sizeof(list_t);
 
     vm_page_hash_table.ll_pages = (list_t*)pmap_steal_memory(size, NULL, NULL);
-    _fast_zero((uintptr_t)vm_page_hash_table.ll_pages, size);
+    arch_fast_zero((uintptr_t)vm_page_hash_table.ll_pages, size);
 
     // Reserve the physical pages used by the kernel
     for (size_t pa = kernel_physical_start; pa < kernel_physical_end; pa += PAGESIZE) {

@@ -1,13 +1,14 @@
 target_sources(${target}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/__start.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_asm.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_atomic.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_barrier.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_cache.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_exceptions.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_interrupts.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/_mmu.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/_arch_exceptions.s
         ${CMAKE_CURRENT_SOURCE_DIR}/_relocate.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_asm.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_atomic.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_barrier.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_cache.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_exceptions
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_interrupts.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_mmu.s
         ${CMAKE_CURRENT_SOURCE_DIR}/pmap
 )

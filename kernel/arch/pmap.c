@@ -3,9 +3,10 @@
 #include <kernel/slab.h>
 #include <kernel/kmem.h>
 #include <kernel/vm/vm_object.h>
-#include <kernel/arch/asm.h>
-#include <kernel/arch/mmu.h>
-#include <kernel/arch/barrier.h>
+#include <kernel/arch/arch_asm.h>
+#include <kernel/arch/arch_atomic.h>
+#include <kernel/arch/arch_mmu.h>
+#include <kernel/arch/arch_barrier.h>
 #include <kernel/arch/pmap.h>
 
 #define _4KB   (0x1000)
@@ -230,7 +231,7 @@ extern vaddr_t vm_page_array_va;
 unsigned long PAGESIZE;
 unsigned long PAGESHIFT;
 
-#define ASID_ALLOC()   (atomic_inc(&asid_num))
+#define ASID_ALLOC()   (arch_atomic_inc(&asid_num))
 #define GET_ASID(pmap) ((pmap->asid) & 0xff)
 unsigned long asid_num;
 
@@ -320,7 +321,7 @@ paddr_t _pmap_alloc_table(pmap_t *pmap) {
     spinlock_release(&page_table_slab.lock);
 
     kassert(new_table != 0);
-    _fast_zero(new_table, PAGESIZE);
+    arch_fast_zero(new_table, PAGESIZE);
 
     return TABLE_KVA_TO_PA(new_table);
 }
@@ -346,21 +347,21 @@ void _pmap_update_pte(vaddr_t va, unsigned int asid, pte_t *old_pte, pte_t new_p
     // The break-before-make procedure:
     // 1. Replace old PTE with invalid entry and issue DSB
     *old_pte = 0;
-    barrier_dsb();
+    arch_barrier_dsb();
 
     // 2. Invalidate the TLB entry by VA
-    tlb_invalidate_va(va, asid);
+    arch_tlb_invalidate_va(va, asid);
 
     // 3. Write new pte and issue DSB
     *old_pte = new_pte;
-    barrier_dsb();
+    arch_barrier_dsb();
 }
 
 void _pmap_clear_pte(vaddr_t va, unsigned int asid, pte_t *old_pte) {
     *old_pte = 0;
     if (IS_PTE_VALID(*old_pte)) {
-        barrier_dsb();
-        tlb_invalidate_va(va, asid);
+        arch_barrier_dsb();
+        arch_tlb_invalidate_va(va, asid);
     }
 }
 
@@ -577,8 +578,8 @@ void pmap_bootstrap(void) {
     // This is one of the first routines that is called in kernel init. All it does is setup page tables and such
     // just enough in order to get the kernel running in virtual memory mode with the MMU on
     // Check for MMU supported features. We prefer 4KB pages
-    PAGESIZE = mmu_is_4kb_granule_supported() ? _4KB : (mmu_is_16kb_granule_supported() ? _16KB : _64KB);
-    PAGESHIFT = _ctz(PAGESIZE);
+    PAGESIZE = arch_mmu_is_4kb_granule_supported() ? _4KB : (arch_mmu_is_16kb_granule_supported() ? _16KB : _64KB);
+    PAGESHIFT = arch_ctz(PAGESIZE);
 
     kernel_pmap.lock = SPINLOCK_INIT;
     kernel_pmap.asid = 0;
@@ -602,7 +603,7 @@ void pmap_bootstrap(void) {
     kernel_virtual_end += total_tables_size;
     kernel_size += total_tables_size;
 
-    _fast_zero(tables, total_tables_size);
+    arch_fast_zero(tables, total_tables_size);
     kernel_pmap.ttb = tables;
     tables += PAGESIZE;
 
@@ -721,10 +722,10 @@ void pmap_bootstrap(void) {
 
     // Finally enable the MMU!
     ma_index_t ma_index = {.attrs = {MA_DEVICE_NGNRNE, MA_DEVICE_NGNRE, MA_NORMAL_NC, MA_NORMAL_INC, MA_NORMAL_WBWARA, MA_NORMAL_WTWARA, MA_NORMAL_WTWNRA, MA_NORMAL_WTWNRN}};
-    mmu_enable(identity_pmap.ttb, kernel_pmap.ttb, MAIR(ma_index), PAGESIZE);
-    mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
+    arch_mmu_enable(identity_pmap.ttb, kernel_pmap.ttb, MAIR(ma_index), PAGESIZE);
+    arch_mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
-    mmu_clear_ttbr0();
+    arch_mmu_clear_ttbr0();
 
     // We just linearly mapped all of memory so adjust kernel_virtual_end to recognize this
     kernel_virtual_end = kernel_virtual_start + MEMSIZE;
@@ -741,7 +742,7 @@ void pmap_init(void) {
     // Allocate memory for the pte_page array
     size_t pte_page_array_size = ROUND_PAGE_UP((MEMSIZE >> PAGESHIFT) * sizeof(list_t));
     pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
-    _fast_zero((uintptr_t)pte_page_list.list, pte_page_array_size);
+    arch_fast_zero((uintptr_t)pte_page_list.list, pte_page_array_size);
 
     // Setup the pte_page_t slab
     vaddr_t pte_page_slab_va = pmap_steal_memory(PTE_PAGE_SLAB_SIZE, NULL, NULL);
@@ -786,19 +787,24 @@ pmap_t* pmap_create(void) {
 
 void pmap_destroy(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
-    atomic_dec(&pmap->refcnt);
+
+    spinlock_writeacquire(&pmap->lock);
+    pmap->refcnt--;
 
     if (pmap->refcnt == 0) {
         // Assuming all mappings have been removed prior to calling this function i.e. all tables have been freed
-        spinlock_writeacquire(&pmap->lock);
         kmem_free(pmap, sizeof(pmap_t));
-        spinlock_writerelease(&pmap->lock);
+        return;
     }
+
+    spinlock_writerelease(&pmap->lock);
 }
 
 void pmap_reference(pmap_t *pmap) {
     kassert(pmap != NULL);
-    atomic_inc(&pmap->refcnt);
+    spinlock_writeacquire(&pmap->lock);
+    pmap->refcnt++;
+    spinlock_writerelease(&pmap->lock);
 }
 
 int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) {
@@ -1009,7 +1015,7 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
 void pmap_activate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
     spinlock_readacquire(&pmap->lock);
-    mmu_set_ttbr0(pmap->ttb, GET_ASID(pmap));
+    arch_mmu_set_ttbr0(pmap->ttb, GET_ASID(pmap));
     spinlock_readrelease(&pmap->lock);
 }
 
@@ -1019,26 +1025,26 @@ void pmap_deactivate(pmap_t *pmap) {
     spinlock_readacquire(&pmap->lock);
 
     // Check that we are deactivating the current context
-    unsigned long ttbr0 = mmu_get_ttbr0();
+    unsigned long ttbr0 = arch_mmu_get_ttbr0();
     kassert((ttbr0 >> 48) == pmap->asid && (ttbr0 & ~0xFFFF000000000000) == pmap->ttb);
 
-    mmu_clear_ttbr0();
+    arch_mmu_clear_ttbr0();
 
     spinlock_readrelease(&pmap->lock);
 }
 
 void pmap_zero_page(paddr_t pa) {
     spinlock_writeacquire(&pmap_kernel()->lock);
-    _fast_zero(PA_TO_KVA(pa), PAGESIZE);
+    arch_fast_zero(PA_TO_KVA(pa), PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
-    barrier_dmb();
+    arch_barrier_dmb();
 }
 
 void pmap_copy_page(paddr_t src, paddr_t dst) {
     spinlock_writeacquire(&pmap_kernel()->lock);
-    _fast_move(PA_TO_KVA(dst), PA_TO_KVA(src), PAGESIZE);
+    arch_fast_move(PA_TO_KVA(dst), PA_TO_KVA(src), PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
-    barrier_dmb();
+    arch_barrier_dmb();
 }
 
 void pmap_page_protect(paddr_t pa, vm_prot_t prot) {

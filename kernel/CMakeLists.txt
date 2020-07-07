@@ -6,7 +6,6 @@ target_sources(${target}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/bitmap
         ${CMAKE_CURRENT_SOURCE_DIR}/devicetree
-        ${CMAKE_CURRENT_SOURCE_DIR}/exceptions
         ${CMAKE_CURRENT_SOURCE_DIR}/fdt
         ${CMAKE_CURRENT_SOURCE_DIR}/kmain
         ${CMAKE_CURRENT_SOURCE_DIR}/kmem

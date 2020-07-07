@@ -1,7 +1,7 @@
 #include <kernel/kassert.h>
-#include <kernel/arch/atomic.h>
-#include <kernel/arch/barrier.h>
-#include <kernel/arch/interrupts.h>
+#include <kernel/arch/arch_atomic.h>
+#include <kernel/arch/arch_barrier.h>
+#include <kernel/arch/arch_interrupts.h>
 #include <kernel/spinlock.h>
 
 // Meaning of the bits in the spinlock's lock variable
@@ -46,21 +46,21 @@
 void _spinlock_acquire(spinlock_t *lock, unsigned long bits) {
     // Continuously attempt to set the bit, the loop will exit only when we
     // succeed in setting the bit
-    while(atomic_test_and_set_bit(lock, (bits)));
+    while(arch_atomic_test_and_set_bit(lock, (bits)));
     // Membar after spinlock has been acquired
-    barrier_dmb();
+    arch_barrier_dmb();
 }
 
 // Unlocks using the specified bit(s)
 void _spinlock_release(spinlock_t *lock, unsigned long bits) {
     // Make sure all accesses to resource protected by this spinlock have
     // completed
-    barrier_dmb();
+    arch_barrier_dmb();
     // Clear bits
     *lock &= ~(bits);
     // Ensure all memory accesses to spinlock have completed before proceeding
     // with execution of code
-    barrier_dsb();
+    arch_barrier_dsb();
 }
 
 void spinlock_init(spinlock_t *lock) {
@@ -78,28 +78,28 @@ void spinlock_release(spinlock_t *lock) {
 }
 
 bool spinlock_tryacquire(spinlock_t *lock) {
-    return(!atomic_test_and_set_bit(lock, SPINLOCK_ACQUIRED));
+    return(!arch_atomic_test_and_set_bit(lock, SPINLOCK_ACQUIRED));
 }
 
 void spinlock_irqacquire(spinlock_t *lock) {
     // Get state of interrupts
-    bool _enabled = interrupts_enabled();
-    interrupts_disable();
+    bool _enabled = arch_interrupts_enabled();
+    arch_interrupts_disable();
     spinlock_acquire(lock);
 
     // Set enabled bit to 1 if interrupts were enabled
     SET_ENABLED_BIT(lock, _enabled);
-    barrier_dmb();
+    arch_barrier_dmb();
 }
 
 void spinlock_irqrelease(spinlock_t *lock) {
     // Get the previous interrupt enabled state
     bool _enabled = GET_ENABLED_BIT(lock);
     spinlock_release(lock);
-    if(_enabled) interrupts_enable();
+    if(_enabled) arch_interrupts_enable();
 
     // Ensure previous instructions complete
-    barrier_dsb();
+    arch_barrier_dsb();
 }
 
 void spinlock_readacquire(spinlock_t *lock) {

@@ -3,9 +3,16 @@
 #include <kernel/vfs/vfs_node.h>
 #include <kernel/vfs/vfs_mount.h>
 
-list_t vfs_mounts;
+typedef struct {
+    spinlock_t lock; // List lock
+    list_t mounts;   // List of mounts
+} vfs_mount_list_t;
+
+vfs_mount_list_t vfs_mount_list;
 
 void vfs_mount_init(void) {
+    vfs_mount_list.lock = SPINLOCK_INIT;
+    vfs_mount_list.mounts = LIST_INITIALIZER;
 }
 
 vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on) {
@@ -18,6 +25,10 @@ vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on
     vfs_node_ref(mounted_on);
 
     if (mnt->ops->mount != NULL) mnt->ops->mount(mnt);
+
+    spinlock_acquire(&vfs_mount_list.lock);
+    kassert(list_insert_last(&vfs_mount_list.mounts, &mnt->ll_node));
+    spinlock_release(&vfs_mount_list.lock);
 }
 
 void vfs_mount_destroy(vfs_mount_t *mnt) {
@@ -25,7 +36,9 @@ void vfs_mount_destroy(vfs_mount_t *mnt) {
 
     spinlock_writeacquire(&mnt->lock);
 
-    kassert(list_remove(&vfs_mounts, &mnt->ll_node));
+    spinlock_acquire(&vfs_mount_list.lock);
+    kassert(list_remove(&vfs_mount_list.mounts, &mnt->ll_node));
+    spinlock_release(&vfs_mount_list.lock);
 
     if (mnt->mounted_on != NULL) {
         vfs_node_t *mounted_on = mnt->mounted_on;
@@ -45,5 +58,5 @@ void vfs_mount_destroy(vfs_mount_t *mnt) {
 }
 
 vfs_mount_t* vfs_mount_root(void) {
-    return list_entry(list_first(&vfs_mounts), vfs_mount_t, ll_node);
+    return list_entry(list_first(&vfs_mount_list.mounts), vfs_mount_t, ll_node);
 }

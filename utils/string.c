@@ -1,7 +1,7 @@
 #include <string.h>
 
-extern void _fast_move(uintptr_t dst_addr, uintptr_t src_addr, size_t num);
-extern void _fast_zero(uintptr_t addr, size_t num);
+extern void arch_fast_move(uintptr_t dst_addr, uintptr_t src_addr, size_t num);
+extern void arch_fast_zero(uintptr_t addr, size_t num);
 
 size_t strlen(const char *str) {
     size_t len = 0;
@@ -36,7 +36,7 @@ const char* strchr(const char *str, int character) {
 
 void* memset(void *ptr, uint8_t value, size_t num) {
     if (value == 0) {
-        _fast_zero((uintptr_t)ptr, num);
+        arch_fast_zero((uintptr_t)ptr, num);
     } else {
         uint8_t *buf = ptr;
         for (unsigned long i = 0; i < num; ++i) *buf++ = value;
@@ -46,13 +46,13 @@ void* memset(void *ptr, uint8_t value, size_t num) {
 }
 
 void* memcpy(void *dst, const void *src, size_t num) {
-    _fast_move((uintptr_t)dst, (uintptr_t)src, num);
+    arch_fast_move((uintptr_t)dst, (uintptr_t)src, num);
 
     return dst;
 }
 
 void* memmove(void *dst, const void *src, size_t num) {
-    _fast_move((uintptr_t)dst, (uintptr_t)src, num);
+    arch_fast_move((uintptr_t)dst, (uintptr_t)src, num);
 
     return dst;
 }

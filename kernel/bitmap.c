@@ -1,5 +1,5 @@
 #include <limits.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/bitmap.h>
 
 #define BITS (sizeof(bitmap_t) * CHAR_BIT)
@@ -16,18 +16,18 @@ long bitmap_find_contiguous_aligned_zeros(bitmap_t bitmap, unsigned long width, 
     if(bitmap == 0) return 0;
     if(width > BITS) return -1;
 
-    // Reverse the bit order of the bitmap, so _clz (count leading zeros) will in fact count the trailing zeros
-    register bitmap_t v = _rbit(bitmap);
+    // Reverse the bit order of the bitmap, so arch_clz (count leading zeros) will in fact count the trailing zeros
+    register bitmap_t v = arch_rbit(bitmap);
     register long index;
 
     for(index = 0; index < BITS;) {
         // Count the leading zeros in the bitmap
-        bitmap_t num = _clz(v);
+        bitmap_t num = arch_clz(v);
         if(num == 0) {
             // If there are none, count the leading 1's we will need to shift these 1's out of the bitmap
             // Align the number of bits to shift out so we're always only checking for contiguous zero bits where the first bit is aligned
-            num = _clz(~v);
-            unsigned long remainder = _umod(num, alignment);
+            num = arch_clz(~v);
+            unsigned long remainder = arch_umod(num, alignment);
             if (remainder != 0) num += (alignment - remainder);
         } else if(num >= width) {
             // If there are enough zeros, break out of the loop

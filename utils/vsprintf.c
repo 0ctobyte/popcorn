@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-extern unsigned long _umod(unsigned long n, unsigned long m);
+extern unsigned long arch_umod(unsigned long n, unsigned long m);
 
 // Length sub specifiers
 #define _hh (0x1)
@@ -94,7 +94,7 @@ char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
 
     int i = 0;
     while(num != 0) {
-        unsigned long R = _umod(num, base);
+        unsigned long R = arch_umod(num, base);
         num = num / base;
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }

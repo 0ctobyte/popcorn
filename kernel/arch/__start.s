@@ -52,9 +52,9 @@ _not_el2:
     mov fp, sp
 
     # Flush and invalidate the dcache and icache and TLB
-    bl dcache_flush_all
-    bl icache_invalidate_all
-    bl tlb_invalidate_all
+    bl arch_dcache_flush_all
+    bl arch_icache_invalidate_all
+    bl arch_tlb_invalidate_all
 
     # Enable the icache, dcache
     mrs x0, SCTLR_EL1

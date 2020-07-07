@@ -36,7 +36,7 @@ target_link_options(${target} PRIVATE
     -T ${linker_script}
 )
 target_compile_definitions(${target} PRIVATE ${platform_def})
-target_include_directories(${target} PRIVATE include)
+target_include_directories(${target} PRIVATE include .)
 
 add_custom_command(TARGET ${target} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} ${OC_FLAGS} ${target} ${target_bin}

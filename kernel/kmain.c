@@ -4,9 +4,7 @@
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
 #include <kernel/kmem.h>
-#include <kernel/arch/asm.h>
-#include <kernel/arch/exceptions.h>
-#include <kernel/arch/interrupts.h>
+#include <kernel/arch/arch_exceptions.h>
 #include <kernel/vm/vm_init.h>
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_object.h>
@@ -53,7 +51,7 @@ void print_mappings(void) {
 
 void kmain(void) {
     // Setup the exception vector table
-    exceptions_init();
+    arch_exceptions_init();
 
     if (!devicetree_find_memory(&MEMBASEADDR, &MEMSIZE)) HALT();
 

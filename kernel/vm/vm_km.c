@@ -1,5 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/vm/vm_map.h>
@@ -71,7 +71,7 @@ vaddr_t vm_km_alloc(size_t size, vm_km_flags_t flags) {
     }
 
     // Finally zero out the pages if required
-    if (flags & VM_KM_FLAGS_ZERO) _fast_zero(vstart, size);
+    if (flags & VM_KM_FLAGS_ZERO) arch_fast_zero(vstart, size);
 
     return vstart;
 }

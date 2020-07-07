@@ -2,7 +2,7 @@
 #include <ctype.h>
 #include <kernel/kstdio.h>
 #include <kernel/panic.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/fdt.h>
 
 #define FDT_MAGIC (0xd00dfeed)
@@ -15,7 +15,7 @@
 #define FDT_END        (0x00000009) // Marks the end of the structure block.
 
 fdt_token_t _fdt_get_token_from_offset(fdt_header_t *fdth, unsigned int offset) {
-    return _rev32(*(fdt_token_t*)((uintptr_t)fdth + offset));
+    return arch_rev32(*(fdt_token_t*)((uintptr_t)fdth + offset));
 }
 
 fdt_token_t _fdt_next_token(fdt_header_t *fdth, unsigned int *offset) {
@@ -48,17 +48,17 @@ fdt_token_t _fdt_next_token(fdt_header_t *fdth, unsigned int *offset) {
         case FDT_NOP:
         {
             // Skip all NOPs
-            for (fdt_token_t *next_token = (fdt_token_t*)addr + 1; _rev32(*next_token) == FDT_NOP; next_token++);
+            for (fdt_token_t *next_token = (fdt_token_t*)addr + 1; arch_rev32(*next_token) == FDT_NOP; next_token++);
             break;
         }
         default: return 0;
     }
 
-    return _rev32(*(fdt_token_t*)((uintptr_t)fdth + *offset));
+    return arch_rev32(*(fdt_token_t*)((uintptr_t)fdth + *offset));
 }
 
 unsigned int _fdt_find_node_from_offset(fdt_header_t *fdth, unsigned int offset, const char *name, size_t num) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
     for (; offset != 0; offset = fdt_next_node(fdth, offset)) {
         fdt_node_t *node = fdt_get_node_from_offset(fdth, offset);
@@ -102,27 +102,27 @@ fdt_reserve_entry_t* fdt_get_rsv_from_offset(fdt_header_t *fdth, unsigned int of
 }
 
 const char* fdt_get_name_from_prop(fdt_header_t *fdth, fdt_prop_t *prop) {
-    return (const char*)((uintptr_t)fdth + _rev32(fdth->off_dt_strings) + _rev32(prop->nameoff));
+    return (const char*)((uintptr_t)fdth + arch_rev32(fdth->off_dt_strings) + arch_rev32(prop->nameoff));
 }
 
 uint32_t fdt_get_len_from_prop(fdt_prop_t *prop) {
-    return _rev32(prop->len);
+    return arch_rev32(prop->len);
 }
 
 uint32_t fdt_next_data_from_prop(fdt_prop_t *prop, unsigned int *data_offset) {
-    if (_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
+    if (arch_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
         *data_offset = 0;
         return 0;
     }
 
-    uint32_t data = _rev32(*((uint32_t*)((uintptr_t)prop->data + *data_offset)));
+    uint32_t data = arch_rev32(*((uint32_t*)((uintptr_t)prop->data + *data_offset)));
     *data_offset += 4;
     *data_offset = *data_offset < fdt_get_len_from_prop(prop) ? *data_offset : 0;
     return data;
 }
 
 const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_offset) {
-    if (_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
+    if (arch_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
         *string_offset = 0;
         return 0;
     }
@@ -134,17 +134,17 @@ const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_off
 }
 
 unsigned int fdt_get_root_node(fdt_header_t *fdth) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
-    return _rev32(fdth->off_dt_struct);
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    return arch_rev32(fdth->off_dt_struct);
 }
 
 unsigned int fdt_get_first_node(fdt_header_t *fdth) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
-    return fdt_next_subnode(fdth, _rev32(fdth->off_dt_struct));
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    return fdt_next_subnode(fdth, arch_rev32(fdth->off_dt_struct));
 }
 
 unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
     int subnode_depth = 0;
     fdt_token_t token;
@@ -164,7 +164,7 @@ unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
 }
 
 unsigned int fdt_next_subnode(fdt_header_t *fdth, unsigned int offset) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
     for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_BEGIN_NODE; token = _fdt_next_token(fdth, &offset)) {
         if (token != FDT_PROP && token != FDT_NOP) return 0;
@@ -174,7 +174,7 @@ unsigned int fdt_next_subnode(fdt_header_t *fdth, unsigned int offset) {
 }
 
 unsigned int fdt_next_prop(fdt_header_t *fdth, unsigned int offset) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
     for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_PROP; token = _fdt_next_token(fdth, &offset)) {
         if (token != FDT_NOP) return 0;
@@ -184,9 +184,9 @@ unsigned int fdt_next_prop(fdt_header_t *fdth, unsigned int offset) {
 }
 
 unsigned int fdt_get_node(fdt_header_t *fdth, const char *path) {
-    if (_rev32(fdth->magic) != FDT_MAGIC || path[0] != '/') return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC || path[0] != '/') return 0;
 
-    unsigned int offset = _rev32(fdth->off_dt_struct);
+    unsigned int offset = arch_rev32(fdth->off_dt_struct);
     const char *subpath = path;
     size_t num;
 
@@ -208,10 +208,10 @@ unsigned int fdt_get_node(fdt_header_t *fdth, const char *path) {
 }
 
 unsigned int fdt_get_prop(fdt_header_t *fdth, unsigned int node_offset, const char *name) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) return 0;
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
     fdt_node_t *node = fdt_get_node_from_offset(fdth, node_offset);
-    if (_rev32(node->token) != FDT_BEGIN_NODE) return 0;
+    if (arch_rev32(node->token) != FDT_BEGIN_NODE) return 0;
 
     unsigned int offset = node_offset;
     fdt_prop_t *prop;
@@ -228,20 +228,20 @@ unsigned int fdt_get_prop(fdt_header_t *fdth, unsigned int node_offset, const ch
 void fdt_dump_header(fdt_header_t *fdth) {
     kprintf("\n");
     kprintf("FDT @ %#p\n", fdth);
-    kprintf("totalsize: %#lx\n", _rev32(fdth->totalsize));
-    kprintf("off_dt_struct: %#lx\n", _rev32(fdth->off_dt_struct));
-    kprintf("off_dt_strings: %#lx\n", _rev32(fdth->off_dt_strings));
-    kprintf("off_mem_rsvmap: %#lx\n", _rev32(fdth->off_mem_rsvmap));
-    kprintf("version: %#lx\n", _rev32(fdth->version));
-    kprintf("last_comp_version: %#lx\n", _rev32(fdth->last_comp_version));
-    kprintf("boot_cpuid_phys: %#lx\n", _rev32(fdth->boot_cpuid_phys));
-    kprintf("size_dt_string: %#lx\n", _rev32(fdth->size_dt_strings));
-    kprintf("size_dt_struct: %#lx\n", _rev32(fdth->size_dt_struct));
+    kprintf("totalsize: %#lx\n", arch_rev32(fdth->totalsize));
+    kprintf("off_dt_struct: %#lx\n", arch_rev32(fdth->off_dt_struct));
+    kprintf("off_dt_strings: %#lx\n", arch_rev32(fdth->off_dt_strings));
+    kprintf("off_mem_rsvmap: %#lx\n", arch_rev32(fdth->off_mem_rsvmap));
+    kprintf("version: %#lx\n", arch_rev32(fdth->version));
+    kprintf("last_comp_version: %#lx\n", arch_rev32(fdth->last_comp_version));
+    kprintf("boot_cpuid_phys: %#lx\n", arch_rev32(fdth->boot_cpuid_phys));
+    kprintf("size_dt_string: %#lx\n", arch_rev32(fdth->size_dt_strings));
+    kprintf("size_dt_struct: %#lx\n", arch_rev32(fdth->size_dt_struct));
     kprintf("\n");
 }
 
 void fdt_dump(fdt_header_t *fdth) {
-    if (_rev32(fdth->magic) != FDT_MAGIC) {
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) {
         kprintf("No FDT found!\n");
         return;
     }
@@ -249,13 +249,13 @@ void fdt_dump(fdt_header_t *fdth) {
     fdt_dump_header(fdth);
 
     // Print the reserve entries
-    for (fdt_reserve_entry_t *rsvmap = fdt_get_rsv_from_offset(fdth, _rev32(fdth->off_mem_rsvmap)); _rev32(rsvmap->address) != 0 || _rev32(rsvmap->size) != 0; rsvmap++) {
-        kprintf("Reserve: address = %#p, size = %#lx\n", _rev32(rsvmap->address), _rev32(rsvmap->size));
+    for (fdt_reserve_entry_t *rsvmap = fdt_get_rsv_from_offset(fdth, arch_rev32(fdth->off_mem_rsvmap)); arch_rev32(rsvmap->address) != 0 || arch_rev32(rsvmap->size) != 0; rsvmap++) {
+        kprintf("Reserve: address = %#p, size = %#lx\n", arch_rev32(rsvmap->address), arch_rev32(rsvmap->size));
     }
     kprintf("\n");
 
     char tabs[16] = {0};
-    unsigned int tab_level = 0, offset = _rev32(fdth->off_dt_struct);
+    unsigned int tab_level = 0, offset = arch_rev32(fdth->off_dt_struct);
     fdt_token_t token = _fdt_get_token_from_offset(fdth, offset);
 
     do {
@@ -288,7 +288,7 @@ void fdt_dump(fdt_header_t *fdth) {
                 } else if (prop_len != 0) {
                     kprintf(" = < ");
                     for (unsigned int i = 0; i < prop_len; i += 4) {
-                        kprintf("%08x ", _rev32(*(uint32_t*)(prop->data + i)));
+                        kprintf("%08x ", arch_rev32(*(uint32_t*)(prop->data + i)));
                     }
                     kprintf(">");
                 }

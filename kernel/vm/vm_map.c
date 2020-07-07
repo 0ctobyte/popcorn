@@ -1,7 +1,7 @@
 #include <kernel/kassert.h>
 #include <kernel/slab.h>
 #include <kernel/kmem.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/vm/vm_page.h>
 #include <kernel/vm/vm_map.h>
 
@@ -10,10 +10,15 @@
 // Kernel vmap
 vm_map_t kernel_vmap;
 
+typedef struct {
+    spinlock_t lock; // Lock
+    slab_t slab;     // Kernel vm_mapping_t slab
+    slab_buf_t slab_buf;
+} vm_mapping_slab_t;
+
 // Slab for kernel vm_mapping_t struct
+vm_mapping_slab_t vm_mapping_slab;
 #define NUM_KERNEL_VM_MAPPING_STRUCTS (64)
-slab_t kernel_vm_mapping_slab;
-slab_buf_t kernel_vm_mapping_slab_buf;
 
 rbtree_compare_result_t _vm_mapping_overlap(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_snode), *m2 = rbtree_entry(n2, vm_mapping_t, rb_snode);
@@ -73,7 +78,9 @@ vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
     if (vm_map_kernel() == vmap) {
         // Use the slab instead of kmem for kernel vm_mapping_t structs
         // If we're out of buffers from the slab then the kernel is in an unrecoverable state
-        mapping = (vm_mapping_t*)slab_alloc(&kernel_vm_mapping_slab);
+        spinlock_acquire(&vm_mapping_slab.lock);
+        mapping = (vm_mapping_t*)slab_alloc(&vm_mapping_slab.slab);
+        spinlock_release(&vm_mapping_slab.lock);
         kassert(mapping != NULL);
     } else {
         mapping = (vm_mapping_t*)kmem_alloc(sizeof(vm_mapping_t));
@@ -84,7 +91,9 @@ vm_mapping_t* _vm_mapping_alloc(vm_map_t *vmap) {
 
 void _vm_mapping_free(vm_map_t *vmap, vm_mapping_t *mapping) {
     if (vm_map_kernel() == vmap) {
-        slab_free(&kernel_vm_mapping_slab, mapping);
+        spinlock_acquire(&vm_mapping_slab.lock);
+        slab_free(&vm_mapping_slab.slab, mapping);
+        spinlock_release(&vm_mapping_slab.lock);
     } else {
         kmem_free(mapping, sizeof(vm_mapping_t));
     }
@@ -122,7 +131,9 @@ void _vm_mapping_delete(vm_map_t *vmap, vm_mapping_t *mapping) {
 
     kassert(rbtree_remove(&vmap->rb_mappings, &mapping->rb_snode));
     kassert(list_remove(&vmap->ll_mappings, &mapping->ll_node));
-    atomic_dec(&mapping->object->refcnt);
+
+    vm_object_destroy(mapping->object);
+
     _vm_mapping_free(vmap, mapping);
 }
 
@@ -132,10 +143,8 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
     // Check if we can merge the predecessor mapping with this new mapping
     if (predecessor != NULL && predecessor->vend == mapping->vstart && predecessor->object == mapping->object && predecessor->prot == mapping->prot && predecessor->wired == mapping->wired) {
         // Increase the size of the object
-        spinlock_writeacquire(&predecessor->object->lock);
         size_t new_size = predecessor->offset + (predecessor->vend - predecessor->vstart) + size;
-        if (new_size > predecessor->object->size) predecessor->object->size = new_size;
-        spinlock_writerelease(&predecessor->object->lock);
+        vm_object_set_size(predecessor->object, new_size);
 
         // Increase the size of the map and the end vaddr of the mapping
         vmap->size += size;
@@ -145,7 +154,8 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
         _vm_mapping_hole_update(vmap, predecessor, predecessor->hole_size - size);
     } else {
         vm_mapping_t *new_mapping = _vm_mapping_alloc(vmap);
-        _fast_move((uintptr_t)new_mapping, (uintptr_t)mapping, sizeof(vm_mapping_t));
+        arch_fast_move((uintptr_t)new_mapping, (uintptr_t)mapping, sizeof(vm_mapping_t));
+        vm_object_reference(new_mapping->object);
 
         // Insert the new mapping
         _vm_mapping_insert(vmap, slot, predecessor, new_mapping);
@@ -154,7 +164,6 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
         _vm_mapping_hole_insert(vmap, predecessor, new_mapping);
 
         vmap->size += size;
-        atomic_inc(&new_mapping->object->refcnt);
     }
 }
 
@@ -164,7 +173,7 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
 
     // Splits a mapping based on the given starting virtual address
     vm_mapping_t *split = _vm_mapping_alloc(vmap);
-    _fast_move((vaddr_t)split, (vaddr_t)mapping, sizeof(vm_mapping_t));
+    arch_fast_move((vaddr_t)split, (vaddr_t)mapping, sizeof(vm_mapping_t));
 
     split->ll_node = LIST_NODE_INITIALIZER;
     split->rb_snode = RBTREE_NODE_INITIALIZER;
@@ -175,7 +184,7 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
     mapping->vend = start;
     split->vstart = start;
     split->offset = mapping->offset + (start - mapping->vstart);
-    atomic_inc(&split->object->refcnt);
+    vm_object_reference(split->object);
 
     // Insert it into the various trees and lists
     _vm_mapping_insert(vmap, 0, mapping, split);
@@ -189,7 +198,7 @@ void vm_map_init(void) {
     // purpose allocators because of circular dependencies if we are out of kernel virtual memory
     size_t size = NUM_KERNEL_VM_MAPPING_STRUCTS * sizeof(vm_mapping_t);
     void *buf = (void*)pmap_steal_memory(size, NULL, NULL);
-    slab_init(&kernel_vm_mapping_slab, &kernel_vm_mapping_slab_buf, buf, size, sizeof(vm_mapping_t));
+    slab_init(&vm_mapping_slab.slab, &vm_mapping_slab.slab_buf, buf, size, sizeof(vm_mapping_t));
 }
 
 vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
@@ -203,7 +212,10 @@ vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
 }
 
 void vm_map_destroy(vm_map_t *vmap) {
-    atomic_dec(&vmap->refcnt);
+    kassert(vmap != NULL);
+
+    spinlock_writeacquire(&vmap->lock);
+    vmap->refcnt--;
 
     if (vmap->refcnt == 0) {
         vm_mapping_t *mapping = NULL;
@@ -212,12 +224,19 @@ void vm_map_destroy(vm_map_t *vmap) {
         }
 
         pmap_destroy(vmap->pmap);
+
         kmem_free(vmap, sizeof(vm_map_t));
+
+        return;
     }
+
+    spinlock_writerelease(&vmap->lock);
 }
 
 void vm_map_reference(vm_map_t *vmap) {
-    atomic_inc(&vmap->refcnt);
+    spinlock_writeacquire(&vmap->lock);
+    vmap->refcnt++;
+    spinlock_writerelease(&vmap->lock);
 }
 
 kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_t *object, vm_offset_t offset, vm_prot_t prot) {

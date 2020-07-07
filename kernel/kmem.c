@@ -2,7 +2,7 @@
 #include <kernel/spinlock.h>
 #include <kernel/kstdio.h>
 #include <kernel/list.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/slab.h>
 #include <kernel/vm/vm_km.h>
 #include <kernel/kmem.h>
@@ -12,14 +12,14 @@
 // Minimum block size of 32B and maximum block size of 64KB
 #define NUM_BINS                       (12)
 #define MIN_BLOCK_SIZE                 (0x20)
-#define MAX_BLOCK_SIZE                 (1ul << ((NUM_BINS-1) + _ctz(MIN_BLOCK_SIZE)))
-#define BIN_TO_BLOCK_SIZE(x)           (1ul << ((x) + _ctz(MIN_BLOCK_SIZE)))
+#define MAX_BLOCK_SIZE                 (1ul << ((NUM_BINS-1) + arch_ctz(MIN_BLOCK_SIZE)))
+#define BIN_TO_BLOCK_SIZE(x)           (1ul << ((x) + arch_ctz(MIN_BLOCK_SIZE)))
 
 #define IS_POW2(n)                     (((n) & ((n)-1)) == 0 && (n) != 0)
-#define ROUND_DOWN_POW2(n)             (_rbit(_rbit(n) & ~(_rbit(n) - 1ul)))
-#define ROUND_UP_POW2(n)               (IS_POW2(n) ? (n) : _rbit(1ul << (_ctz(_rbit(n)) - 1)))
+#define ROUND_DOWN_POW2(n)             (arch_rbit(arch_rbit(n) & ~(arch_rbit(n) - 1ul)))
+#define ROUND_UP_POW2(n)               (IS_POW2(n) ? (n) : arch_rbit(1ul << (arch_ctz(arch_rbit(n)) - 1)))
 #define CONSTRAIN_TO_MIN_BLOCK_SIZE(n) (((n) < MIN_BLOCK_SIZE) ? MIN_BLOCK_SIZE : (n))
-#define GET_BIN_INDEX(n)               (_ctz(n) - _ctz(MIN_BLOCK_SIZE))
+#define GET_BIN_INDEX(n)               (arch_ctz(n) - arch_ctz(MIN_BLOCK_SIZE))
 
 typedef struct {
     slab_t slab;                // Slab struct for this bin
@@ -101,7 +101,7 @@ void _kmem_grow(unsigned int bin) {
 }
 
 void kmem_init(void) {
-    _fast_zero((unsigned long)&kmem, sizeof(kmem_t));
+    arch_fast_zero((unsigned long)&kmem, sizeof(kmem_t));
 
     // Grab some space for the slab_buf slab
     size_t size = ROUND_PAGE_UP(sizeof(slab_buf_t)*INITIAL_SLAB_BUF_COUNT);
@@ -157,7 +157,7 @@ void* kmem_alloc(size_t size) {
 
 void* kmem_zalloc(size_t size) {
     void *mem = kmem_alloc(size);
-    if (mem != NULL) _fast_zero((uintptr_t)mem, size);
+    if (mem != NULL) arch_fast_zero((uintptr_t)mem, size);
     return mem;
 }
 

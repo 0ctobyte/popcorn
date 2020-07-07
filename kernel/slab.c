@@ -1,5 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/arch/asm.h>
+#include <kernel/arch/arch_asm.h>
 #include <kernel/slab.h>
 
 // Basically, we want to shuffle a slab to be first in the search order if it has 1/4+ (25%+) more free blocks
@@ -97,7 +97,7 @@ void* slab_zalloc(slab_t *slab) {
     void *free = slab_alloc(slab);
 
     // Check for no free blocks
-    if (free != NULL) _fast_zero((uintptr_t)free, slab->block_size);
+    if (free != NULL) arch_fast_zero((uintptr_t)free, slab->block_size);
     return free;
 }
 
