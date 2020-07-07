@@ -5,18 +5,14 @@
 #include <kernel/vfs/vfs_mount.h>
 #include <kernel/vfs/vfs_node.h>
 
-#define VN_AVAIL_MAX             (1024) // 1024 vfs_nodes in circulation
-
 // Number of hash table buckets is 1.5 times the number of available VFS nodes
+#define VN_AVAIL_MAX             (1024) // 1024 vfs_nodes in circulation
 #define NUM_BUCKETS              (VN_AVAIL_MAX + (VN_AVAIL_MAX << 1))
-
 #define VFS_NODE_HASH(mnt, id)   (hash64_fnv1a_pair((unsigned long)mnt, id) % NUM_BUCKETS)
 
 typedef struct {
     spinlock_t bkt_lock[NUM_BUCKETS];  // Multiple readers, single writer lock per bucket
     list_t ll_vn_buckets[NUM_BUCKETS]; // A list for each hash table buckets
-    spinlock_t lock;                   // Lock for vn_available
-    size_t vn_available;               // Number of vfs_nodes available for allocation
 } vfs_node_hash_table_t;
 
 vfs_node_hash_table_t vfs_node_hash_table;
@@ -32,18 +28,9 @@ list_compare_result_t _vfs_node_find(list_node_t *n1, list_node_t *n2) {
 
 void _vfs_node_free(vfs_node_t *vn) {
     kmem_slab_free(&vfs_node_slab, (void*)vn);
-
-    spinlock_writeacquire(&vfs_node_hash_table.lock);
-    vfs_node_hash_table.vn_available++;
-    spinlock_writerelease(&vfs_node_hash_table.lock);
 }
 
 vfs_node_t* _vfs_node_alloc(void) {
-    spinlock_writeacquire(&vfs_node_hash_table.lock);
-    kassert(vfs_node_hash_table.vn_available != 0);
-    vfs_node_hash_table.vn_available--;
-    spinlock_writerelease(&vfs_node_hash_table.lock);
-
     vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
     kassert(vn != NULL);
 
@@ -56,8 +43,6 @@ void vfs_node_init(void) {
 
     // Initialize the hash table
     vfs_node_hash_table.lock = SPINLOCK_INIT;
-    vfs_node_hash_table.vn_available = VN_AVAIL_MAX;
-
     arch_fast_zero((uintptr_t)vfs_node_hash_table.ll_vn_buckets, NUM_BUCKETS * sizeof(list_t));
     arch_fast_zero((uintptr_t)vfs_node_hash_table.bkt_lock, NUM_BUCKETS * sizeof(spinlock_t));
 }
