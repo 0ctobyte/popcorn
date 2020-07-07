@@ -42,7 +42,6 @@ void vfs_node_init(void) {
     kmem_slab_create(&vfs_node_slab, sizeof(vfs_node_t), VFS_NODE_SLAB_NUM);
 
     // Initialize the hash table
-    vfs_node_hash_table.lock = SPINLOCK_INIT;
     arch_fast_zero((uintptr_t)vfs_node_hash_table.ll_vn_buckets, NUM_BUCKETS * sizeof(list_t));
     arch_fast_zero((uintptr_t)vfs_node_hash_table.bkt_lock, NUM_BUCKETS * sizeof(spinlock_t));
 }
