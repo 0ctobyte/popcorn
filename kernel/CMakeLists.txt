@@ -1,5 +1,6 @@
 add_subdirectory(arch)
 add_subdirectory(vm)
+add_subdirectory(proc)
 add_subdirectory(vfs)
 
 target_sources(${target}

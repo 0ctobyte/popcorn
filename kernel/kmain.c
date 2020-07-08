@@ -74,7 +74,6 @@ void kmain(void) {
 
     kprintf("vm_init() - done!\n");
 
-    kprintf("sizeof(vfs_node_t) == %llu, sizeof(vfs_mount_t) == %llu\n", sizeof(vfs_node_t), sizeof(vfs_mount_t));
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 
     print_mappings();
