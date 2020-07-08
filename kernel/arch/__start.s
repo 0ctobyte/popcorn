@@ -7,8 +7,7 @@ _start:
     msr DAIFSet, #0xf
 
     # Save the pointer to the device tree
-    adr x2, fdt_header
-    str x0, [x2]
+    mov x13, x0
 
     # Check if we are running in EL2 and switch to EL1
     mrs x0, CurrentEL
@@ -39,11 +38,17 @@ _not_el2:
     bfi x0, x1, #20, #2
     msr CPACR_EL1, x0
 
+    # Get the start of the kernel's physical address space
     adr x11, _start
 
-    # Set the el1 stack (for now it's a physical address until we enable the MMU)
-    adr x0, __el1_stack_limit+8192
-    mov sp, x0
+    # Calculate the end of the kernel's physical address space
+    ldr x12, =__kernel_physical_end
+    add x12, x12, x11
+
+    # Set the el1 stack to after the kernel image in memory (for now it's a physical address until we enable the MMU)
+    add x12, x12, #4096
+    and x12, x12, #-16
+    mov sp, x12
 
     # Create a the first frame record, this should be 0
     mov fp, xzr
@@ -62,20 +67,27 @@ _not_el2:
     orr x0, x0, x1
     msr SCTLR_EL1, x0
 
+    # Clear the BSS
+    ldr x0, =__kernel_physical_bss_start
+    ldr x1, =__kernel_physical_bss_end
+    sub x1, x1, x0
+    add x0, x0, x11
+    bl arch_fast_zero
+
     # Store the physical base address of where the kernel was loaded in memory
     adr x0, kernel_physical_start
     str x11, [x0]
 
-    # Store the end of the kernel's physical address space
-    ldr x0, =__kernel_physical_end
-    add x0, x0, x11
-    adr x1, kernel_physical_end
-    str x0, [x1]
+    # Store the end of the kernel physical address space
+    adr x0, kernel_physical_end
+    str x12, [x0]
 
     # Finally copy the FDT to the end of the kernel's physical address space
     # _copy_fdt returns the total size of the FDT header which we use to bump up kernel_physical_end
-    adr x1, fdt_header
-    ldr x1, [x1]
+    adr x0, fdt_header
+    str x12, [x0]
+    mov x0, x12
+    mov x1, x13
     bl _copy_fdt
     adr x2, kernel_physical_end
     ldr x1, [x2]
@@ -117,9 +129,6 @@ _copy_fdt_loop:
 
 _copy_fdt_done:
     ret lr
-
-# Setup the boot time stack in the BSS
-.comm __el1_stack_limit, 8192, 8
 
 .comm kernel_physical_start, 8, 8
 .comm kernel_physical_end, 8, 8

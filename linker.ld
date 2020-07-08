@@ -18,10 +18,12 @@ SECTIONS
         *(.data)
     }
 
+    __kernel_physical_bss_start = . - __virtual_base;
     .bss ALIGN(0x1000) : AT(ADDR(.bss) - __virtual_base) {
         *(.bss)
         *(.COMMON)
     }
+    __kernel_physical_bss_end = . - __virtual_base;
 
     __kernel_virtual_end = .;
     __kernel_physical_end = . - __virtual_base;

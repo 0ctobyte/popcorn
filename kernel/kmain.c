@@ -8,6 +8,7 @@
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_object.h>
 #include <kernel/vm/vm_km.h>
+#include <kernel/proc/proc_init.h>
 #include <kernel/vfs/vfs_mount.h>
 #include <kernel/vfs/vfs_node.h>
 
@@ -73,6 +74,10 @@ void kmain(void) {
     uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
 
     kprintf("vm_init() - done!\n");
+
+    proc_init();
+
+    kprintf("proc_init() - done!\n");
 
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 
