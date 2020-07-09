@@ -31,7 +31,6 @@ typedef struct proc_task_s {
 } proc_task_t;
 
 extern proc_task_t kernel_task;
-extern proc_task_t *current_task;
 
 // Initializes the kernel task
 void proc_task_init(void);
@@ -56,6 +55,6 @@ kresult_t proc_task_resume(proc_task_t *task);
 kresult_t proc_task_suspend(proc_task_t *task);
 
 // Get the current task
-#define proc_task_current() (current_task)
+#define proc_task_current() (proc_thread_current()->task)
 
 #endif // _PROC_TASK_H_

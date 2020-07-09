@@ -1,6 +1,8 @@
 #ifndef _ARCH_EXCEPTION_H_
 #define _ARCH_EXCEPTION_H_
 
+#include <sys/types.h>
+
 typedef enum {
     EXCEPTION_SYNC_SP_EL0     = 0,  // Synchronous exception from current exception level with SP_EL0
     EXCEPTION_IRQ_SP_EL0      = 1,  // IRQ exception from current exception level with SP_EL0
@@ -21,13 +23,13 @@ typedef enum {
 } arch_exception_type_t;
 
 typedef struct {
-    unsigned long x[30];
-    unsigned long lr;
-    unsigned long sp;
-    unsigned long elr;
-    unsigned long spsr;
-    unsigned long far;
-    unsigned long esr;
+    uint64_t x[30];
+    uint64_t lr;
+    uint64_t sp;
+    uint64_t elr;
+    uint64_t spsr;
+    uint64_t far;
+    uint64_t esr;
 } arch_context_t;
 
 // Sets the vector base address register
