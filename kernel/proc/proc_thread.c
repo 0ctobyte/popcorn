@@ -3,6 +3,7 @@
 #include <kernel/proc/proc_task.h>
 #include <kernel/proc/proc_thread.h>
 
+size_t kernel_stack_size;
 proc_thread_t *current_thread;
 
 // proc_thread_t slab
@@ -18,5 +19,6 @@ void proc_thread_init(void) {
     kmem_slab_create(&proc_thread_slab, sizeof(proc_thread_t), PROC_THREAD_SLAB_NUM);
 
     // Initialize the slab for allocating kernel stacks. Kernel stacks are the size of one page
-    kmem_slab_create(&kernel_stack_slab, PAGESIZE, KERNEL_STACK_SLAB_NUM);
+    kernel_stack_size = PAGESIZE;
+    kmem_slab_create(&kernel_stack_slab, kernel_stack_size, KERNEL_STACK_SLAB_NUM);
 }

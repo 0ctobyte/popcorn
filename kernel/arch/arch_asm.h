@@ -26,7 +26,7 @@ unsigned long arch_rev64(unsigned long n);
 unsigned long arch_popcnt(unsigned long n);
 
 // Fast versions of memset 0 and memmove
-void arch_fast_move(uintptr_t dst_addr, uintptr_t src_addr, size_t num);
-void arch_fast_zero(uintptr_t addr, size_t num);
+void arch_fast_move(void *dst_addr, void *src_addr, size_t num);
+void arch_fast_zero(void *addr, size_t num);
 
 #endif // _ARCH_ASM_H_

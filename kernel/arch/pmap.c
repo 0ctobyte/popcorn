@@ -582,7 +582,7 @@ void pmap_bootstrap(void) {
     kernel_virtual_end += total_tables_size;
     kernel_size += total_tables_size;
 
-    arch_fast_zero(tables, total_tables_size);
+    arch_fast_zero((void*)tables, total_tables_size);
     kernel_pmap.ttb = tables;
     tables += PAGESIZE;
 
@@ -723,8 +723,8 @@ void pmap_init(void) {
     size_t pte_page_lock_size = (MEMSIZE >> PAGESHIFT) * sizeof(spinlock_t);
     pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
     pte_page_list.lock = (spinlock_t*)pmap_steal_memory(pte_page_lock_size, NULL, NULL);
-    arch_fast_zero((uintptr_t)pte_page_list.list, pte_page_array_size);
-    arch_fast_zero((uintptr_t)pte_page_list.lock, pte_page_lock_size);
+    arch_fast_zero(pte_page_list.list, pte_page_array_size);
+    arch_fast_zero(pte_page_list.lock, pte_page_lock_size);
 
     // Setup the pte_page_t slab
     vaddr_t pte_page_slab_va = pmap_steal_memory(PTE_PAGE_SLAB_NUM * sizeof(pte_page_t), NULL, NULL);
@@ -1032,14 +1032,14 @@ void pmap_deactivate(pmap_t *pmap) {
 
 void pmap_zero_page(paddr_t pa) {
     spinlock_writeacquire(&pmap_kernel()->lock);
-    arch_fast_zero(PA_TO_KVA(pa), PAGESIZE);
+    arch_fast_zero((void*)PA_TO_KVA(pa), PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
     arch_barrier_dmb();
 }
 
 void pmap_copy_page(paddr_t src, paddr_t dst) {
     spinlock_writeacquire(&pmap_kernel()->lock);
-    arch_fast_move(PA_TO_KVA(dst), PA_TO_KVA(src), PAGESIZE);
+    arch_fast_move((void*)PA_TO_KVA(dst), (void*)PA_TO_KVA(src), PAGESIZE);
     spinlock_writerelease(&pmap_kernel()->lock);
     arch_barrier_dmb();
 }

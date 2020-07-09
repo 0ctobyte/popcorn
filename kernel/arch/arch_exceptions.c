@@ -42,8 +42,8 @@ typedef enum {
     EXC_CLASS_BKPT_INSTRUCTION_AARCH64     = 0x3c,
 } arch_exception_class_type_t;
 
-void _arch_exception_iss_decode_error(arch_exception_state_t *exc_state) {
-    unsigned int exc_iss = GET_EXC_ISS(exc_state->esr) & 0x3f;
+void _arch_exception_iss_decode_error(arch_context_t *exc_context) {
+    unsigned int exc_iss = GET_EXC_ISS(exc_context->esr) & 0x3f;
     switch (exc_iss) {
         case 0x00: kprintf("Address size fault, level 0\n"); break;
         case 0x01: kprintf("Address size fault, level 1\n"); break;
@@ -75,9 +75,9 @@ void _arch_exception_iss_decode_error(arch_exception_state_t *exc_state) {
     }
 }
 
-bool _arch_exception_class_decode_error(arch_exception_state_t *exc_state) {
+bool _arch_exception_class_decode_error(arch_context_t *exc_context) {
     bool fail = true;
-    unsigned int exc_class = GET_EXC_CLASS(exc_state->esr);
+    unsigned int exc_class = GET_EXC_CLASS(exc_context->esr);
     switch (exc_class) {
         case EXC_CLASS_UNKNOWN_REASON:
         {
@@ -92,13 +92,13 @@ bool _arch_exception_class_decode_error(arch_exception_state_t *exc_state) {
         case EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL:
         {
             kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_LOWER_EL\n));
-            _arch_exception_iss_decode_error(exc_state);
+            _arch_exception_iss_decode_error(exc_context);
             break;
         }
         case EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL:
         {
             kprintf(EXC_CLASS_STR(EXC_CLASS_INSTRUCTION_ABORT_CURRENT_EL\n));
-            _arch_exception_iss_decode_error(exc_state);
+            _arch_exception_iss_decode_error(exc_context);
             break;
         }
         case EXC_CLASS_PC_ALIGNMENT_FAULT:
@@ -109,13 +109,13 @@ bool _arch_exception_class_decode_error(arch_exception_state_t *exc_state) {
         case EXC_CLASS_DATA_ABORT_LOWER_EL:
         {
             kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_LOWER_EL\n));
-            _arch_exception_iss_decode_error(exc_state);
+            _arch_exception_iss_decode_error(exc_context);
             break;
         }
         case EXC_CLASS_DATA_ABORT_CURRENT_EL:
         {
             kprintf(EXC_CLASS_STR(EXC_CLASS_DATA_ABORT_CURRENT_EL\n));
-            _arch_exception_iss_decode_error(exc_state);
+            _arch_exception_iss_decode_error(exc_context);
             break;
         }
         case EXC_CLASS_SERROR:
@@ -129,31 +129,31 @@ bool _arch_exception_class_decode_error(arch_exception_state_t *exc_state) {
     return fail;
 }
 
-void arch_exceptions_dump_state(arch_exception_state_t *exc_state) {
+void arch_exceptions_dump_state(arch_context_t *exc_context) {
     // Dump the general purpose registers
     for (unsigned int i0 = 0, i1 = 1, i2 = 2, i3 = 3; i0 < 32; i0 += 4, i1 += 4, i2 += 4, i3 += 4) {
         if (i0 == 28) {
-            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tlr:\t0x%016lx\tsp:\t0x%016lx\n", i0, exc_state->x[i0], i1, exc_state->x[i1], exc_state->lr, exc_state->sp);
+            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tlr:\t0x%016lx\tsp:\t0x%016lx\n", i0, exc_context->x[i0], i1, exc_context->x[i1], exc_context->lr, exc_context->sp);
         } else {
-            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\n", i0, exc_state->x[i0], i1, exc_state->x[i1], i2, exc_state->x[i2], i3, exc_state->x[i3]);
+            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\n", i0, exc_context->x[i0], i1, exc_context->x[i1], i2, exc_context->x[i2], i3, exc_context->x[i3]);
         }
     }
 
     // Dump the PC, SPSR, FAR and ESR
-    kprintf("pc:\t0x%016lx\tspsr:\t0x%016lx\tfar:\t0x%016lx\tesr:\t0x%016lx\n", exc_state->elr, exc_state->spsr, exc_state->far, exc_state->esr);
+    kprintf("pc:\t0x%016lx\tspsr:\t0x%016lx\tfar:\t0x%016lx\tesr:\t0x%016lx\n", exc_context->elr, exc_context->spsr, exc_context->far, exc_context->esr);
 
     // Decode the Mode
-    kprintf("mode:\tEL%u%c\n", (exc_state->spsr >> 2) & 0x3, (exc_state->spsr & 0x1) ? 'h' : 't');
+    kprintf("mode:\tEL%u%c\n", (exc_context->spsr >> 2) & 0x3, (exc_context->spsr & 0x1) ? 'h' : 't');
 }
 
-void arch_exception_handler(arch_exception_type_t exc_type, arch_exception_state_t *exc_state) {
+void arch_exception_handler(arch_exception_type_t exc_type, arch_context_t *exc_context) {
     switch (exc_type) {
         case EXCEPTION_SYNC_SP_EL0:
         case EXCEPTION_SYNC_SP_ELX:
         case EXCEPTION_SYNC_LL_AARCH64:
         {
             kprintf("Synchronous Exception!\n");
-            if (!_arch_exception_class_decode_error(exc_state)) return;
+            if (!_arch_exception_class_decode_error(exc_context)) return;
             break;
         }
         case EXCEPTION_SERR_SP_EL0:
@@ -161,7 +161,7 @@ void arch_exception_handler(arch_exception_type_t exc_type, arch_exception_state
         case EXCEPTION_SERR_LL_AARCH64:
         {
             kprintf("SError Exception!\n");
-            if (!_arch_exception_class_decode_error(exc_state)) return;
+            if (!_arch_exception_class_decode_error(exc_context)) return;
             break;
         }
         case EXCEPTION_IRQ_SP_EL0:
@@ -183,7 +183,7 @@ void arch_exception_handler(arch_exception_type_t exc_type, arch_exception_state
         }
     }
 
-    arch_exceptions_dump_state(exc_state);
+    arch_exceptions_dump_state(exc_context);
 
     panic("HALTING\n");
 }

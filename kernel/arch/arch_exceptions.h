@@ -28,12 +28,12 @@ typedef struct {
     unsigned long spsr;
     unsigned long far;
     unsigned long esr;
-} arch_exception_state_t;
+} arch_context_t;
 
 // Sets the vector base address register
 void arch_exceptions_init(void);
 
 // Given a pointer to an exception_state_t struct, it will pretty print the contents
-void arch_exceptions_dump_state(arch_exception_state_t *exc_state);
+void arch_exceptions_dump_state(arch_context_t *exc_context);
 
 #endif // _ARCH_EXCEPTION_H_

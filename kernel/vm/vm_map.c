@@ -132,7 +132,7 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
         vm_mapping_t *new_mapping = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
         kassert(new_mapping != NULL);
 
-        arch_fast_move((uintptr_t)new_mapping, (uintptr_t)mapping, sizeof(vm_mapping_t));
+        arch_fast_move(new_mapping, mapping, sizeof(vm_mapping_t));
         vm_object_reference(new_mapping->object);
 
         // Insert the new mapping
@@ -153,7 +153,7 @@ vm_mapping_t* _vm_mapping_split(vm_map_t *vmap, vm_mapping_t *mapping, vaddr_t s
     vm_mapping_t *split = (vm_mapping_t*)kmem_slab_alloc(&vm_mapping_slab);
     kassert(split != NULL);
 
-    arch_fast_move((vaddr_t)split, (vaddr_t)mapping, sizeof(vm_mapping_t));
+    arch_fast_move(split, mapping, sizeof(vm_mapping_t));
 
     split->ll_node = LIST_NODE_INITIALIZER;
     split->rb_snode = RBTREE_NODE_INITIALIZER;

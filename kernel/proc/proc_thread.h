@@ -31,9 +31,10 @@ typedef struct proc_thread_s {
     list_node_t ll_tnode;           // Thread list linkage
     list_node_t ll_qnode;           // Run queue list linkage
     vaddr_t kernel_stack;           // Kernel stack VA
-    arch_thread_context_t *context; // User saved context
+    arch_thread_context_t context;  // User saved context
 } proc_thread_t;
 
+extern size_t kernel_stack_size;
 extern proc_thread_t *current_thread;
 
 // Initializes the proc_thread module
@@ -71,16 +72,16 @@ void proc_thread_run(proc_thread_t *thread);
 void proc_thread_switch(proc_thread_t *new_thread);
 
 // Sets the state of the thread
-kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t *new_context);
+kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t new_context);
 
 // Gets the current state of the thread. Returns the result in state
 kresult_t proc_thread_get_context(proc_thread_t *thread, arch_thread_context_t *context);
 
 // Sets the user space entry point for the given thread
-kresult_t proc_thread_set_entry(proc_thread_t *thread, vaddr_t entry_point_addr);
+kresult_t proc_thread_set_entry(proc_thread_t *thread, void *entry_point_addr);
 
 // Sets the user space stack pointer for the given thread
-kresult_t proc_thread_set_stack(proc_thread_t *thread, vaddr_t stack_addr);
+kresult_t proc_thread_set_stack(proc_thread_t *thread, void *stack_addr);
 
 // Get the current thread
 #define proc_thread_current() (current_thread)

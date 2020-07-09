@@ -188,7 +188,7 @@ void vm_page_init(void) {
     }
 
     // Clear the entire array
-    arch_fast_zero((uintptr_t)vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
+    arch_fast_zero(vm_page_array.pages, vm_page_array.num_pages * sizeof(vm_page_t));
 
     // Split the pages up into groups of the largest powers of 2 possible and place them in the appropriate bins.
     // The bins hold the pointer to the first page in the buddy. Do this until we've accounted for all the pages
@@ -207,8 +207,8 @@ void vm_page_init(void) {
 
     vm_page_hash_table.lock = (spinlock_t*)pmap_steal_memory(lock_size, NULL, NULL);
     vm_page_hash_table.ll_pages = (list_t*)pmap_steal_memory(size, NULL, NULL);
-    arch_fast_zero((uintptr_t)vm_page_hash_table.ll_pages, size);
-    arch_fast_zero((uintptr_t)vm_page_hash_table.lock, lock_size);
+    arch_fast_zero(vm_page_hash_table.ll_pages, size);
+    arch_fast_zero(vm_page_hash_table.lock, lock_size);
 
     // Reserve the physical pages used by the kernel
     for (size_t pa = kernel_physical_start; pa < kernel_physical_end; pa += PAGESIZE) {

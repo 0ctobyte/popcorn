@@ -97,7 +97,7 @@ void* slab_zalloc(slab_t *slab) {
     void *free = slab_alloc(slab);
 
     // Check for no free blocks
-    if (free != NULL) arch_fast_zero((uintptr_t)free, slab->block_size);
+    if (free != NULL) arch_fast_zero(free, slab->block_size);
     return free;
 }
 
