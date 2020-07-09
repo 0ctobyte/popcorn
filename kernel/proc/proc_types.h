@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 typedef unsigned int proc_id_t;
+typedef unsigned int proc_thread_id_t;
 typedef uint8_t proc_priority_t;
 typedef uintptr_t proc_event_t;
 

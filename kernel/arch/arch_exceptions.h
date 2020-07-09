@@ -21,8 +21,13 @@ typedef enum {
 } arch_exception_type_t;
 
 typedef struct {
-    unsigned long x[31], sp;
-    unsigned long pc, spsr, far, esr;
+    unsigned long x[30];
+    unsigned long lr;
+    unsigned long sp;
+    unsigned long elr;
+    unsigned long spsr;
+    unsigned long far;
+    unsigned long esr;
 } arch_exception_state_t;
 
 // Sets the vector base address register

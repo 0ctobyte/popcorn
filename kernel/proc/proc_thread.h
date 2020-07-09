@@ -18,6 +18,7 @@ typedef enum {
 
 typedef struct proc_thread_s {
     spinlock_t lock;                // Interrupt disabling spin lock
+    proc_thread_id_t tid;           // Thread ID
     proc_thread_state_t state;      // Thread state
     bool suspend_requested;         // Indicates if a suspend was requested
     proc_priority_t priority;       // Thread priority

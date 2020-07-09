@@ -11,24 +11,28 @@ arch_exception_vector_table:
 _0:
     stp x0, x1, [sp, #-16]!
     adr x0, _0
+    mov x1, sp
     b _arch_exception_entry
     # IRQ
     .align 7
 _1:
     stp x0, x1, [sp, #-16]!
     adr x0, _1
+    mov x1, sp
     b _arch_exception_entry
     # FIQ
     .align 7
 _2:
     stp x0, x1, [sp, #-16]!
     adr x0, _2
+    mov x1, sp
     b _arch_exception_entry
     # SError
     .align 7
 _3:
     stp x0, x1, [sp, #-16]!
     adr x0, _3
+    mov x1, sp
     b _arch_exception_entry
 
     # Current exception level with SP_ELx
@@ -37,24 +41,28 @@ _3:
 _4:
     stp x0, x1, [sp, #-16]!
     adr x0, _4
+    mov x1, sp
     b _arch_exception_entry
     # IRQ
     .align 7
 _5:
     stp x0, x1, [sp, #-16]!
     adr x0, _5
+    mov x1, sp
     b _arch_exception_entry
     # FIQ
     .align 7
 _6:
     stp x0, x1, [sp, #-16]!
     adr x0, _6
+    mov x1, sp
     b _arch_exception_entry
     # SError
     .align 7
 _7:
     stp x0, x1, [sp, #-16]!
     adr x0, _7
+    mov x1, sp
     b _arch_exception_entry
 
     # Lower exception level using aarch64
@@ -63,24 +71,28 @@ _7:
 _8:
     stp x0, x1, [sp, #-16]!
     adr x0, _8
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # IRQ
     .align 7
 _9:
     stp x0, x1, [sp, #-16]!
     adr x0, _9
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # FIQ
     .align 7
 _10:
     stp x0, x1, [sp, #-16]!
     adr x0, _10
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # SError
     .align 7
 _11:
     stp x0, x1, [sp, #-16]!
     adr x0, _11
+    mrs x1, SP_EL0
     b _arch_exception_entry
 
     # Lower exception level using aarch32
@@ -89,32 +101,37 @@ _11:
 _12:
     stp x0, x1, [sp, #-16]!
     adr x0, _12
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # IRQ
     .align 7
 _13:
     stp x0, x1, [sp, #-16]!
     adr x0, _13
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # FIQ
     .align 7
 _14:
     stp x0, x1, [sp, #-16]!
     adr x0, _14
+    mrs x1, SP_EL0
     b _arch_exception_entry
     # SError
     .align 7
 _15:
     stp x0, x1, [sp, #-16]!
     adr x0, _15
+    mrs x1, SP_EL0
     b _arch_exception_entry
 
 # x0 - Exception vector address
 .align 2
 _arch_exception_entry:
     # x0 & x1 have already been saved on the stack. Save state of previous execution
-    stp xzr, xzr, [sp, #-16]!   // Make some room for the PC and SPSR. FAR and ESR will overwrite x0 & x1 locations on the stack after they are moved to the top of stack
-    add x1, sp, #32             // Stack pointer at time of exception
+    # x0 holds the vector address and x1 holds the appropriate stack pointer before exception was taken
+    # Make some room for the PC and SPSR. FAR and ESR will overwrite x0 & x1 locations on the stack after they are moved to the top of stack
+    stp xzr, xzr, [sp, #-16]!
     stp x30, x1, [sp, #-16]!
     stp x28, x29, [sp, #-16]!
     stp x26, x27, [sp, #-16]!
@@ -132,18 +149,18 @@ _arch_exception_entry:
     stp x2, x3, [sp, #-16]!
 
     # Move x0, x1 from bottom of stack to top of stack
-    ldp x2, x3, [x1, #-16]
+    ldp x2, x3, [x1]
     stp x2, x3, [sp, #-16]!
 
     # Get exception PC from ELR and SPSR
     mrs x2, ELR_EL1
     mrs x3, SPSR_EL1
-    stp x2, x3, [x1, #-32]
+    stp x2, x3, [x1, #-16]
 
     # Get the FAR and ESR
     mrs x2, FAR_EL1
     mrs x3, ESR_EL1
-    stp x2, x3, [x1, #-16]
+    stp x2, x3, [x1]
 
     # Calculate index into exception_table
     mrs x2, VBAR_EL1
@@ -177,8 +194,28 @@ _arch_exception_return:
     ldp x24, x25, [sp], #16
     ldp x26, x27, [sp], #16
     ldp x28, x29, [sp], #16
-    ldp x30, xzr, [sp], #16
-    add sp, sp, #32          // Throw away pc, spsr, far and esr values
+
+    # Save x0 and x1 by overwriting FAR and ESR on the stack context. We'll load these again later
+    stp x0, x1, [sp, #32]
+
+    # Load LR and SP
+    ldp x30, x0, [sp], #16
+
+    # Load ELR
+    ldr x1, [sp], #8
+    msr ELR_EL1, x1
+
+    # Load SPSR
+    ldr x1, [sp], #8
+    msr SPSR_EL1, x1
+
+    tbnz x1, #0, _skip_sp_el0_load
+    msr SP_EL0, x0
+_skip_sp_el0_load:
+    mov sp, x0
+
+    # Re-load x0 and x1
+    ldp x0, x1, [sp], #16
 
     eret
 
