@@ -19,6 +19,7 @@ typedef struct proc_task_s {
     proc_id_t pid;              // Task/process ID
     unsigned int refcnt;        // Reference count
     proc_task_state_t state;    // Task state
+    unsigned int suspend_cnt;   // Number of outstanding suspends
     vm_map_t *vm_map;           // Virtual memory map
     list_t ll_threads;          // All threads belonging to this task
     size_t num_threads;         // Number of threads in task
@@ -27,7 +28,6 @@ typedef struct proc_task_s {
     list_t ll_children;         // List of all children tasks
     list_node_t ll_snode;       // Sibling task list linkage
     list_node_t ll_tnode;       // List linkage for list of all tasks
-    unsigned int suspend_cnt;   // Number of outstanding suspends
 } proc_task_t;
 
 extern proc_task_t kernel_task;

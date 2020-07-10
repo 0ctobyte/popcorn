@@ -201,19 +201,12 @@ _arch_exception_return:
 
     # Load LR and SP
     ldp x30, x0, [sp], #16
-
-    # Load ELR
-    ldr x1, [sp], #8
-    msr ELR_EL1, x1
-
-    # Load SPSR
-    ldr x1, [sp], #8
-    msr SPSR_EL1, x1
-
-    tbnz x1, #0, _skip_sp_el0_load
     msr SP_EL0, x0
-_skip_sp_el0_load:
-    mov sp, x0
+
+    # Load ELR and SPSR
+    ldp x0, x1, [sp], #16
+    msr ELR_EL1, x0
+    msr SPSR_EL1, x1
 
     # Re-load x0 and x1
     ldp x0, x1, [sp], #16

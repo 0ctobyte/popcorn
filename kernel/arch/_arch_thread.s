@@ -1,5 +1,20 @@
 .text
 
+# Called by threads running for the first time
+# x1 [in] - New thread pointer
+# x2 [in] - Old thread pointer
+.global _arch_thread_run_stub
+.align 2
+_arch_thread_run_stub:
+    mov x0, x1
+    mov x1, x2
+    stp x29, lr, [sp, #-16]!
+    bl _arch_thread_run
+    ldp x29, lr, [sp], #16
+
+    # We don't return from _arch_exception_return
+    b _arch_exception_return
+
 # x0 [in]  - Context to load from
 # x0 [out] - Should be zero on successful load
 .global arch_thread_load_context

@@ -51,6 +51,12 @@ void print_mappings(void) {
     }
 }
 
+void thread_start(void) {
+    for (;;) {
+        kprintf("thread id = %u\n", proc_thread_current()->tid);
+    }
+}
+
 void kmain(void) {
     // Setup the exception vector table
     arch_exceptions_init();
@@ -79,9 +85,14 @@ void kmain(void) {
 
     proc_init();
 
-    proc_thread_switch(proc_thread_current());
-
     kprintf("proc_init() - done!\n");
+
+    proc_thread_t *thread;
+    kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);
+    proc_thread_set_entry(thread, thread_start);
+    proc_thread_resume(thread);
+
+    proc_thread_switch(thread);
 
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 

@@ -23,10 +23,10 @@ void arch_thread_init(struct proc_thread_s *thread);
 struct proc_thread_s* arch_thread_switch(struct proc_thread_s *new_thread, struct proc_thread_s *old_thread);
 
 // Updates the entry point on the given thread
-void arch_thread_set_entry(struct proc_thread_s *thread, void *entry_point_addr);
+void arch_thread_set_entry(struct proc_thread_s *thread, void *entry);
 
-// Sets the stack pointer on the given thread
-void arch_thread_set_stack(struct proc_thread_s *thread, void *stack_addr);
+// Sets the user space stack pointer on the given thread
+void arch_thread_set_stack(struct proc_thread_s *thread, void *user_stack);
 
 // Set the privilege level of the thread (i.e. user or kernel mode)
 void arch_thread_set_privilege(struct proc_thread_s *thread, arch_thread_privilege_t privilege);
