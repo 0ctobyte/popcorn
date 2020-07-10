@@ -33,8 +33,8 @@ arch_thread_load_context:
 .align 2
 arch_thread_save_context:
     // First four words on stack are FAR, ESR, ELR and SPSR. These are zero'd out
-    stp xzr, xzr, [sp, #16]!
-    stp xzr, xzr, [sp, #16]!
+    stp xzr, xzr, [sp, #-16]!
+    stp xzr, xzr, [sp, #-16]!
     stp x30, xzr, [sp, #-16]!
     stp x28, x29, [sp, #-16]!
     stp x26, x27, [sp, #-16]!

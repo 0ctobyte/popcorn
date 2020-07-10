@@ -9,6 +9,8 @@
 #include <kernel/vm/vm_object.h>
 #include <kernel/vm/vm_km.h>
 #include <kernel/proc/proc_init.h>
+#include <kernel/proc/proc_task.h>
+#include <kernel/proc/proc_thread.h>
 #include <kernel/vfs/vfs_mount.h>
 #include <kernel/vfs/vfs_node.h>
 
@@ -76,6 +78,8 @@ void kmain(void) {
     kprintf("vm_init() - done!\n");
 
     proc_init();
+
+    proc_thread_switch(proc_thread_current());
 
     kprintf("proc_init() - done!\n");
 

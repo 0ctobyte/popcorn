@@ -20,7 +20,7 @@ typedef enum {
 void arch_thread_init(struct proc_thread_s *thread);
 
 // Switch CPU context from old_thread to new_thread, saving current context state on old_thread's kernel stack
-void arch_thread_switch(struct proc_thread_s *new_thread, struct proc_thread_s *old_thread);
+struct proc_thread_s* arch_thread_switch(struct proc_thread_s *new_thread, struct proc_thread_s *old_thread);
 
 // Updates the entry point on the given thread
 void arch_thread_set_entry(struct proc_thread_s *thread, void *entry_point_addr);

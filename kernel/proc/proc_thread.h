@@ -20,12 +20,12 @@ typedef enum {
 typedef struct proc_thread_s {
     spinlock_t lock;                // Interrupt disabling spin lock
     proc_thread_id_t tid;           // Thread ID
+    proc_task_t *task;              // Task this thread belongs to
     proc_thread_state_t state;      // Thread state
     bool suspend_requested;         // Indicates if a suspend was requested
     proc_priority_t priority;       // Thread priority
     proc_priority_t sched_priority; // Priority computed by scheduler
     unsigned int refcnt;            // Reference count
-    proc_task_t *task;              // Task this thread belongs to
     proc_event_t event;             // Event this thread is sleeping on
     list_node_t ll_enode;           // Event hash table bucket list linkage
     list_node_t ll_tnode;           // Thread list linkage
@@ -58,6 +58,9 @@ kresult_t proc_thread_resume(proc_thread_t *thread);
 // Suspends the thread
 kresult_t proc_thread_suspend(proc_thread_t *thread);
 
+// Switches the current running thread to the given new thread
+void proc_thread_switch(proc_thread_t *new_thread);
+
 // Puts the thread to sleep. Interruptible indicates whether the sleep can be interrupted
 // by something other then the sleep event
 void proc_thread_sleep(proc_thread_t *thread, proc_event_t event, bool interruptible);
@@ -67,9 +70,6 @@ void proc_thread_wake(proc_thread_t *thread);
 
 // Do whatever necessary to run the given thread
 void proc_thread_run(proc_thread_t *thread);
-
-// Switches the current running thread to the given new thread
-void proc_thread_switch(proc_thread_t *new_thread);
 
 // Sets the state of the thread
 kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t new_context);

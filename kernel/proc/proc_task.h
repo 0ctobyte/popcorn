@@ -57,4 +57,7 @@ kresult_t proc_task_suspend(proc_task_t *task);
 // Get the current task
 #define proc_task_current() (proc_thread_current()->task)
 
+// Get the kernel task
+#define proc_task_kernel()  (&kernel_task)
+
 #endif // _PROC_TASK_H_

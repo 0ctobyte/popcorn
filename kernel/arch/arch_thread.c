@@ -21,12 +21,13 @@ void arch_thread_init(struct proc_thread_s *thread) {
     kernel->lr = (uint64_t)((void*)_arch_exception_return);
 }
 
-void arch_thread_switch(struct proc_thread_s *new_thread, struct proc_thread_s *old_thread) {
+struct proc_thread_s* arch_thread_switch(struct proc_thread_s *new_thread, struct proc_thread_s *old_thread) {
     // Assuming both threads have been locked already
     void *kernel_stack_top = arch_thread_save_context();
 
     // Load context will bring us here with kernel_stack_top == 0
-    if (kernel_stack_top == 0) return;
+    // old_thread is actually the new thread we switched to at this point
+    if (kernel_stack_top == 0) return old_thread;
 
     // Otherwise we have saved the context on the current thread's kernel stack
     old_thread->context.kernel_stack_top = (arch_context_t*)kernel_stack_top;
