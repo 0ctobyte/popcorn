@@ -3,6 +3,10 @@
 .global _start
 .align 2
 _start:
+    mrs x1, MPIDR_EL1
+    and x1, x1, #0xff
+    cbnz x1, _wfe_loop
+
     # Mask exceptions and interrupts for now
     msr DAIFSet, #0xf
 
@@ -19,17 +23,13 @@ _start:
     bfi x1, x0, #31, #1
     msr HCR_EL2, x1
     # Switch to EL1
-    mov x0, #0x3c4
+    mov x0, #0x3c5
     msr SPSR_EL2, x0
     adr x2, _not_el2
     msr ELR_EL2, x2
     eret
 
 _not_el2:
-    # Use the SP_ELx stack
-    mov x0, #1
-    msr SPSel, x0
-
     # Disable the MMU
     mrs x0, SCTLR_EL1
     mov x1, #1
@@ -103,7 +103,10 @@ _not_el2:
 
     # In case kmain returns
     ldp fp, lr, [sp], #16
-    b .
+
+_wfe_loop:
+    wfe
+    b _wfe_loop
 
 # x0 - destination
 # x1 - fdt_header pointer
