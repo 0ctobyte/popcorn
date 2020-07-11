@@ -26,6 +26,10 @@ _start:
     eret
 
 _not_el2:
+    # Use the SP_ELx stack
+    mov x0, #1
+    msr SPSel, x0
+
     # Disable the MMU
     mrs x0, SCTLR_EL1
     mov x1, #1

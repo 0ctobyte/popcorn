@@ -813,7 +813,7 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
         bpl = (bp_lattr_t){
             .ng = BP_GLOBAL,
             .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
-            .sh = BP_ISH,
+            .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
             .ns = BP_NON_SECURE,
             .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
@@ -827,7 +827,7 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
         bpl = (bp_lattr_t){
             .ng = BP_NON_GLOBAL,
             .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
-            .sh = BP_ISH,
+            .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW : BP_AP_RO,
             .ns = BP_NON_SECURE,
             .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
@@ -954,7 +954,7 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) 
     bp_lattr_t bpl = (bp_lattr_t){
         .ng = BP_GLOBAL,
         .af = (prot & VM_PROT_ALL) ? BP_AF : BP_NO_AF,
-        .sh = BP_ISH,
+        .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
         .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
         .ns = BP_NON_SECURE,
         .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
