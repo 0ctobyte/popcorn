@@ -8,7 +8,7 @@
 typedef long spinlock_t;
 
 // Initializes a spinlock, MUST always be called on a newly declared spinlock
-void spinlock_init(spinlock_t *lock);
+#define spinlock_init(lock) ((lock) = SPINLOCK_INIT)
 
 // Attempt to acquire a spinlock
 void spinlock_acquire(spinlock_t *lock);
