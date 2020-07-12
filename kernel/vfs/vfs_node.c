@@ -21,6 +21,8 @@ vfs_node_hash_table_t vfs_node_hash_table;
 #define VFS_NODE_SLAB_NUM (1024)
 kmem_slab_t vfs_node_slab;
 
+vfs_node_t vfs_node_template;
+
 list_compare_result_t _vfs_node_find(list_node_t *n1, list_node_t *n2) {
     vfs_node_t *v1 = list_entry(n1, vfs_node_t, ll_vnode), *v2 = list_entry(n2, vfs_node_t, ll_vnode);
     return (v1->id == v2->id && v1->mount == v2->mount) ? LIST_COMPARE_EQ : LIST_COMPARE_LT;
@@ -33,6 +35,26 @@ void vfs_node_init(void) {
     // Initialize the hash table
     arch_fast_zero(vfs_node_hash_table.ll_vn_buckets, NUM_BUCKETS * sizeof(list_t));
     arch_fast_zero(vfs_node_hash_table.bkt_lock, NUM_BUCKETS * sizeof(spinlock_t));
+
+    spinlock_init(&vfs_node_template.lock);
+    vfs_node_template.id = 0;
+    vfs_node_template.flags = 0;
+    vfs_node_template.refcnt = 0;
+    vfs_node_template.mount = NULL;
+    vfs_node_template.mounted_here = NULL;
+    vfs_node_template.parent = NULL;
+    vfs_node_template.object = NULL;
+    vfs_node_template.type = VFS_NODE_TYPE_REG;
+    list_init(&vfs_node_template.ll_clean);
+    list_init(&vfs_node_template.ll_dirty);
+    list_node_init(&vfs_node_template.ll_vnode);
+    list_node_init(&vfs_node_template.ll_mnode);
+    list_node_init(&vfs_node_template.ll_nnode);
+    list_init(&vfs_node_template.ll_nc_refs);
+    list_init(&vfs_node_template.ll_nc_prefs);
+    // FIXME default ops?
+    vfs_node_template.ops = NULL;
+    vfs_node_template.data = NULL;
 }
 
 vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
@@ -41,7 +63,7 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
 
     spinlock_read_acquire(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
-    vfs_node_t n = { .ll_vnode = LIST_NODE_INITIALIZER, .id = id, .mount = mnt };
+    vfs_node_t n = { .id = id, .mount = mnt };
     list_node_t *node = list_search(&vfs_node_hash_table.ll_vn_buckets[hash_bkt], _vfs_node_find, &n.ll_vnode);
     vfs_node_t *vn = list_entry(node, vfs_node_t, ll_vnode);
 
@@ -51,6 +73,7 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
     if (vn == NULL) {
         vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
         kassert(vn != NULL);
+        *vn = vfs_node_template;
     }
 
     vfs_node_ref(vn);

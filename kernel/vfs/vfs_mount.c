@@ -14,13 +14,24 @@ vfs_mount_list_t vfs_mount_list;
 #define VFS_MOUNT_SLAB_NUM (32)
 kmem_slab_t vfs_mount_slab;
 
+vfs_mount_t vfs_mount_template;
+
 void vfs_mount_init(void) {
     // Create slab for the vfs_mount_t structs
     kmem_slab_create(&vfs_mount_slab, sizeof(vfs_mount_t), VFS_MOUNT_SLAB_NUM);
 
     // Init the vfs mount list
-    vfs_mount_list.lock = SPINLOCK_INIT;
-    vfs_mount_list.mounts = LIST_INITIALIZER;
+    spinlock_init(&vfs_mount_list.lock);
+    list_init(&vfs_mount_list.mounts);
+
+    spinlock_init(&vfs_mount_template.lock);
+    list_node_init(&vfs_mount_template.ll_node);
+    list_init(&vfs_mount_template.ll_vfs_nodes);
+    // FIXME default ops?
+    vfs_mount_template.ops = NULL;
+    vfs_mount_template.mounted_on = NULL;
+    vfs_mount_template.block_size = 0;
+    vfs_mount_template.data = NULL;
 }
 
 vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on) {
@@ -28,8 +39,9 @@ vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on
 
     vfs_mount_t *mnt = (vfs_mount_t*)kmem_slab_alloc(&vfs_mount_slab);
     kassert(mnt != NULL);
+    *mnt = vfs_mount_template;
 
-    mnt->lock = SPINLOCK_INIT;
+    spinlock_init(&mnt->lock);
     mnt->mounted_on = mounted_on;
     mounted_on->mounted_here = mnt;
     vfs_node_ref(mounted_on);

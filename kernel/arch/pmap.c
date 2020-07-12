@@ -271,7 +271,7 @@ void _pmap_pte_page_insert(pmap_t *pmap, paddr_t pa, vaddr_t va) {
 
     pte_page->pmap = pmap;
     pte_page->va = va;
-    pte_page->ll_node = LIST_NODE_INITIALIZER;
+    list_node_init(&pte_page->ll_node);
 
     // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
     spinlock_write_release(&pmap->lock);
@@ -289,7 +289,7 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
 
     spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
-    pte_page_t tmp = (pte_page_t){ .ll_node = LIST_NODE_INITIALIZER, .pmap = pmap };
+    pte_page_t tmp = { .pmap = pmap };
     list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search, &tmp.ll_node);
     pte_page_t *pte_page = list_entry(node, pte_page_t, ll_node);
 
@@ -560,7 +560,7 @@ void pmap_bootstrap(void) {
     PAGESIZE = arch_mmu_is_4kb_granule_supported() ? _4KB : (arch_mmu_is_16kb_granule_supported() ? _16KB : _64KB);
     PAGESHIFT = arch_ctz(PAGESIZE);
 
-    kernel_pmap.lock = SPINLOCK_INIT;
+    spinlock_init(&kernel_pmap.lock);
     kernel_pmap.asid = 0;
 
     // Set the start and end of the kernel's virtual and physical address space
@@ -644,7 +644,7 @@ void pmap_bootstrap(void) {
     // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
     pmap_t identity_pmap;
     paddr_t identity_tables = tables;
-    identity_pmap.lock = SPINLOCK_INIT;
+    spinlock_init(&identity_pmap.lock);
     identity_pmap.ttb = identity_tables;
     identity_tables += PAGESIZE;
     identity_pmap.asid = 0;
@@ -768,7 +768,13 @@ pmap_t* pmap_create(void) {
     pmap_t *pmap = kmem_slab_alloc(&pmap_slab);
     kassert(pmap != NULL);
 
-    *pmap = (pmap_t){ .lock = SPINLOCK_INIT, .ttb = 0, .asid = ASID_ALLOC(), .refcnt = 0, .stats = {0} };
+    spinlock_init(&pmap->lock);
+    pmap->ttb = 0;
+    pmap->asid = ASID_ALLOC();
+    pmap->refcnt = 0;
+    pmap_reference(pmap);
+    pmap->stats = (pmap_statistics_t){0};
+
     return pmap;
 }
 

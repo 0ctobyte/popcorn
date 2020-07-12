@@ -80,14 +80,6 @@ void _rbtree_rotate(rbtree_t *tree, rbtree_node_t *node, rbtree_dir_t dir) {
     rbtree_set_parent(node, child);
 }
 
-void rbtree_init(rbtree_t *tree) {
-    *tree = RBTREE_INITIALIZER;
-}
-
-void rbtree_node_init(rbtree_node_t *node) {
-    *node = RBTREE_NODE_INITIALIZER;
-}
-
 rbtree_node_t* rbtree_grandparent(rbtree_node_t *node) {
     if (node == NULL) return NULL;
 
@@ -208,7 +200,7 @@ bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t ch
         rbtree_this_child(parent, child) = node;
     }
 
-    *node = RBTREE_NODE_INITIALIZER;
+    rbtree_node_init(node);
     rbtree_set_parent(node, parent);
     rbtree_set_red(node);
 

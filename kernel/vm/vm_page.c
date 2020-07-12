@@ -52,6 +52,8 @@ typedef struct {
 
 vm_page_hash_table_t vm_page_hash_table;
 
+vm_page_t vm_page_template;
+
 list_compare_result_t _vm_page_compare(list_node_t *n1, list_node_t *n2) {
     unsigned long p1 = (uintptr_t)n1, p2 = (uintptr_t)n2;
     return (p1 < p2) ? LIST_COMPARE_LT : (p1 > p2) ? LIST_COMPARE_GT : LIST_COMPARE_EQ;
@@ -142,6 +144,7 @@ void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm
         vm_offset_t offset = starting_offset + (p << PAGESHIFT);
         if (offset >= object->size) object->size += (offset - object->size) + PAGESIZE;
 
+        pages[p] = vm_page_template;
         pages[p].object = object;
         pages[p].offset = offset;
 
@@ -183,8 +186,8 @@ void vm_page_init(void) {
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
     for (unsigned long i = 0; i < NUM_BINS; i++) {
-        vm_page_array.lock[i] = SPINLOCK_INIT;
-        vm_page_array.ll_page_bins[i] = LIST_INITIALIZER;
+        spinlock_init(&vm_page_array.lock[i]);
+        list_init(&vm_page_array.ll_page_bins[i]);
     }
 
     // Clear the entire array
@@ -219,6 +222,12 @@ void vm_page_init(void) {
     size_t num_pages = (kernel_physical_end - kernel_physical_start) >> PAGESHIFT;
     vm_page_t *pages = vm_page_from_pa(kernel_physical_start);
     _vm_page_insert(pages, num_pages, &kernel_object, 0);
+
+    vm_page_template.status = (struct vm_page_status_s){0};
+    list_node_init(&vm_page_template.ll_onode);
+    list_node_init(&vm_page_template.ll_rnode);
+    vm_page_template.object = NULL;
+    vm_page_template.offset = 0;
 }
 
 #if DEBUG
@@ -254,7 +263,7 @@ vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
 
     spinlock_read_acquire(&vm_page_hash_table.lock[hash_bkt]);
 
-    vm_page_t p = { .status = {0}, .ll_onode = LIST_NODE_INITIALIZER, .ll_rnode = LIST_NODE_INITIALIZER, .object = object, .offset = offset };
+    vm_page_t p = { .object = object, .offset = offset };
     list_node_t *node = list_search(&vm_page_hash_table.ll_pages[hash_bkt], _vm_page_find, &p.ll_onode);
 
     spinlock_read_release(&vm_page_hash_table.lock[hash_bkt]);

@@ -79,8 +79,8 @@ typedef void (*rbtree_walk_func_t)(rbtree_node_t*);
 #define RBTREE_INITIALIZER                             ((rbtree_t){ .root = NULL })
 #define RBTREE_NODE_INITIALIZER                        ((rbtree_node_t){ .parent = (rbtree_node_t*)(RBTREE_NODE_RED), .children = {NULL, NULL} })
 
-void rbtree_init(rbtree_t *tree);
-void rbtree_node_init(rbtree_node_t *node);
+#define rbtree_init(tree)                              (*(tree) = RBTREE_INITIALIZER)
+#define rbtree_node_init(node)                         (*(node) = RBTREE_NODE_INITIALIZER)
 
 rbtree_node_t* rbtree_grandparent(rbtree_node_t *node);
 rbtree_node_t* rbtree_sibling(rbtree_node_t *node);

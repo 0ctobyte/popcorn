@@ -9,7 +9,7 @@
 void kmem_slab_create_no_vm(kmem_slab_t *kmem_slab, size_t object_size, size_t num_objects, void *buf) {
     kassert(kmem_slab != NULL);
 
-    kmem_slab->lock = SPINLOCK_INIT;
+    spinlock_init(&kmem_slab->lock);
     kmem_slab->size = object_size * num_objects;
 
     slab_init(&kmem_slab->slab, &kmem_slab->slab_buf, buf, kmem_slab->size, object_size);
@@ -18,7 +18,7 @@ void kmem_slab_create_no_vm(kmem_slab_t *kmem_slab, size_t object_size, size_t n
 void kmem_slab_create(kmem_slab_t *kmem_slab, size_t object_size, size_t num_objects) {
     kassert(kmem_slab != NULL);
 
-    kmem_slab->lock = SPINLOCK_INIT;
+    spinlock_init(&kmem_slab->lock);
     kmem_slab->size = object_size * num_objects;
 
     void *buf = (void*)vm_km_alloc(kmem_slab->size, VM_KM_FLAGS_WIRED);

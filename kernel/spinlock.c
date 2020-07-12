@@ -54,10 +54,6 @@ void _spinlock_release(spinlock_t *lock, unsigned long bits) {
     *lock &= ~(bits);
 }
 
-void spinlock_init(spinlock_t *lock) {
-    lock = 0;
-}
-
 void spinlock_acquire(spinlock_t *lock) {
     _spinlock_acquire(lock, SPINLOCK_ACQUIRED);
 }

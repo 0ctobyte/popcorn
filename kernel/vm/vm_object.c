@@ -6,13 +6,13 @@ vm_object_t kernel_object;
 vm_object_t kernel_lva_object;
 
 void vm_object_init(void) {
-    kernel_object.lock = SPINLOCK_INIT;
-    kernel_object.ll_resident = LIST_INITIALIZER;
+    spinlock_init(&kernel_object.lock);
+    list_init(&kernel_object.ll_resident);
     vm_object_reference(&kernel_object);
     kernel_object.size = 0;
 
-    kernel_lva_object.lock = SPINLOCK_INIT;
-    kernel_lva_object.ll_resident = LIST_INITIALIZER;
+    spinlock_init(&kernel_lva_object.lock);
+    list_init(&kernel_lva_object.ll_resident);
     vm_object_reference(&kernel_lva_object);
     kernel_lva_object.size = 0;
 

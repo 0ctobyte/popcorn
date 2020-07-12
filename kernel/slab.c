@@ -40,8 +40,8 @@ slab_buf_t* _slab_buf_init(slab_buf_t *slab_buf, void *buf, size_t size, size_t 
     size_t offset = ((uintptr_t)slab_buf == (uintptr_t)buf) ? sizeof(slab_buf_t) : 0;
 
     slab_buf->buf = buf;
-    slab_buf->ll_free = LIST_INITIALIZER;
-    slab_buf->ll_node = LIST_NODE_INITIALIZER;
+    list_init(&slab_buf->ll_free);
+    list_node_init(&slab_buf->ll_node);
     slab_buf->capacity = (size - offset) / block_size;
     slab_buf->free_blocks_remaining = slab_buf->capacity;
 

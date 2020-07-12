@@ -31,7 +31,7 @@ void proc_thread_init(void) {
     kmem_slab_create(&kernel_stack_slab, kernel_stack_size, KERNEL_STACK_SLAB_NUM);
 
     // Setup the thread template object
-    thread_template.lock = SPINLOCK_INIT;
+    spinlock_init(&thread_template.lock);
     thread_template.tid = 0;
     thread_template.task = proc_task_kernel();
     thread_template.state = PROC_THREAD_STATE_SUSPENDED;
@@ -40,9 +40,9 @@ void proc_thread_init(void) {
     thread_template.sched_priority = proc_task_kernel()->priority;
     thread_template.refcnt = 1;
     thread_template.event = 0;
-    thread_template.ll_enode = LIST_NODE_INITIALIZER;
-    thread_template.ll_tnode = LIST_NODE_INITIALIZER;
-    thread_template.ll_qnode = LIST_NODE_INITIALIZER;
+    list_node_init(&thread_template.ll_enode);
+    list_node_init(&thread_template.ll_tnode);
+    list_node_init(&thread_template.ll_qnode);
     thread_template.kernel_stack = NULL;
 
     // Create a thread for the currently running kernel code

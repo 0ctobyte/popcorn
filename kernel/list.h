@@ -33,34 +33,35 @@ typedef list_compare_result_t (*list_compare_func_t)(list_node_t*,list_node_t*);
 #define structof(ptr, struct_type, struct_member)    ((struct_type*)((uintptr_t)(ptr) - offsetof(struct_type, struct_member)))
 #define list_entry(node, struct_type, struct_member) ((node) != NULL ? (structof(node, struct_type, struct_member)) : NULL)
 
-#define list_first(list)      ((list)->first)
-#define list_last(list)       ((list)->last)
-#define list_next(node)       ((node)->next)
-#define list_prev(node)       ((node)->prev)
-#define list_end(ptr)         ((ptr) == NULL)
-#define list_is_empty(list)   ((list)->first == NULL)
+#define list_first(list)                             ((list)->first)
+#define list_last(list)                              ((list)->last)
+#define list_next(node)                              ((node)->next)
+#define list_prev(node)                              ((node)->prev)
+#define list_end(ptr)                                ((ptr) == NULL)
+#define list_is_empty(list)                          ((list)->first == NULL)
 
-#define LIST_INITIALIZER      (list_t){ .first = NULL, .last = NULL}
-#define LIST_NODE_INITIALIZER (list_node_t){ .next = NULL, .prev = NULL}
+#define LIST_INITIALIZER                             (list_t){ .first = NULL, .last = NULL}
+#define LIST_NODE_INITIALIZER                        (list_node_t){ .next = NULL, .prev = NULL}
 
-void list_init(list_t *list);
-void list_node_init(list_node_t *list_node);
+#define list_init(list)                              (*(list) = LIST_INITIALIZER)
+#define list_node_init(list_node)                    (*(list_node) = LIST_NODE_INITIALIZER)
+
 size_t list_count(list_t *list);
 
 bool list_insert_here(list_t *list, list_node_t *prev, list_node_t *next, list_node_t *node);
 
-#define list_insert_after(list, prev, node)  (list_insert_here(list, prev, ((prev) == NULL) ? (list)->first : (prev)->next, node))
-#define list_insert_before(list, next, node) (list_insert_here(list, ((next) == NULL) ? (list)->last : (next)->prev, next, node))
-#define list_insert_last(list, node)         (list_insert_here(list, (list)->last, NULL, node))
-#define list_insert_first(list, node)        (list_insert_here(list, NULL, (list)->first, node))
+#define list_insert_after(list, prev, node)          (list_insert_here(list, prev, ((prev) == NULL) ? (list)->first : (prev)->next, node))
+#define list_insert_before(list, next, node)         (list_insert_here(list, ((next) == NULL) ? (list)->last : (next)->prev, next, node))
+#define list_insert_last(list, node)                 (list_insert_here(list, (list)->last, NULL, node))
+#define list_insert_first(list, node)                (list_insert_here(list, NULL, (list)->first, node))
 
 bool list_insert(list_t *list, list_compare_func_t compare_func, list_node_t *node, list_order_t order);
 
 bool list_remove(list_t *list, list_node_t *node);
 bool list_clear(list_t *list, list_delete_func_t delete_func);
 
-#define list_push(list, node)                (list_insert_first(list, node))
-#define list_pop(list, node)                 ({ (node) = list_first(list); list_remove(list, node); })
+#define list_push(list, node)                        (list_insert_first(list, node))
+#define list_pop(list, node)                         ({ (node) = list_first(list); list_remove(list, node); })
 
 // Search for an element in the list using the compare_func and key.
 // The compare_func must take as arguments the key and list node to compare to. It shall return LIST_COMPARE_EQ

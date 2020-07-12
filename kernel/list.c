@@ -1,13 +1,5 @@
 #include <kernel/list.h>
 
-void list_init(list_t *list) {
-    *list = LIST_INITIALIZER;
-}
-
-void list_node_init(list_node_t *node) {
-    *node = LIST_NODE_INITIALIZER;
-}
-
 size_t list_count(list_t *list) {
     size_t count = 0;
     for (list_node_t *node = list_first(list); !list_end(node); node = list_next(node)) {

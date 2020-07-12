@@ -13,7 +13,13 @@ void vm_km_init(void) {
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
 
     // Initialize the kernel vm_map
-    kernel_vmap = (vm_map_t){ .lock = SPINLOCK_INIT, .pmap = pmap_kernel(), .start = kernel_virtual_start, .end = max_kernel_virtual_end, .size = 0, .refcnt = 0 };
+    spinlock_init(&kernel_vmap.lock);
+    kernel_vmap.pmap = pmap_kernel();
+    kernel_vmap.start = kernel_virtual_start;
+    kernel_vmap.end = max_kernel_virtual_end;
+    kernel_vmap.size = 0;
+    kernel_vmap.refcnt = 0;
+    vm_map_reference(&kernel_vmap);
 
     // Add a mapping to the kernel_object for the kernel code/data area
     size_t size = kernel_physical_end - kernel_physical_start;

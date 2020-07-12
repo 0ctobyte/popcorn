@@ -3,12 +3,12 @@
 
 #include <sys/types.h>
 
-#define SPINLOCK_INIT (0)
+#define SPINLOCK_INITIALIZER (0)
 
 typedef long spinlock_t;
 
 // Initializes a spinlock, MUST always be called on a newly declared spinlock
-#define spinlock_init(lock) ((lock) = SPINLOCK_INIT)
+#define spinlock_init(lock) (*(lock) = SPINLOCK_INITIALIZER)
 
 // Attempt to acquire a spinlock
 void spinlock_acquire(spinlock_t *lock);
