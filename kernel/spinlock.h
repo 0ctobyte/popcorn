@@ -10,35 +10,34 @@ typedef long spinlock_t;
 // Initializes a spinlock, MUST always be called on a newly declared spinlock
 void spinlock_init(spinlock_t *lock);
 
-// Attempt to lock a spinlock
+// Attempt to acquire a spinlock
 void spinlock_acquire(spinlock_t *lock);
 
-// Try to lock the spinlock, this will not "spin" if the locking fails
+// Try to acquire the spinlock, this will not "spin" if the locking fails
 // Returns true if locking succeeded, otherwise false
 bool spinlock_try_acquire(spinlock_t *lock);
 
-// Unlock a previously locked spinlock
+// Releases a previously locked spinlock
 void spinlock_release(spinlock_t *lock);
 
-// Same as spinlock_lock except this also disables interrupts
-// This should be used if the object to be locked can be accessed in an interrupt context
+// Same as spinlock_acquire except this also disables interrupts
+// This should be used if the critical section to be protected can be entered in an interrupt context
 void spinlock_irq_acquire(spinlock_t *lock);
 
-// Unlock a spinlock and, if previously enabled, re-enables interrupts
+// Release a spinlock and, if previously enabled, re-enables interrupts
 void spinlock_irq_release(spinlock_t *lock);
 
-// Read lock, this will allow multiple sources to lock the spinlock
-// assuming those sources will only read the locked resource
+// This will allow multiple readers to acquire the spinlock simultaneously
 void spinlock_read_acquire(spinlock_t *lock);
 
-// Indicates when a reader is done using the resource protected by the spinlock
+// Indicates when a reader is done
 void spinlock_read_release(spinlock_t *lock);
 
-// Write lock, will only allow a single source to access resource and block
-// all other sources regardless of whether they will be reading or writing resource
+// Writers are only allowed access to the critical section only when no other entity
+// (readers & writers) has acquired the spinlock
 #define spinlock_write_acquire(lock) spinlock_acquire(lock)
 
-// Indicates when a writer is done using the resource protected by the spinlock
+// Indicates when a writer is done
 #define spinlock_write_release(lock) spinlock_release(lock)
 
 #endif // _SPINLOCK_H_
