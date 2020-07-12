@@ -11,13 +11,13 @@ void _arch_thread_run(struct proc_thread_s *new_thread, struct proc_thread_s *ol
     proc_thread_current() = new_thread;
 
     if (old_thread == new_thread) {
-        spinlock_irqrelease(&new_thread->lock);
+        spinlock_irq_release(&new_thread->lock);
     } else if (old_thread < new_thread) {
-        spinlock_irqrelease(&old_thread->lock);
-        spinlock_irqrelease(&new_thread->lock);
+        spinlock_irq_release(&old_thread->lock);
+        spinlock_irq_release(&new_thread->lock);
     } else {
-        spinlock_irqrelease(&new_thread->lock);
-        spinlock_irqrelease(&old_thread->lock);
+        spinlock_irq_release(&new_thread->lock);
+        spinlock_irq_release(&old_thread->lock);
     }
 }
 

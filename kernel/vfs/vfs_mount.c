@@ -44,7 +44,7 @@ vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on
 void vfs_mount_destroy(vfs_mount_t *mnt) {
     kassert(mnt != NULL);
 
-    spinlock_writeacquire(&mnt->lock);
+    spinlock_write_acquire(&mnt->lock);
 
     spinlock_acquire(&vfs_mount_list.lock);
     kassert(list_remove(&vfs_mount_list.mounts, &mnt->ll_node));
@@ -62,7 +62,7 @@ void vfs_mount_destroy(vfs_mount_t *mnt) {
     if (mnt->ops->sync != NULL) mnt->ops->sync(mnt);
     if (mnt->ops->unmount != NULL) mnt->ops->unmount(mnt);
 
-    spinlock_writerelease(&mnt->lock);
+    spinlock_write_release(&mnt->lock);
 
     kmem_slab_free(&vfs_mount_slab, mnt);
 }
