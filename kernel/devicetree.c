@@ -7,8 +7,10 @@ extern fdt_header_t *fdt_header;
 bool devicetree_find_memory(unsigned long *base_addr, unsigned long *size) {
     // Get the size and address cells
     unsigned int root_offset = fdt_get_root_node(fdt_header), data_offset = 0;
-    unsigned int address_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdt_header, fdt_get_prop(fdt_header, root_offset, "#address-cells")), &data_offset);
-    unsigned int size_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdt_header, fdt_get_prop(fdt_header, root_offset, "#size-cells")), &data_offset);
+    unsigned int address_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdt_header,
+        fdt_get_prop(fdt_header, root_offset, "#address-cells")), &data_offset);
+    unsigned int size_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdt_header,
+        fdt_get_prop(fdt_header, root_offset, "#size-cells")), &data_offset);
 
     // Search for the memory node and get the reg prop
     unsigned int node_offset = fdt_get_node(fdt_header, "/memory");

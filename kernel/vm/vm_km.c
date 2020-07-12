@@ -27,7 +27,8 @@ void vm_km_init(void) {
     kassert(res == KRESULT_OK);
 
     // Add a mapping to the linear mapped KVA space
-    res = vm_map_enter_at(vm_map_kernel(), kernel_virtual_start + size, MEMSIZE - size, &kernel_lva_object, 0, VM_PROT_DEFAULT);
+    res = vm_map_enter_at(vm_map_kernel(), kernel_virtual_start + size, MEMSIZE - size, &kernel_lva_object, 0,
+        VM_PROT_DEFAULT);
     kassert(res == KRESULT_OK);
 }
 

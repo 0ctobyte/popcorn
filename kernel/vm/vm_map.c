@@ -25,12 +25,14 @@ kmem_slab_t vm_map_slab;
 
 rbtree_compare_result_t _vm_mapping_overlap(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_snode), *m2 = rbtree_entry(n2, vm_mapping_t, rb_snode);
-    return (m1->vstart >= m2->vend) ? RBTREE_COMPARE_GT : (m1->vend <= m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
+    return (m1->vstart >= m2->vend) ? RBTREE_COMPARE_GT : (m1->vend <= m2->vstart) ? RBTREE_COMPARE_LT
+        : RBTREE_COMPARE_EQ;
 }
 
 rbtree_compare_result_t _vm_mapping_compare(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_snode), *m2 = rbtree_entry(n2, vm_mapping_t, rb_snode);
-    return (m1->vstart > m2->vstart) ? RBTREE_COMPARE_GT : (m1->vstart < m2->vstart) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
+    return (m1->vstart > m2->vstart) ? RBTREE_COMPARE_GT : (m1->vstart < m2->vstart) ? RBTREE_COMPARE_LT
+        : RBTREE_COMPARE_EQ;
 }
 
 rbtree_compare_result_t _vm_mapping_compare_hole(rbtree_node_t *n1, rbtree_node_t *n2) {
@@ -40,7 +42,8 @@ rbtree_compare_result_t _vm_mapping_compare_hole(rbtree_node_t *n1, rbtree_node_
 
 rbtree_compare_result_t _vm_mapping_find_hole(rbtree_node_t *n1, rbtree_node_t *n2) {
     vm_mapping_t *m1 = rbtree_entry(n1, vm_mapping_t, rb_hnode), *m2 = rbtree_entry(n2, vm_mapping_t, rb_hnode);
-    return (m1->hole_size > m2->vend) ? RBTREE_COMPARE_GT : (m1->hole_size < m2->vend) ? RBTREE_COMPARE_LT : RBTREE_COMPARE_EQ;
+    return (m1->hole_size > m2->vend) ? RBTREE_COMPARE_GT : (m1->hole_size < m2->vend) ? RBTREE_COMPARE_LT
+        : RBTREE_COMPARE_EQ;
 }
 
 void _vm_mapping_hole_update(vm_map_t *vmap, vm_mapping_t *mapping, size_t new_hole_size) {
@@ -55,14 +58,15 @@ void _vm_mapping_hole_insert(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mappi
     // Update the hole size for the predecessor
     if (predecessor != NULL) _vm_mapping_hole_update(vmap, predecessor, new_mapping->vstart - predecessor->vend);
 
-    // Assumption is that this function is called after the new mapping has been inserted into the mapping tree and list
-    // So we should be able to get the successor if it exists
+    // Assumption is that this function is called after the new mapping has been inserted into the mapping tree and
+    // list. So we should be able to get the successor if it exists
     vm_mapping_t *successor = list_entry(list_next(&new_mapping->ll_node), vm_mapping_t, ll_node);
     size_t new_mapping_hole_size = ((successor != NULL) ? successor->vstart : vmap->end) - new_mapping->vend;
 
     // Insert the new mapping into the hole tree
     new_mapping->hole_size = new_mapping_hole_size;
-    if (new_mapping_hole_size > 0) kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &new_mapping->rb_hnode));
+    if (new_mapping_hole_size > 0)
+        kassert(rbtree_insert(&vmap->rb_holes, _vm_mapping_compare_hole, &new_mapping->rb_hnode));
 }
 
 void _vm_mapping_hole_delete(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *mapping) {
@@ -117,7 +121,8 @@ void _vm_mapping_enter(vm_map_t *vmap, vm_mapping_t *predecessor, vm_mapping_t *
     size_t size = mapping->vend - mapping->vstart;
 
     // Check if we can merge the predecessor mapping with this new mapping
-    if (predecessor != NULL && predecessor->vend == mapping->vstart && predecessor->object == mapping->object && predecessor->prot == mapping->prot && predecessor->wired == mapping->wired) {
+    if (predecessor != NULL && predecessor->vend == mapping->vstart && predecessor->object == mapping->object
+        && predecessor->prot == mapping->prot && predecessor->wired == mapping->wired) {
         // Increase the size of the object
         size_t new_size = predecessor->offset + (predecessor->vend - predecessor->vstart) + size;
         vm_object_set_size(predecessor->object, new_size);
@@ -244,7 +249,8 @@ void vm_map_reference(vm_map_t *vmap) {
     spinlock_write_release(&vmap->lock);
 }
 
-kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_t *object, vm_offset_t offset, vm_prot_t prot) {
+kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_t *object, vm_offset_t offset,
+    vm_prot_t prot) {
     kassert(vmap != NULL);
 
     rbtree_slot_t slot = 0;
@@ -278,7 +284,8 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
     return KRESULT_OK;
 }
 
-kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t *object, vm_offset_t offset, vm_prot_t prot) {
+kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t *object, vm_offset_t offset,
+    vm_prot_t prot) {
     kassert(vmap != NULL);
 
     rbtree_slot_t slot = 0;
@@ -291,8 +298,9 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
 
     spinlock_write_acquire(&vmap->lock);
 
-    // Search for a hole in the virtual address space that can fit this request. vm_mapping_t hold the hole_size after the mapping which means
-    // we are looking for the successor node, i.e. the node with the next biggest hole size, which is actually the predecessor node where this new mapping will be inserted
+    // Search for a hole in the virtual address space that can fit this request. vm_mapping_t hold the hole_size after
+    // the mapping which means we are looking for the successor node, i.e. the node with the next biggest hole size,
+    // which is actually the predecessor node where this new mapping will be inserted
     rbtree_search_successor(&vmap->rb_holes, _vm_mapping_find_hole, &tmp.rb_hnode, &predecessor_node, &slot);
     vm_mapping_t *predecessor = rbtree_entry(predecessor_node, vm_mapping_t, rb_hnode);
 
@@ -338,7 +346,8 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
     vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
 
-    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next
+    // mapping
     if (nearest == NULL) {
         rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
         nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
@@ -350,11 +359,13 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         return KRESULT_INVALID_ARGUMENT;
     }
 
-    // Iterate through mappings. One of two cases may occur; either the mapping is contained completely within the range to be removed
-    // Or, the mapping partly lies in the range. The first case is easy, remove it from the various trees and lists, decrement the associated
-    // vm_object refcnt and free the mapping entry structure. For the second case, we must first split the mapping entry in two at the intersection
-    // which can either happen at the start or end of the region or both.
-    for (vm_mapping_t *mapping = _vm_mapping_split(vmap, nearest, start); !list_end(mapping) && mapping->vstart < end; ) {
+    // Iterate through mappings. One of two cases may occur; either the mapping is contained completely within the
+    // range to be removed. Or, the mapping partly lies in the range. The first case is easy, remove it from the
+    // various trees and lists, decrement the associated vm_object refcnt and free the mapping entry structure. For the
+    // second case, we must first split the mapping entry in two at the intersection which can either happen at the
+    // start or end of the region or both.
+    for (vm_mapping_t *mapping = _vm_mapping_split(vmap, nearest, start);
+        !list_end(mapping) && mapping->vstart < end; ) {
         _vm_mapping_split(vmap, mapping, end);
 
         vm_mapping_t *next = list_entry(list_next(&mapping->ll_node), vm_mapping_t, ll_node);
@@ -391,7 +402,8 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
     vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
 
-    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next
+    // mapping
     if (nearest == NULL) {
         rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
         nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
@@ -439,7 +451,8 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
     vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
 
-    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next
+    // mapping
     if (nearest == NULL) {
         rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
         nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
@@ -470,7 +483,8 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
                 if (page == NULL) {
                     page = vm_page_alloc(mapping->object, offset);
                     kassert(page != NULL);
-                    pmap_enter(vmap->pmap, moffset + mapping->vstart, vm_page_to_pa(page), mapping->prot, PMAP_FLAGS_WIRED);
+                    pmap_enter(vmap->pmap, moffset + mapping->vstart, vm_page_to_pa(page), mapping->prot,
+                        PMAP_FLAGS_WIRED);
                 }
 
                 vm_page_wire(page);
@@ -501,7 +515,8 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
     vm_mapping_t *nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
 
-    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next mapping
+    // If we can't find the previous mapping to the starting virtual address to be removed, then try finding the next
+    // mapping
     if (nearest == NULL) {
         rbtree_search_successor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
         nearest = rbtree_entry(nearest_node, vm_mapping_t, rb_snode);
@@ -527,5 +542,6 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
     return KRESULT_OK;
 }
 
-kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset, vm_prot_t *prot) {
+kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset,
+    vm_prot_t *prot) {
 }

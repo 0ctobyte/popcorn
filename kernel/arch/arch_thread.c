@@ -61,8 +61,9 @@ struct proc_thread_s* arch_thread_switch(struct proc_thread_s *new_thread, struc
         thread_context->x[2] = (uint64_t)old_thread;
     }
 
-    // Load the context from the new thread which will run the new thread on this CPU at the if statement a couple of lines earlier
-    // Unless this thread is running for the first in which case it will start execution at _arch_thread_run_stub
+    // Load the context from the new thread which will run the new thread on this CPU at the if statement a couple of
+    // lines earlier. Unless this thread is running for the first in which case it will start execution at
+    // _arch_thread_run_stub
     arch_thread_load_context(thread_context);
 }
 

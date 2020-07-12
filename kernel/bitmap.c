@@ -25,7 +25,8 @@ long bitmap_find_contiguous_aligned_zeros(bitmap_t bitmap, unsigned long width, 
         bitmap_t num = arch_clz(v);
         if(num == 0) {
             // If there are none, count the leading 1's we will need to shift these 1's out of the bitmap
-            // Align the number of bits to shift out so we're always only checking for contiguous zero bits where the first bit is aligned
+            // Align the number of bits to shift out so we're always only checking for contiguous zero bits where the
+            // first bit is aligned
             num = arch_clz(~v);
             unsigned long remainder = arch_umod(num, alignment);
             if (remainder != 0) num += (alignment - remainder);

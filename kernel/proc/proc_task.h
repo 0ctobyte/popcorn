@@ -35,8 +35,8 @@ extern proc_task_t kernel_task;
 // Initializes the kernel task
 void proc_task_init(void);
 
-// Create a new task that is the child of the given parent. The inherit flag creates a copy of the vm_map for the new task
-// The new task is returned in child
+// Create a new task that is the child of the given parent. The inherit flag creates a copy of the vm_map for the new
+// task. The new task is returned in child
 kresult_t proc_task_create(proc_task_t *parent, bool inherit, proc_task_t **child);
 
 // Increments the reference count on the task

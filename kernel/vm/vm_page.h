@@ -42,9 +42,9 @@ void vm_page_unwire(vm_page_t *page);
 paddr_t vm_page_to_pa(vm_page_t *page);
 vm_page_t* vm_page_from_pa(paddr_t pa);
 
-// Reserve pages that have been allocated but not through vm_page_alloc*. This should be used by the virtual memory system
-// during boot time initialization to tell the page system what pages are being used by the kernel. These pages are wired
-// These pages should be added to the provided kernel memory object
+// Reserve pages that have been allocated but not through vm_page_alloc*. This should be used by the virtual memory
+// system during boot time initialization to tell the page system what pages are being used by the kernel. These pages
+// are wired. These pages should be added to the provided kernel memory object
 vm_page_t* vm_page_reserve_pa(paddr_t pa);
 
 #endif // _VM_PAGE_H_

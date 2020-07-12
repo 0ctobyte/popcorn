@@ -79,14 +79,16 @@ void _kmem_grow(unsigned int bin) {
         lru = list_entry(list_next(&lru->ll_node), kmem_bin_t, ll_node);
     }
 
-    // If we can't satisfy memory by stealing slab buffers from least recently used bins, then ask the VM system for more pages
+    // If we can't satisfy memory by stealing slab buffers from least recently used bins, then ask the VM system for
+    // more pages
     if (increase > 0) {
         vaddr_t va = vm_km_alloc(increase, VM_KM_FLAGS_WIRED);
 
         kmem.bins[bin].total_slab_size += increase;
         kmem.total_slab_size += increase;
 
-        // Allocate a slab_buf_t for this new slab buffer; allocate more memory from VM system if we are out of the slab_buf_t slab
+        // Allocate a slab_buf_t for this new slab buffer; allocate more memory from VM system if we are out of the
+        // slab_buf_t slab
         slab_buf_t *slab_buf = (slab_buf_t*)slab_alloc(&kmem.slab_buf_slab);
         if (slab_buf == NULL) {
             size_t size = ROUND_PAGE_UP(sizeof(slab_buf_t)*INITIAL_SLAB_BUF_COUNT);
@@ -197,11 +199,13 @@ void kmem_stats(void) {
 
         total_alloc_size += alloc_size;
 
-        kprintf("%5uB:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\t\t%u%%\t%u%%\t%u%%\t\t%u%%\n", BIN_TO_BLOCK_SIZE(i), kmem.bins[i].total_allocs, kmem.bins[i].total_frees, current_allocs,
+        kprintf("%5uB:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\t\t%u%%\t%u%%\t%u%%\t\t%u%%\n",
+            BIN_TO_BLOCK_SIZE(i), kmem.bins[i].total_allocs, kmem.bins[i].total_frees, current_allocs,
             alloc_size, kmem.bins[i].total_slab_size, used_pct, total_used_pct, total_alloc_pct, total_slab_pct);
     }
 
     unsigned long total_current_allocs = kmem.total_allocs - kmem.total_frees;
     kprintf("------\n");
-    kprintf("Total:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\n", kmem.total_allocs, kmem.total_frees, total_current_allocs, total_alloc_size, kmem.total_slab_size);
+    kprintf("Total:\t%u\t\t%u\t%u\t\t%uB\t\t%uB\n",
+        kmem.total_allocs, kmem.total_frees, total_current_allocs, total_alloc_size, kmem.total_slab_size);
 }

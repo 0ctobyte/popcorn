@@ -23,7 +23,8 @@ unsigned long MEMSIZE;
 
 void vm_mapping_walk(rbtree_node_t *node) {
     vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_snode);
-    kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
+    kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n",
+        mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
 }
 
 void _vm_mapping_walk(rbtree_node_t *node) {
@@ -47,13 +48,16 @@ void print_mappings(void) {
 
     vm_mapping_t *mapping = NULL;
     list_for_each_entry(&vm_map_kernel()->ll_mappings, mapping, ll_node) {
-        kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n", mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
+        kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n",
+            mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
     }
 }
 
 void thread_start(void) {
+    proc_thread_t *thread = list_entry(list_first(&proc_task_kernel()->ll_threads), proc_thread_t, ll_tnode);
     for (;;) {
         kprintf("thread id = %u\n", proc_thread_current()->tid);
+        proc_thread_switch(thread);
     }
 }
 
@@ -78,7 +82,8 @@ void kmain(void) {
     // FIXME switching UART to VA address
     extern unsigned long uart_base_addr;
     vaddr_t uart_base_va = 0xFFFFFFFFC0000000;
-    pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+    pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT,
+        PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
 
     kprintf("vm_init() - done!\n");
@@ -92,7 +97,10 @@ void kmain(void) {
     proc_thread_set_entry(thread, thread_start);
     proc_thread_resume(thread);
 
-    proc_thread_switch(thread);
+    for (;;) {
+        kprintf("thread id = %d\n", proc_thread_current()->tid);
+        proc_thread_switch(thread);
+    }
 
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 

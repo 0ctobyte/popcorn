@@ -33,7 +33,8 @@ unsigned long arch_mmu_get_ttbr1(void);
 void arch_mmu_set_ttbr0(uintptr_t ttb0, unsigned int asid);
 void arch_mmu_clear_ttbr0(void);
 
-// Given a VA, translates it to a PA using the current MMU context. Returns a valid PA or -1 if the translation cannot be performed
+// Given a VA, translates it to a PA using the current MMU context. Returns a valid PA or -1 if the translation cannot
+// be performed
 uintptr_t arch_mmu_translate_va(uintptr_t va);
 
 #endif // _ARCH_MMU_H_

@@ -70,7 +70,8 @@ typedef struct {
     int (*create)(struct vfs_node_s *dvn, vfs_component_name_t *cname, vfs_node_attr_t *attr, struct vfs_node_s **vnp);
 
     // Create a directory in the given directory with the given name and attributes. Return the new directory in vnp
-    int (*create_dir)(struct vfs_node_s *dvn, vfs_component_name_t *cname, vfs_node_attr_t *attr, struct vfs_node_s **vnp);
+    int (*create_dir)(struct vfs_node_s *dvn, vfs_component_name_t *cname, vfs_node_attr_t *attr,
+        struct vfs_node_s **vnp);
 
     // Get attributes for file, results are place in attr
     int (*get_attr)(struct vfs_node_s *vn, vfs_node_attr_t *attr);
@@ -99,13 +100,15 @@ typedef struct {
     int (*remove_dir)(struct vfs_node_s *dvn, vfs_component_name_t *cname);
 
     // Rename the file sname in directory dvn to tname in directory tvn
-    int (*rename)(struct vfs_node_s *dvn, vfs_component_name_t *sname, struct vfs_node_s *tvn, vfs_component_name_t *tname);
+    int (*rename)(struct vfs_node_s *dvn, vfs_component_name_t *sname, struct vfs_node_s *tvn,
+        vfs_component_name_t *tname);
 
     // Set attributes for file. Only mode, uid, gid, file size and times may be changed
     int (*set_attr)(struct vfs_node_s *vn, vfs_node_attr_t *attr);
 
     // Create a symbolic link with name lname in the given directory for the target provided in tname
-    int (*sym_link)(struct vfs_node_s *dvn, vfs_component_name_t *lname, vfs_node_attr_t *attr, vfs_component_name_t *tname);
+    int (*sym_link)(struct vfs_node_s *dvn, vfs_component_name_t *lname, vfs_node_attr_t *attr,
+        vfs_component_name_t *tname);
 
     // Write out all dirty buffers; operation is synchronous
     int (*sync)(struct vfs_node_s *vn);
@@ -130,7 +133,8 @@ typedef struct vfs_node_s {
     list_node_t ll_vnode;             // VFS node cache hash table bucket linkage
     list_node_t ll_mnode;             // VFS mount node list linkage
     list_node_t ll_nnode;             // Name cache hash table bucket linkage
-    list_t ll_nc_refs;                // List of name cache entries that reference this node (in case of hard links and '..' and '.')
+    list_t ll_nc_refs;                // List of name cache entries that reference this node
+                                      // (in case of hard links and '..' and '.')
     list_t ll_nc_prefs;               // List of name cache entries that reference this node as the parent node
     vfs_node_ops_t *ops;              // Pointer to VFS node ops structure
     void *data;                       // File system node specific data

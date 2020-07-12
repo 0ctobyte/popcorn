@@ -144,8 +144,8 @@ rbtree_node_t* rbtree_node_min(rbtree_node_t *node) {
 rbtree_node_t* rbtree_node_successor(rbtree_node_t *node) {
     if (node == NULL) return NULL;
 
-    // The successor of a node is the min of it's right subtree (i.e. the right subtree contains all nodes greater than it
-    // so we must find the smallest value in that subtree)
+    // The successor of a node is the min of it's right subtree (i.e. the right subtree contains all nodes greater
+    // than it so we must find the smallest value in that subtree)
     rbtree_node_t *right = rbtree_right(node);
     if (right != NULL) {
         return rbtree_node_min(right);
@@ -166,8 +166,8 @@ rbtree_node_t* rbtree_node_successor(rbtree_node_t *node) {
 rbtree_node_t* rbtree_node_predecessor(rbtree_node_t *node) {
     if (node == NULL) return NULL;
 
-    // The predecessor of a node is the max of it's left subtree (i.e. the left subtree contains all nodes lesser than it
-    // so we must find the largest value in that subtree)
+    // The predecessor of a node is the max of it's left subtree (i.e. the left subtree contains all nodes lesser than
+    // it so we must find the largest value in that subtree)
     rbtree_node_t *left = rbtree_left(node);
     if (left != NULL) {
         return rbtree_node_max(left);
@@ -234,9 +234,9 @@ bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t ch
             rbtree_node_t *grandparent = rbtree_grandparent(node);
 
             // Check if the node is on the "inside" tree. It's on the inside if it's on the right subtree of the parent
-            // which is in the left subtree of the grandparent. Or, if it's on the left subtree of the parent which is in
-            // the right subtree of the grandparent. For the first scenario, we need to perform a left rotation. in the
-            // second scenario we need to perform a right rotation
+            // which is in the left subtree of the grandparent. Or, if it's on the left subtree of the parent which is
+            // in the right subtree of the grandparent. For the first scenario, we need to perform a left rotation. in
+            // the second scenario we need to perform a right rotation
             if (rbtree_right(parent) == node && rbtree_left(grandparent) == parent) {
                 _rbtree_rotate(tree, parent, RBTREE_DIR_LEFT);
                 rbtree_node_t *temp = node;
@@ -276,7 +276,8 @@ bool rbtree_insert(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_no
     rbtree_node_t *parent = NULL;
     rbtree_child_t child;
 
-    // Walk the tree going left if node is less than and going right if it's greater than the current node we are examining
+    // Walk the tree going left if node is less than and going right if it's greater than the current node we are
+    // examining
     for (rbtree_node_t *here = rbtree_root(tree); here != NULL; here = rbtree_this_child(parent, child)) {
         rbtree_compare_result_t cmp = compare_func(node, here);
 
@@ -358,15 +359,16 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
 
     // Rest of the conditions below handle the case where the deleted node has at most one non-null child
     if (rbtree_is_red(node)) {
-        // If node is red, it must only have NULL children. Since we already checked for both children in the previous condition
-        // if the node is red (which means it must have two black/null children) and only one child is non-NULL then it violates
-        // the property that all paths to the NULL go through the same number of black nodes. We can safely remove the node
+        // If node is red, it must only have NULL children. Since we already checked for both children in the previous
+        // condition if the node is red (which means it must have two black/null children) and only one child is
+        // non-NULL then it violates the property that all paths to the NULL go through the same number of black nodes.
+        // We can safely remove the node
         _rbtree_emancipate(node);
         if (parent == NULL) rbtree_root(tree) = NULL;
     } else if (rbtree_is_black(node) && (child != NULL && rbtree_is_red(child))) {
-        // If node is black and it's only child is red, then we can simply replace node with child and recolour it black to maintain
-        // the property that all paths through a node to it's NULL nodes goes through the same number of black nodes and the other
-        // property where all red nodes must have black children
+        // If node is black and it's only child is red, then we can simply replace node with child and recolour it
+        // black to maintain the property that all paths through a node to it's NULL nodes goes through the same number
+        // of black nodes and the other property where all red nodes must have black children
         _rbtree_emancipate(node);
         _rbtree_emancipate(child);
 
@@ -427,7 +429,8 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
                     rbtree_set_red(sibling);
                     continue;
                 } else {
-                    // If the parent is red but the sibling and both it's children are black then we can just swap the colours of the parent and sibling
+                    // If the parent is red but the sibling and both it's children are black then we can just swap the
+                    // colours of the parent and sibling
                     rbtree_set_black(parent);
                     rbtree_set_red(sibling);
                     break;
@@ -468,7 +471,8 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
                 rbtree_set_black(sibling_left);
             }
 
-            // After one of the above two rotations, set the sibling's colour as the node's parent's colour, and set the parent's colour to black
+            // After one of the above two rotations, set the sibling's colour as the node's parent's colour, and set
+            // the parent's colour to black
             rbtree_set_colour(sibling, rbtree_get_colour(parent));
             rbtree_set_black(parent);
             break;
@@ -487,7 +491,8 @@ void rbtree_clear(rbtree_t *tree, rbtree_delete_func_t delete_func) {
     }
 }
 
-rbtree_node_t* rbtree_search_slot(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_slot_t *slot) {
+rbtree_node_t* rbtree_search_slot(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key,
+    rbtree_slot_t *slot) {
     rbtree_node_t *here = rbtree_root(tree), *parent = NULL;
     rbtree_child_t child;
 
@@ -512,7 +517,8 @@ rbtree_node_t* rbtree_search(rbtree_t *tree, rbtree_compare_func_t compare_func,
     return rbtree_search_slot(tree, compare_func, key, &slot);
 }
 
-bool rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **nearest, rbtree_slot_t *slot, rbtree_dir_t dir) {
+bool rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key,
+    rbtree_node_t **nearest, rbtree_slot_t *slot, rbtree_dir_t dir) {
     rbtree_node_t *here = rbtree_root(tree), *parent = NULL;
     rbtree_child_t child;
     rbtree_compare_result_t cmp;
@@ -550,11 +556,13 @@ bool rbtree_search_nearest(rbtree_t *tree, rbtree_compare_func_t compare_func, r
     return (cmp == RBTREE_COMPARE_EQ);
 }
 
-bool rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **predecessor, rbtree_slot_t *slot) {
+bool rbtree_search_predecessor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key,
+    rbtree_node_t **predecessor, rbtree_slot_t *slot) {
     return rbtree_search_nearest(tree, compare_func, key, predecessor, slot, RBTREE_DIR_PREDECESSOR);
 }
 
-bool rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key, rbtree_node_t **successor, rbtree_slot_t *slot) {
+bool rbtree_search_successor(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_node_t *key,
+    rbtree_node_t **successor, rbtree_slot_t *slot) {
     return rbtree_search_nearest(tree, compare_func, key, successor, slot, RBTREE_DIR_SUCCESSOR);
 }
 

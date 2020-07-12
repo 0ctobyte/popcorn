@@ -34,7 +34,8 @@ void arch_thread_set_privilege(struct proc_thread_s *thread, arch_thread_privile
 // Loads the given context into the CPUs register state
 void arch_thread_load_context(arch_context_t *context);
 
-// Saves the current CPU context on the current kernel stack returning a pointer to the beginning of the saved context struct
+// Saves the current CPU context on the current kernel stack returning a pointer to the beginning of the saved context
+// struct
 arch_context_t* arch_thread_save_context(void);
 
 #endif // _ARCH_THREAD_H_

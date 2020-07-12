@@ -130,7 +130,8 @@ _15:
 _arch_exception_entry:
     # x0 & x1 have already been saved on the stack. Save state of previous execution
     # x0 holds the vector address and x1 holds the appropriate stack pointer before exception was taken
-    # Make some room for the ELR and SPSR. FAR and ESR will overwrite x0 & x1 locations on the stack after they are moved to the top of stack
+    # Make some room for the ELR and SPSR. FAR and ESR will overwrite x0 & x1 locations on the stack after they are
+    # moved to the top of stack
     stp xzr, xzr, [sp, #-16]!
     stp x30, x1, [sp, #-16]!
     stp x28, x29, [sp, #-16]!

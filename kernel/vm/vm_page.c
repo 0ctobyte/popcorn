@@ -16,24 +16,28 @@
 #define GET_BIN_INDEX(num_pages)                     (arch_ctz(num_pages))
 #define WHICH_BUDDY(vm_page_index, bin)              (vm_page_index) & ~((1l << (bin)) - 1)
 
-#define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((unsigned long)object, offset) % vm_page_hash_table.num_buckets)
+#define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((unsigned long)object, offset) %\
+    vm_page_hash_table.num_buckets)
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
 
-// Using the buddy allocation algorithm to allow allocating contiguous sets of pages.
-// NUM_BINS limits the max contiguous set that can be allocated. For NUM_BINS = 20 and page_size = 4KB that means 4GB worth of
-// Physical pages can be allocated contiguously at one time. Each bin holds a linked list of buddies where each buddy has x number of pages
-// determined by the bin#. For example, Bin0 has buddies of 1 page, Bin1 has 2 pages per buddy, Bin2 has 4 pages per buddy etc.
-// The idea is that given the number of contiguous pages to be allocated, for example say 8 pages, we look at that bin to find
-// the first free buddy and return the pointer to the first page in that buddy. Subsequent pages in that buddy can be accessesed
-// as indices into an array since all the pages are arranged contigously in memory as referenced by *pagearray. If a bin does not
-// contain any free buddies then we continue up to the next bin, find a free buddy, split it in two and place them in the lower bin
-// as a list of two buddies of half the size. We continue that process as long as the higher-up bin has no buddies. It's the same idea
-// when freeing pages, place the free pages in the appropriate bin ordering them by physical address. If two buddies are contiguous in terms
-// of physical address then we can merge them into one buddy and place them in the higher up bin; this process continues recursively until
-// it is no longer possible to do so. Note that this only allows allocating power-of-2 number of contiguous pages. Anything else is rounded
-// up to the next power of 2 and we will have wasted pages.
+/* Using the buddy allocation algorithm to allow allocating contiguous sets of pages.
+ * NUM_BINS limits the max contiguous set that can be allocated. For NUM_BINS = 20 and page_size = 4KB that means 4GB
+ * worth of physical pages can be allocated contiguously at one time. Each bin holds a linked list of buddies where
+ * each buddy has x number of pages determined by the bin#. For example, Bin0 has buddies of 1 page, Bin1 has 2 pages
+ * per buddy, Bin2 has 4 pages per buddy etc. The idea is that given the number of contiguous pages to be allocated,
+ * for example say 8 pages, we look at that bin to find the first free buddy and return the pointer to the first page
+ * in that buddy. Subsequent pages in that buddy can be accessesed as indices into an array since all the pages are
+ * arranged contigously in memory as referenced by *pagearray. If a bin does not contain any free buddies then we
+ * continue up to the next bin, find a free buddy, split it in two and place them in the lower bin as a list of two
+ * buddies of half the size. We continue that process as long as the higher-up bin has no buddies. It's the same idea
+ * when freeing pages, place the free pages in the appropriate bin ordering them by physical address. If two buddies
+ * are contiguous in terms of physical address then we can merge them into one buddy and place them in the higher up
+ * bin; this process continues recursively until it is no longer possible to do so. Note that this only allows
+ * allocating power-of-2 number of contiguous pages. Anything else is rounded up to the next power of 2 and we will
+ * have wasted pages.
+ */
 typedef struct {
     spinlock_t lock[NUM_BINS];       // One lock per bin
     vm_page_t *pages;                // Contiguous array of all pages
@@ -43,7 +47,8 @@ typedef struct {
 
 vm_page_array_t vm_page_array;
 
-// The hash table keeps track of every single allocated page. Pages are looked up by vm_object_t pointer and offset in that object
+// The hash table keeps track of every single allocated page.
+// Pages are looked up by vm_object_t pointer and offset in that object
 typedef struct {
     spinlock_t *lock;   // Multiple readers, single writer lock per bucket
     list_t *ll_pages;   // Array of lists; each list contains a chain of vm_page_t's in the same hash bucket
@@ -106,7 +111,8 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
         spinlock_acquire(&vm_page_array.lock[bin_index]);
 
         // The buddy list is ordered by ascending page number, search for the position to insert these freed pages
-        kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_rnode, LIST_ORDER_ASCENDING));
+        kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_rnode,
+            LIST_ORDER_ASCENDING));
 
         vm_page_t *next = list_entry(list_next(&pages->ll_rnode), vm_page_t, ll_rnode);
         vm_page_t *prev = list_entry(list_prev(&pages->ll_rnode), vm_page_t, ll_rnode);
@@ -198,8 +204,10 @@ void vm_page_init(void) {
     size_t vm_page_group_size = 0;
     for (unsigned long i = 0; i < vm_page_array.num_pages; i += vm_page_group_size) {
         vm_page_group_size = ROUND_DOWN_POW2(vm_page_array.num_pages - i);
-        vm_page_group_size = vm_page_group_size > MAX_NUM_CONTIGUOUS_PAGES ? MAX_NUM_CONTIGUOUS_PAGES : vm_page_group_size;
-        kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)], &vm_page_array.pages[i].ll_rnode));
+        vm_page_group_size = vm_page_group_size > MAX_NUM_CONTIGUOUS_PAGES ? MAX_NUM_CONTIGUOUS_PAGES
+            : vm_page_group_size;
+        kassert(list_push(&vm_page_array.ll_page_bins[GET_BIN_INDEX(vm_page_group_size)],
+            &vm_page_array.pages[i].ll_rnode));
     }
 
     // Allocate space for the vm_page_t hash table. No kmem at this point so use pmap_steal_memory
@@ -358,16 +366,19 @@ vm_page_t* vm_page_reserve_pa(paddr_t pa) {
     for (int bin = 0; bin < NUM_BINS; bin++) {
         // This is the buddy we are looking for in this bin
         unsigned long buddy_index = WHICH_BUDDY(vm_page_index, bin);
-        vm_page_t *buddy = list_entry(list_search(&vm_page_array.ll_page_bins[bin], _vm_page_compare, &vm_page_array.pages[buddy_index].ll_rnode), vm_page_t, ll_rnode);
+        vm_page_t *buddy = list_entry(list_search(&vm_page_array.ll_page_bins[bin], _vm_page_compare,
+            &vm_page_array.pages[buddy_index].ll_rnode), vm_page_t, ll_rnode);
 
-        // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page we want to reserve
+        // Found it. Remove the entire buddy from the bin and "free" the other pages in the buddy except for the page
+        // we want to reserve
         if (buddy != NULL) {
             page->status.is_active = 1;
             page->status.wired_count++;
 
             kassert(list_remove(&vm_page_array.ll_page_bins[bin], &buddy->ll_rnode));
 
-            // Loop through the lower bins splitting the buddy in two, keeping the buddy that has the page we want to reserve and freeing the other buddy
+            // Loop through the lower bins splitting the buddy in two, keeping the buddy that has the page we want to
+            // reserve and freeing the other buddy
             for (unsigned long i = bin; i > 0; i--) {
                 unsigned long num_pages = 1l << (i - 1);
                 vm_page_t *buddy1 = &vm_page_array.pages[WHICH_BUDDY(vm_page_index, i)];

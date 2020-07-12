@@ -5,7 +5,8 @@
 // Basically, we want to shuffle a slab to be first in the search order if it has 1/4+ (25%+) more free blocks
 // than the current first slab in the search order.
 #define SLAB_SHUFFLE_SHIFT                  (2)
-#define SLAB_SHUFFLE_THRESHOLD(first_slab)  ((first_slab)->free_blocks_remaining + ((first_slab)->capacity >> SLAB_SHUFFLE_SHIFT))
+#define SLAB_SHUFFLE_THRESHOLD(first_slab)  ((first_slab)->free_blocks_remaining +\
+    ((first_slab)->capacity >> SLAB_SHUFFLE_SHIFT))
 
 void _slab_shuffle(slab_t *slab, slab_buf_t *this_slab_buf) {
     kassert(list_remove(&slab->ll_slabs, &this_slab_buf->ll_node));
@@ -84,8 +85,8 @@ void* slab_alloc(slab_t *slab) {
         free = (void*)free_node;
         this_slab_buf->free_blocks_remaining--;
 
-        // Update the first slab buf pointer to point to the latest slab that had free blocks and rearrange the linked list as needed.
-        // Basically we want this_slab_buf to be the first slab searched next time alloc is called
+        // Update the first slab buf pointer to point to the latest slab that had free blocks and rearrange the linked
+        // list as needed. Basically we want this_slab_buf to be the first slab searched next time alloc is called
         if ((&this_slab_buf->ll_node) != list_first(&slab->ll_slabs)) _slab_shuffle(slab, this_slab_buf);
     }
 
@@ -106,7 +107,8 @@ void slab_free(slab_t *slab, void *block) {
 
     // Search for the slab buf that contains this block
     *((size_t*)block) = slab->block_size;
-    slab_buf_t *this_slab_buf = list_entry(list_search(&slab->ll_slabs, _slab_buf_compare, (list_node_t*)block), slab_buf_t, ll_node);
+    slab_buf_t *this_slab_buf = list_entry(list_search(&slab->ll_slabs, _slab_buf_compare, (list_node_t*)block),
+        slab_buf_t, ll_node);
 
     // We must not be trying to free something that was never allocated in this slab
     kassert(this_slab_buf != NULL);
@@ -119,7 +121,8 @@ void slab_free(slab_t *slab, void *block) {
     // Now determine whether this slab should be placed first in the search order
     // Ideally we want the slab with the most free blocks to be searched first
     slab_buf_t *first = list_entry(list_first(&slab->ll_slabs), slab_buf_t, ll_node);
-    if (list_prev(&this_slab_buf->ll_node) != NULL && this_slab_buf->free_blocks_remaining > SLAB_SHUFFLE_THRESHOLD(first)) {
+    if (list_prev(&this_slab_buf->ll_node) != NULL &&
+        this_slab_buf->free_blocks_remaining > SLAB_SHUFFLE_THRESHOLD(first)) {
         _slab_shuffle(slab, this_slab_buf);
     }
 }

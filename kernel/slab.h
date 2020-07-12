@@ -6,7 +6,8 @@
 
 // Slabs must at least be this size
 #define SLAB_MIN_SIZE                     (sizeof(slab_buf_t)+sizeof(list_node_t))
-#define SLAB_BUF_SIZE(slab, slab_buf)     (((slab_buf)->capacity * (slab)->block_size) + (((void*)(slab_buf) == (slab_buf)->buf) ? sizeof(slab_buf_t) : 0))
+#define SLAB_BUF_SIZE(slab, slab_buf)     (((slab_buf)->capacity * (slab)->block_size) + (((void*)(slab_buf) ==\
+    (slab_buf)->buf) ? sizeof(slab_buf_t) : 0))
 
 typedef struct {
     void *buf;                      // Pointer to the buffer this slab_buf struct is managing

@@ -18,28 +18,35 @@
 
 // NSTable values
 typedef enum {
-    T_SECURE     = 0,                  // Tables with this attribute are in the secure PA space. Subsequent levels of lookup keep their NS or NSTable meanings
-    T_NON_SECURE = 0x8000000000000000, // Tables with this attribute are in the non-secure PA space. As a results subsequent levels of lookups are also forced non-secure
+    T_SECURE     = 0,                  // Tables with this attribute are in the secure PA space. Subsequent levels of
+                                       // lookup keep their NS or NSTable meanings
+    T_NON_SECURE = 0x8000000000000000, // Tables with this attribute are in the non-secure PA space. As a results
+                                       // subsequent levels of lookups are also forced non-secure
 } t_ns_attr_t;
 
 // APTable values
 typedef enum {
     T_AP_NONE      = 0,                  // No effect on permissions on lower levels of lookups
-    T_AP_NO_EL0    = 0x2000000000000000, // Access at EL0 not permitted, regardless of permissions at lower levels of lookup
-    T_AP_RO        = 0x4000000000000000, // Write access not permitted at any exception level regardless of permissions at lower levels of lookup
-    T_AP_RO_NO_EL0 = 0x6000000000000000, // Write access not permitted at any exception level and read access not permitted at EL0 regardless of permissions at lower levels of lookup
+    T_AP_NO_EL0    = 0x2000000000000000, // Access at EL0 not permitted, regardless of permissions at lower levels of
+                                         // lookup
+    T_AP_RO        = 0x4000000000000000, // Write access not permitted at any exception level regardless of permissions
+                                         // at lower levels of lookup
+    T_AP_RO_NO_EL0 = 0x6000000000000000, // Write access not permitted at any exception level and read access not
+                                         // permitted at EL0 regardless of permissions at lower levels of lookup
 } t_ap_attr_t;
 
 // UXNTable values
 typedef enum {
     T_NON_UXN = 0,                  // No effect on subsequent levels of lookups
-    T_UXN     = 0x1000000000000000, // Sets the unprivileged execute-never attribute at EL0 which applies to all subsequent levels of lookups
+    T_UXN     = 0x1000000000000000, // Sets the unprivileged execute-never attribute at EL0 which applies to all
+                                    // subsequent levels of lookups
 } t_uxn_attr_t;
 
 // PXNTable values
 typedef enum {
     T_NON_PXN = 0,                  // No effect on subsequent levels of lookups
-    T_PXN     = 0x0800000000000000, // Sets the execute-never attribute at EL1 or higher exception levels and applies to all subsequent levels of lookups
+    T_PXN     = 0x0800000000000000, // Sets the execute-never attribute at EL1 or higher exception levels and applies
+                                    // to all subsequent levels of lookups
 } t_pxn_attr_t;
 
 typedef struct {
@@ -75,7 +82,9 @@ typedef enum {
 // Contiguous bit
 typedef enum {
     BP_NON_CONTIGUOUS = 0,                  // Don't set contiguous bit
-    BP_CONTIGUOUS     = 0x0010000000000000, // Sets the contiguous which can be used to hint the MMU hardware that this entry is part of a contiguous set of entries that the TLB can cache in a single TLB entry
+    BP_CONTIGUOUS     = 0x0010000000000000, // Sets the contiguous which can be used to hint the MMU hardware that this
+                                            // entry is part of a contiguous set of entries that the TLB can cache in a
+                                            // single TLB entry
 } bp_ctg_attr_t;
 
 // Lower attributes for page and block descriptors
@@ -95,8 +104,10 @@ typedef enum {
 // Shareability values
 typedef enum {
     BP_NSH = 0,     // Non shareable. Data in this memory region is not required to be coherent to outside agents
-    BP_OSH = 0x200, // Outer shareable. Data in this memory region is required to be coherent to agents in the outer shareable domain
-    BP_ISH = 0x300, // Inner shareable. Data in this memory region is required to be coherent to agents in the inner shareable domain
+    BP_OSH = 0x200, // Outer shareable. Data in this memory region is required to be coherent to agents in the outer
+                    // shareable domain
+    BP_ISH = 0x300, // Inner shareable. Data in this memory region is required to be coherent to agents in the inner
+                    // shareable domain
 } bp_sh_attr_t;
 
 // Access permission values
@@ -115,9 +126,10 @@ typedef enum {
 
 // Memory attribute index
 typedef enum {
-    BP_MA_DEVICE_NGNRNE = 0,    // Device nGnRnE, non-gathering, non-reordering, non-early write acknowledgment. Basically strongly ordered
-    BP_MA_DEVICE_NGNRE  = 0x4,  // Device nGnRE, non-gathering, non-reordering with early write acknowledgement. Can be used with PCIE endpoints that support posted writes
-    BP_MA_NORMAL_NC     = 0x8,  // Outer & inner non-cacheable. Outer cacheability typically implies the last level cache
+    BP_MA_DEVICE_NGNRNE = 0,    // Device nGnRnE, non-gathering, non-reordering, non-early write acknowledgment
+    BP_MA_DEVICE_NGNRE  = 0x4,  // Device nGnRE, non-gathering, non-reordering with early write acknowledgement
+    BP_MA_NORMAL_NC     = 0x8,  // Outer & inner non-cacheable. Outer cacheability typically implies the last level
+                                // cache
     BP_MA_NORMAL_INC    = 0xc,  // Inner non-cacheable only
     BP_MA_NORMAL_WBWARA = 0x10, // Outer & inner write-back/write-allocate/read-allocate
     BP_MA_NORMAL_WTWARA = 0x14, // Outer & inner write-through/write-allocate/read-allocate
@@ -147,7 +159,8 @@ typedef struct {
     .pxn = (bp_pxn_attr_t)((pte) & BP_PXN),\
     .ctg = (bp_ctg_attr_t)((pte) & BP_CONTIGUOUS),\
 })
-#define BP_LATTR(bp_lattr) ((bp_lattr).ng | (bp_lattr).af | (bp_lattr).af | (bp_lattr).sh | (bp_lattr).ap | (bp_lattr).ns | (bp_lattr).ma)
+#define BP_LATTR(bp_lattr) ((bp_lattr).ng | (bp_lattr).af | (bp_lattr).af | (bp_lattr).sh | (bp_lattr).ap |\
+    (bp_lattr).ns | (bp_lattr).ma)
 #define BP_LATTR_EXTRACT(pte)\
 ((bp_lattr_t){\
     .ng = (bp_ng_attr_t)((pte) & BP_NON_GLOBAL),\
@@ -175,9 +188,12 @@ typedef struct {
 } ma_index_t;
 
 // Convert an ma_index_t to an 8 byte value that can be programmed into the MAIR
-#define MAIR(mair) ((long)(mair).attrs[0] | ((long)(mair).attrs[1] << 8) | ((long)(mair).attrs[2] << 16) | ((long)(mair).attrs[3] << 24) | ((long)(mair).attrs[4] << 32) | ((long)(mair).attrs[5] << 40) | ((long)(mair).attrs[6] << 48) | ((long)(mair).attrs[7] << 56))
+#define MAIR(mair) ((long)(mair).attrs[0] | ((long)(mair).attrs[1] << 8) | ((long)(mair).attrs[2] << 16) |\
+    ((long)(mair).attrs[3] << 24) | ((long)(mair).attrs[4] << 32) | ((long)(mair).attrs[5] << 40) |\
+    ((long)(mair).attrs[6] << 48) | ((long)(mair).attrs[7] << 56))
 
-#define MAX_NUM_PTES_TTB                       (1 << (48 - (PAGESHIFT + ((3l - (PAGESHIFT == 16 ? 1 : 0)) * (PAGESHIFT - 3l)))))
+#define MAX_NUM_PTES_TTB                       (1 << (48 - (PAGESHIFT + ((3l - (PAGESHIFT == 16 ? 1 : 0)) *\
+    (PAGESHIFT - 3l)))))
 #define MAX_NUM_PTES_LL                        (PAGESIZE >> 3)
 
 #define BLOCK_SIZE                             (1l << (PAGESHIFT + PAGESHIFT - 3l))
@@ -290,7 +306,8 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     pte_page_t tmp = { .pmap = pmap };
-    list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search, &tmp.ll_node);
+    list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search,
+        &tmp.ll_node);
     pte_page_t *pte_page = list_entry(node, pte_page_t, ll_node);
 
     kassert(pte_page != NULL);
@@ -446,7 +463,8 @@ pte_t* _pmap_remove(pmap_t *pmap, vaddr_t va) {
     if (!IS_PDE_VALID(pte)) return NULL;
     _pmap_clear_pte(va, pmap->asid, ptep[level]);
 
-    // Now scan the tables in the table walk hierarchy in reverse order, if the table is empty remove it from the parent table and the scan the parent table
+    // Now scan the tables in the table walk hierarchy in reverse order, if the table is empty remove it from the
+    // parent table and the scan the parent table
     for (unsigned int l = 3; l >= 0; l--) {
         if (_pmap_is_table_empty(table[l])) {
             // Just free the base translation table
@@ -564,7 +582,8 @@ void pmap_bootstrap(void) {
     kernel_pmap.asid = 0;
 
     // Set the start and end of the kernel's virtual and physical address space
-    // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before pmap_init
+    // kernel_virtual_end is set to 0 at boot so that early bootstrap allocaters will kassert if they are called before
+    // pmap_init
     size_t kernel_size = ROUND_PAGE_UP(kernel_physical_end - kernel_physical_start);
     kernel_physical_end = kernel_physical_start + kernel_size;
     kernel_virtual_end = kernel_virtual_start + kernel_size;
@@ -573,7 +592,8 @@ void pmap_bootstrap(void) {
     // Pre-allocate enough page tables to linearly map all of memory
     size_t num_l3_tables = (MEMSIZE >> PAGESHIFT) / MAX_NUM_PTES_LL;
     size_t num_l2_tables = (num_l3_tables > MAX_NUM_PTES_LL) ? num_l3_tables / MAX_NUM_PTES_LL : 1;
-    size_t num_l1_tables = (PAGESIZE == _64KB) ? 1 : (num_l2_tables > MAX_NUM_PTES_LL) ? num_l2_tables / MAX_NUM_PTES_LL : 1;
+    size_t num_l1_tables = (PAGESIZE == _64KB) ? 1 :
+        (num_l2_tables > MAX_NUM_PTES_LL) ? num_l2_tables / MAX_NUM_PTES_LL : 1;
     size_t num_l0_tables = (PAGESIZE == _64KB) ? 0 : 1;
     size_t total_tables_size = (num_l0_tables + num_l1_tables + num_l2_tables + num_l3_tables) * PAGESIZE;
 
@@ -587,7 +607,8 @@ void pmap_bootstrap(void) {
     tables += PAGESIZE;
 
     bp_uattr_t bp_uattr_page = (bp_uattr_t){.uxn = BP_UXN, .pxn = BP_NON_PXN, .ctg = BP_NON_CONTIGUOUS};
-    bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0, .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
+    bp_lattr_t bp_lattr_page = (bp_lattr_t){.ng = BP_GLOBAL, .af = BP_AF, .sh = BP_ISH, .ap = BP_AP_RW_NO_EL0,
+        .ns = BP_NON_SECURE, .ma = BP_MA_NORMAL_WBWARA};
 
     for (size_t offset = 0; offset < MEMSIZE;) {
         vaddr_t va = kernel_virtual_start + offset;
@@ -640,8 +661,9 @@ void pmap_bootstrap(void) {
         offset += PAGESIZE;
     }
 
-    // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable the MMU)
-    // We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings are in TTBR1
+    // Now let's create temporary mappings to identity map the kernel's physical address space (needed when we enable
+    // the MMU). We need to allocate a new TTB since these mappings will be in TTBR0 while the kernel virtual mappings
+    // are in TTBR1
     pmap_t identity_pmap;
     paddr_t identity_tables = tables;
     spinlock_init(&identity_pmap.lock);
@@ -700,7 +722,8 @@ void pmap_bootstrap(void) {
     }
 
     // Finally enable the MMU!
-    ma_index_t ma_index = {.attrs = {MA_DEVICE_NGNRNE, MA_DEVICE_NGNRE, MA_NORMAL_NC, MA_NORMAL_INC, MA_NORMAL_WBWARA, MA_NORMAL_WTWARA, MA_NORMAL_WTWNRA, MA_NORMAL_WTWNRN}};
+    ma_index_t ma_index = {.attrs = {MA_DEVICE_NGNRNE, MA_DEVICE_NGNRE, MA_NORMAL_NC, MA_NORMAL_INC, MA_NORMAL_WBWARA,
+        MA_NORMAL_WTWARA, MA_NORMAL_WTWNRA, MA_NORMAL_WTWNRN}};
     arch_mmu_enable(identity_pmap.ttb, kernel_pmap.ttb, MAIR(ma_index), PAGESIZE);
     arch_mmu_kernel_longjmp(kernel_physical_start, kernel_virtual_start);
 
@@ -822,7 +845,8 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
             .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
             .ns = BP_NON_SECURE,
-            .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
+            .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE :
+                ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
         };
     } else {
         bpu = (bp_uattr_t){
@@ -836,7 +860,8 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
             .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
             .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW : BP_AP_RO,
             .ns = BP_NON_SECURE,
-            .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
+            .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE :
+                ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
         };
     }
 
@@ -963,7 +988,8 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) 
         .sh = (flags & PMAP_FLAGS_NOCACHE) ? BP_OSH : BP_ISH,
         .ap = (prot & VM_PROT_WRITE) ? BP_AP_RW_NO_EL0 : BP_AP_RO_NO_EL0,
         .ns = BP_NON_SECURE,
-        .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE : ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
+        .ma = (flags & PMAP_FLAGS_NOCACHE) ? BP_MA_DEVICE_NGNRNE :
+            ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
     };
 
     spinlock_write_acquire(&kernel_pmap.lock);

@@ -13,7 +13,8 @@ _relocate:
     add x2, x2, #16
 
 _relocate_no_size_adjustment:
-    # assuming there's free space after the moved image, let's copy this piece of code there first to avoid trashing this piece of code during the copy
+    # assuming there's free space after the moved image, let's copy this piece of code there first to avoid trashing
+    # this piece of code during the copy
     adr x3, _relocate_copy_loop
     adr x4, _relocate_end
     add x5, x1, x2

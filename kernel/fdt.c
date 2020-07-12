@@ -149,7 +149,8 @@ unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
     int subnode_depth = 0;
     fdt_token_t token;
 
-    for (token = _fdt_next_token(fdth, &offset); token != FDT_END_NODE || subnode_depth > 0; token = _fdt_next_token(fdth, &offset)) {
+    for (token = _fdt_next_token(fdth, &offset); token != FDT_END_NODE || subnode_depth > 0;
+        token = _fdt_next_token(fdth, &offset)) {
         if (token == FDT_END || token == FDT_INVALID) return 0;
 
         // Keep track of subnodes while skipping over them
@@ -158,7 +159,8 @@ unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
     }
 
     // We've found the matching end node token. Get the next token which should hopefully be a begin node token
-    // If it is not, then we've reached the end of the parent node which means there is no next node in this sub-tree; return 0
+    // If it is not, then we've reached the end of the parent node which means there is no next node in this sub-tree;
+    // return 0
     token = _fdt_next_token(fdth, &offset);
     return (token != FDT_BEGIN_NODE) ? 0 : offset;
 }
@@ -166,7 +168,8 @@ unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
 unsigned int fdt_next_subnode(fdt_header_t *fdth, unsigned int offset) {
     if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
-    for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_BEGIN_NODE; token = _fdt_next_token(fdth, &offset)) {
+    for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_BEGIN_NODE;
+        token = _fdt_next_token(fdth, &offset)) {
         if (token != FDT_PROP && token != FDT_NOP) return 0;
     }
 
@@ -176,7 +179,8 @@ unsigned int fdt_next_subnode(fdt_header_t *fdth, unsigned int offset) {
 unsigned int fdt_next_prop(fdt_header_t *fdth, unsigned int offset) {
     if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
 
-    for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_PROP; token = _fdt_next_token(fdth, &offset)) {
+    for (fdt_token_t token = _fdt_next_token(fdth, &offset); token != FDT_PROP;
+        token = _fdt_next_token(fdth, &offset)) {
         if (token != FDT_NOP) return 0;
     }
 
@@ -249,7 +253,8 @@ void fdt_dump(fdt_header_t *fdth) {
     fdt_dump_header(fdth);
 
     // Print the reserve entries
-    for (fdt_reserve_entry_t *rsvmap = fdt_get_rsv_from_offset(fdth, arch_rev32(fdth->off_mem_rsvmap)); arch_rev32(rsvmap->address) != 0 || arch_rev32(rsvmap->size) != 0; rsvmap++) {
+    for (fdt_reserve_entry_t *rsvmap = fdt_get_rsv_from_offset(fdth, arch_rev32(fdth->off_mem_rsvmap));
+        arch_rev32(rsvmap->address) != 0 || arch_rev32(rsvmap->size) != 0; rsvmap++) {
         kprintf("Reserve: address = %#p, size = %#lx\n", arch_rev32(rsvmap->address), arch_rev32(rsvmap->size));
     }
     kprintf("\n");

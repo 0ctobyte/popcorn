@@ -46,8 +46,8 @@ void pmap_init(void);
 // Used to determine the kernel's virtual address space start and end that will be managed by the vmm
 void pmap_virtual_space(vaddr_t *vstartp, vaddr_t *vendp);
 
-// This function should only be used as a bootstrap memory allocator before the memory management systems have been setup.
-// It will allocate the required memory if available and map it into the kernel's address space
+// This function should only be used as a bootstrap memory allocator before the memory management systems have been
+// setup. It will allocate the required memory if available and map it into the kernel's address space
 vaddr_t pmap_steal_memory(size_t vsize, vaddr_t *vstartp, vaddr_t *vendp);
 
 // Returns the kernel's pmap; must return a reference to kernel_pmap
@@ -69,8 +69,9 @@ void pmap_reference(pmap_t *pmap);
 #define pmap_wired_count(pmap) ((pmap)->pmap_stats.wired_count)
 
 // Adds a virtual to physical page mapping to the specified pmap using the specified protection
-// The flags contain the access type to the page specified by PA in order to indicate what type of access caused this page to be mapped; these are the same bits used in prot.
-// This is used to keep track of modified/referenced information. The access type in flags should never exceed the protection in prot.
+// The flags contain the access type to the page specified by PA in order to indicate what type of access caused this
+// page to be mapped; these are the same bits used in prot. This is used to keep track of modified/referenced
+// information. The access type in flags should never exceed the protection in prot.
 int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags);
 
 // Removes a range of virtual to physical page mappings from the specified pmap
@@ -82,22 +83,24 @@ void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot);
 // Clears the wired attribute on the mapping for the specified virtual address
 void pmap_unwire(pmap_t *pmap, vaddr_t va);
 
-// Extracts the mapping for the specified virtual address, i.e. it gets the physical address associated with a virtual address
-// Returns false if no such mapping exists
+// Extracts the mapping for the specified virtual address, i.e. it gets the physical address associated with a virtual
+// address. Returns false if no such mapping exists
 bool pmap_extract(pmap_t *pmap, vaddr_t va, paddr_t *pa);
 
-// Enter an unmanaged mapping for the kernel pmap. This mapping will not be affected by other systems and will always be wired and can't fail
+// Enter an unmanaged mapping for the kernel pmap. This mapping will not be affected by other systems and will always
+// be wired and can't fail
 void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags);
 
-// Removes all mappings starting at the specified virtual address to the size (in bytes) specified from the kernel pmap.
+// Removes all mappings starting at the specified virtual address to the size (in bytes) specified from the kernel pmap
 // All mappings must have been entered with pmap_kenter_pa
 void pmap_kremove(vaddr_t va, size_t size);
 
 // Copies page mappings from pmap to another
 void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, vaddr_t src_addr);
 
-// Inform the pmap module that all physical mappings must now be correct. Any delayed mappings (such as TLB invalidation, address space identifier updates)
-// must be completed. Should be used after calls to pmap_enter, pmap_remove, pmap_protect, pmap_kenter_pa and pmap_kremove
+// Inform the pmap module that all physical mappings must now be correct. Any delayed mappings (such as TLB
+// invalidation, address space identifier updates) must be completed. Should be used after calls to pmap_enter,
+// pmap_remove, pmap_protect, pmap_kenter_pa and pmap_kremove
 #define pmap_update(pmap)
 
 // Activate the pmap, i.e. set the translation table base register with the page directory associated with the pmap
@@ -113,8 +116,8 @@ void pmap_zero_page(paddr_t pa);
 // Copies the page specified at physical address src to physical address dst. Same precautions as pmap_zero_page
 void pmap_copy_page(paddr_t src, paddr_t dst);
 
-// Lower the permissions for all mappings of vpg to prot. Used by the vmm to implement copy-on-write by setting page as read-only
-// and to invalidate all mappings when prot = 0. Access permissions will never be added by this function.
+// Lower the permissions for all mappings of vpg to prot. Used by the vmm to implement copy-on-write by setting page as
+// read-only and to invalidate all mappings when prot = 0. Access permissions will never be added by this function.
 void pmap_page_protect(paddr_t pa, vm_prot_t prot);
 
 // Clear the modified attribute on the given page. Returns old value of the modified attribute

@@ -133,14 +133,17 @@ void arch_exceptions_dump_state(arch_context_t *exc_context) {
     // Dump the general purpose registers
     for (unsigned int i0 = 0, i1 = 1, i2 = 2, i3 = 3; i0 < 32; i0 += 4, i1 += 4, i2 += 4, i3 += 4) {
         if (i0 == 28) {
-            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tlr:\t0x%016lx\tsp:\t0x%016lx\n", i0, exc_context->x[i0], i1, exc_context->x[i1], exc_context->lr, exc_context->sp);
+            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tlr:\t0x%016lx\tsp:\t0x%016lx\n",
+                i0, exc_context->x[i0], i1, exc_context->x[i1], exc_context->lr, exc_context->sp);
         } else {
-            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\n", i0, exc_context->x[i0], i1, exc_context->x[i1], i2, exc_context->x[i2], i3, exc_context->x[i3]);
+            kprintf("x%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\tx%u:\t0x%016lx\n",
+                i0, exc_context->x[i0], i1, exc_context->x[i1], i2, exc_context->x[i2], i3, exc_context->x[i3]);
         }
     }
 
     // Dump the PC, SPSR, FAR and ESR
-    kprintf("pc:\t0x%016lx\tspsr:\t0x%016lx\tfar:\t0x%016lx\tesr:\t0x%016lx\n", exc_context->elr, exc_context->spsr, exc_context->far, exc_context->esr);
+    kprintf("pc:\t0x%016lx\tspsr:\t0x%016lx\tfar:\t0x%016lx\tesr:\t0x%016lx\n",
+        exc_context->elr, exc_context->spsr, exc_context->far, exc_context->esr);
 
     // Decode the Mode
     kprintf("mode:\tEL%u%c\n", (exc_context->spsr >> 2) & 0x3, (exc_context->spsr & 0x1) ? 'h' : 't');

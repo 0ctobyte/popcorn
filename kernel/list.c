@@ -40,12 +40,14 @@ bool list_insert(list_t *list, list_compare_func_t compare_func, list_node_t *no
     for (; here != NULL; here = list_next(here)) {
         list_compare_result_t cmp = compare_func(node, here);
 
-        // It's up to the compare_func to decide whether the list supports non-unique list elements; either return LT or GT if the elements are equal
-        // Otherwise we assume list elements are unique and fail if we are trying to insert an element that already exists in the list
+        // It's up to the compare_func to decide whether the list supports non-unique list elements; either return LT
+        // or GT if the elements are equal. Otherwise we assume list elements are unique and fail if we are trying to
+        // insert an element that already exists in the list
         if (cmp == LIST_COMPARE_EQ) return false;
 
         // Insert before here if order is ascending and node < here or if order is descending and node > here
-        if ((order == LIST_ORDER_ASCENDING && cmp == LIST_COMPARE_LT) || (order == LIST_ORDER_DESCENDING && cmp == LIST_COMPARE_GT)) {
+        if ((order == LIST_ORDER_ASCENDING && cmp == LIST_COMPARE_LT) ||
+            (order == LIST_ORDER_DESCENDING && cmp == LIST_COMPARE_GT)) {
             break;
         }
     }
