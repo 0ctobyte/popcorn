@@ -35,7 +35,8 @@ typedef struct {
     lock_state_t state;            // Lock state
 } lock_t;
 
-#define LOCK_INITIALIZER ({ .interlock = SPINLOCK_INIT, .UPGRADE = NULL, .shared_count = 0, .state = LOCK_STATE_FREE })
+#define LOCK_INITIALIZER (lock_t){ .interlock = SPINLOCK_INITIALIZER, .thread = NULL, .shared_count = 0,\
+    .state = LOCK_STATE_FREE }
 
 // Initializes a lock, MUST always be called before a lock can be used
 #define lock_init(lock)        (*(lock) = LOCK_INITIALIZER)

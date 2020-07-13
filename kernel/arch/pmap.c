@@ -256,7 +256,7 @@ typedef struct {
 
 // Array of all ptep_page_t lists, one per page
 typedef struct {
-    spinlock_t *lock;
+    lock_t *lock;
     list_t *list;
 } pte_page_list_t;
 
@@ -290,20 +290,20 @@ void _pmap_pte_page_insert(pmap_t *pmap, paddr_t pa, vaddr_t va) {
     list_node_init(&pte_page->ll_node);
 
     // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 
-    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
     kassert(list_push(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
-    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
 }
 
 void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     // Release the pmap lock, otherwise there's a possibility of deadlock with the pmap_page_protect function
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 
-    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     pte_page_t tmp = { .pmap = pmap };
     list_node_t *node = list_search(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], _pmap_pte_page_search,
@@ -313,9 +313,9 @@ void _pmap_pte_page_remove(pmap_t *pmap, paddr_t pa) {
     kassert(pte_page != NULL);
     kassert(list_remove(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], &pte_page->ll_node));
 
-    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
 
     kmem_slab_free(&pte_page_slab, pte_page);
 }
@@ -578,7 +578,7 @@ void pmap_bootstrap(void) {
     PAGESIZE = arch_mmu_is_4kb_granule_supported() ? _4KB : (arch_mmu_is_16kb_granule_supported() ? _16KB : _64KB);
     PAGESHIFT = arch_ctz(PAGESIZE);
 
-    spinlock_init(&kernel_pmap.lock);
+    lock_init(&kernel_pmap.lock);
     kernel_pmap.asid = 0;
 
     // Set the start and end of the kernel's virtual and physical address space
@@ -666,7 +666,7 @@ void pmap_bootstrap(void) {
     // are in TTBR1
     pmap_t identity_pmap;
     paddr_t identity_tables = tables;
-    spinlock_init(&identity_pmap.lock);
+    lock_init(&identity_pmap.lock);
     identity_pmap.ttb = identity_tables;
     identity_tables += PAGESIZE;
     identity_pmap.asid = 0;
@@ -743,9 +743,9 @@ void pmap_init(void) {
 
     // Allocate memory for the pte_page array
     size_t pte_page_array_size = (MEMSIZE >> PAGESHIFT) * sizeof(list_t);
-    size_t pte_page_lock_size = (MEMSIZE >> PAGESHIFT) * sizeof(spinlock_t);
+    size_t pte_page_lock_size = (MEMSIZE >> PAGESHIFT) * sizeof(lock_t);
     pte_page_list.list = (list_t*)pmap_steal_memory(pte_page_array_size, NULL, NULL);
-    pte_page_list.lock = (spinlock_t*)pmap_steal_memory(pte_page_lock_size, NULL, NULL);
+    pte_page_list.lock = (lock_t*)pmap_steal_memory(pte_page_lock_size, NULL, NULL);
     arch_fast_zero(pte_page_list.list, pte_page_array_size);
     arch_fast_zero(pte_page_list.lock, pte_page_lock_size);
 
@@ -791,7 +791,7 @@ pmap_t* pmap_create(void) {
     pmap_t *pmap = kmem_slab_alloc(&pmap_slab);
     kassert(pmap != NULL);
 
-    spinlock_init(&pmap->lock);
+    lock_init(&pmap->lock);
     pmap->ttb = 0;
     pmap->asid = ASID_ALLOC();
     pmap->refcnt = 0;
@@ -804,7 +804,7 @@ pmap_t* pmap_create(void) {
 void pmap_destroy(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     pmap->refcnt--;
 
     if (pmap->refcnt == 0) {
@@ -813,14 +813,14 @@ void pmap_destroy(pmap_t *pmap) {
         return;
     }
 
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 }
 
 void pmap_reference(pmap_t *pmap) {
     kassert(pmap != NULL);
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     pmap->refcnt++;
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 }
 
 int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) {
@@ -866,14 +866,14 @@ int pmap_enter(pmap_t *pmap, vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_
     }
 
     // Map in one page
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     pte_t *ptep = _pmap_enter(pmap, va, pa, bpu, bpl);
     _pmap_pte_page_insert(pmap, pa, va);
 
     if (flags & PMAP_FLAGS_WIRED) pmap->stats.wired_count++;
 
     pmap->stats.resident_count++;
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 
     return 0;
 }
@@ -889,14 +889,14 @@ void pmap_remove(pmap_t *pmap, vaddr_t sva, vaddr_t eva) {
     bp_uattr_t bpu = {0};
     bp_lattr_t bpl = {0};
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
         if (_pmap_lookup(pmap, va, &pa, &bpu, &bpl)) {
             pte_t *ptep = _pmap_remove(pmap, va);
             _pmap_pte_page_remove(pmap, pa);
         }
     }
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 }
 
 void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot) {
@@ -939,11 +939,11 @@ void pmap_protect(pmap_t *pmap, vaddr_t sva, vaddr_t eva, vm_prot_t prot) {
     sva = ROUND_PAGE_DOWN(sva);
     eva = ROUND_PAGE_UP(eva);
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     for (vaddr_t va = sva; va < eva; va += PAGESIZE) {
         _pmap_protect(pmap, va, bpu, bpl);
     }
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 }
 
 void pmap_unwire(pmap_t *pmap, vaddr_t va) {
@@ -958,9 +958,9 @@ void pmap_unwire(pmap_t *pmap, vaddr_t va) {
     vm_page_t *page = vm_page_from_pa(pa);
     vm_page_unwire(page);
 
-    spinlock_write_acquire(&pmap->lock);
+    lock_acquire_exclusive(&pmap->lock);
     pmap->stats.wired_count--;
-    spinlock_write_release(&pmap->lock);
+    lock_release_exclusive(&pmap->lock);
 }
 
 bool pmap_extract(pmap_t *pmap, vaddr_t va, paddr_t *pa) {
@@ -969,9 +969,9 @@ bool pmap_extract(pmap_t *pmap, vaddr_t va, paddr_t *pa) {
     bp_uattr_t bpu;
     bp_lattr_t bpl;
 
-    spinlock_read_acquire(&pmap->lock);
+    lock_acquire_shared(&pmap->lock);
     bool ret = _pmap_lookup(pmap, va, pa, &bpu, &bpl);
-    spinlock_read_release(&pmap->lock);
+    lock_release_shared(&pmap->lock);
 
     return ret;
 }
@@ -992,19 +992,19 @@ void pmap_kenter_pa(vaddr_t va, paddr_t pa, vm_prot_t prot, pmap_flags_t flags) 
             ((flags & PMAP_FLAGS_WRITE_COMBINE) ? BP_MA_NORMAL_NC : BP_MA_NORMAL_WBWARA)
     };
 
-    spinlock_write_acquire(&kernel_pmap.lock);
+    lock_acquire_exclusive(&kernel_pmap.lock);
     _pmap_enter(pmap_kernel(), va, pa, bpu, bpl);
     kernel_pmap.stats.wired_count++;
     kernel_pmap.stats.resident_count++;
-    spinlock_write_release(&kernel_pmap.lock);
+    lock_release_exclusive(&kernel_pmap.lock);
 }
 
 void pmap_kremove(vaddr_t va, size_t size) {
-    spinlock_write_acquire(&kernel_pmap.lock);
+    lock_acquire_exclusive(&kernel_pmap.lock);
     for (size_t s = 0; s < size; s += PAGESIZE) {
         _pmap_remove(pmap_kernel(), va + s);
     }
-    spinlock_write_release(&kernel_pmap.lock);
+    lock_release_exclusive(&kernel_pmap.lock);
 }
 
 void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, vaddr_t src_addr) {
@@ -1015,11 +1015,11 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
     dst_addr = ROUND_PAGE_DOWN(dst_addr);
 
     if (src_map < dst_map) {
-        spinlock_write_acquire(&dst_map->lock);
-        spinlock_read_acquire(&src_map->lock);
+        lock_acquire_exclusive(&dst_map->lock);
+        lock_acquire_shared(&src_map->lock);
     } else {
-        spinlock_read_acquire(&src_map->lock);
-        spinlock_write_acquire(&dst_map->lock);
+        lock_acquire_shared(&src_map->lock);
+        lock_acquire_exclusive(&dst_map->lock);
     }
 
     size_t stride_size = 0;
@@ -1033,25 +1033,25 @@ void pmap_copy(pmap_t *dst_map, pmap_t *src_map, vaddr_t dst_addr, size_t len, v
     }
 
     if (src_map < dst_map) {
-        spinlock_read_release(&src_map->lock);
-        spinlock_write_release(&dst_map->lock);
+        lock_release_shared(&src_map->lock);
+        lock_release_exclusive(&dst_map->lock);
     } else {
-        spinlock_write_release(&dst_map->lock);
-        spinlock_read_release(&src_map->lock);
+        lock_release_exclusive(&dst_map->lock);
+        lock_release_shared(&src_map->lock);
     }
 }
 
 void pmap_activate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
-    spinlock_read_acquire(&pmap->lock);
+    lock_acquire_shared(&pmap->lock);
     arch_mmu_set_ttbr0(pmap->ttb, GET_ASID(pmap));
-    spinlock_read_release(&pmap->lock);
+    lock_release_shared(&pmap->lock);
 }
 
 void pmap_deactivate(pmap_t *pmap) {
     kassert(pmap != NULL && pmap != pmap_kernel());
 
-    spinlock_read_acquire(&pmap->lock);
+    lock_acquire_shared(&pmap->lock);
 
     // Check that we are deactivating the current context
     unsigned long ttbr0 = arch_mmu_get_ttbr0();
@@ -1059,27 +1059,27 @@ void pmap_deactivate(pmap_t *pmap) {
 
     arch_mmu_clear_ttbr0();
 
-    spinlock_read_release(&pmap->lock);
+    lock_release_shared(&pmap->lock);
 }
 
 void pmap_zero_page(paddr_t pa) {
-    spinlock_write_acquire(&pmap_kernel()->lock);
+    lock_acquire_exclusive(&pmap_kernel()->lock);
     arch_fast_zero((void*)PA_TO_KVA(pa), PAGESIZE);
-    spinlock_write_release(&pmap_kernel()->lock);
+    lock_release_exclusive(&pmap_kernel()->lock);
     arch_barrier_dmb();
 }
 
 void pmap_copy_page(paddr_t src, paddr_t dst) {
-    spinlock_write_acquire(&pmap_kernel()->lock);
+    lock_acquire_exclusive(&pmap_kernel()->lock);
     arch_fast_move((void*)PA_TO_KVA(dst), (void*)PA_TO_KVA(src), PAGESIZE);
-    spinlock_write_release(&pmap_kernel()->lock);
+    lock_release_exclusive(&pmap_kernel()->lock);
     arch_barrier_dmb();
 }
 
 void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
     if (prot == VM_PROT_ALL) return;
 
-    spinlock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_acquire(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 
     pte_page_t *entry = NULL;
     list_for_each_entry(&pte_page_list.list[GET_PTE_PAGE_LIST_IDX(pa)], entry, ll_node) {
@@ -1087,21 +1087,21 @@ void pmap_page_protect(paddr_t pa, vm_prot_t prot) {
         pmap_protect(entry->pmap, entry->va, eva, prot);
     }
 
-    spinlock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
+    lock_release(&pte_page_list.lock[GET_PTE_PAGE_LIST_IDX(pa)]);
 }
 
 bool pmap_clear_modify(vm_page_t *page) {
-    spinlock_write_acquire(&page->object->lock);
+    lock_acquire_exclusive(&page->object->lock);
     bool dirty = page->status.is_dirty;
     page->status.is_dirty = 0;
-    spinlock_write_release(&page->object->lock);
+    lock_release_exclusive(&page->object->lock);
     return dirty;
 }
 
 bool pmap_clear_reference(vm_page_t *page) {
-    spinlock_write_acquire(&page->object->lock);
+    lock_acquire_exclusive(&page->object->lock);
     bool referenced = page->status.is_referenced;
     page->status.is_referenced = 0;
-    spinlock_write_release(&page->object->lock);
+    lock_release_exclusive(&page->object->lock);
     return referenced;
 }

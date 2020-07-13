@@ -11,7 +11,7 @@
 #define VFS_NODE_HASH(mnt, id)   (hash64_fnv1a_pair((unsigned long)mnt, id) % NUM_BUCKETS)
 
 typedef struct {
-    spinlock_t bkt_lock[NUM_BUCKETS];  // Multiple readers, single writer lock per bucket
+    lock_t bkt_lock[NUM_BUCKETS];      // RW lock per bucket
     list_t ll_vn_buckets[NUM_BUCKETS]; // A list for each hash table buckets
 } vfs_node_hash_table_t;
 
@@ -34,9 +34,9 @@ void vfs_node_init(void) {
 
     // Initialize the hash table
     arch_fast_zero(vfs_node_hash_table.ll_vn_buckets, NUM_BUCKETS * sizeof(list_t));
-    arch_fast_zero(vfs_node_hash_table.bkt_lock, NUM_BUCKETS * sizeof(spinlock_t));
+    arch_fast_zero(vfs_node_hash_table.bkt_lock, NUM_BUCKETS * sizeof(lock_t));
 
-    spinlock_init(&vfs_node_template.lock);
+    lock_init(&vfs_node_template.lock);
     vfs_node_template.id = 0;
     vfs_node_template.flags = 0;
     vfs_node_template.refcnt = 0;
@@ -61,13 +61,13 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
     // Lookup hash table for existing node
     unsigned long hash_bkt = VFS_NODE_HASH(mnt, id);
 
-    spinlock_read_acquire(&vfs_node_hash_table.bkt_lock[hash_bkt]);
+    lock_acquire_shared(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
     vfs_node_t n = { .id = id, .mount = mnt };
     list_node_t *node = list_search(&vfs_node_hash_table.ll_vn_buckets[hash_bkt], _vfs_node_find, &n.ll_vnode);
     vfs_node_t *vn = list_entry(node, vfs_node_t, ll_vnode);
 
-    spinlock_read_release(&vfs_node_hash_table.bkt_lock[hash_bkt]);
+    lock_release_shared(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
     // If it didn't exist in the hash table then allocate a new vfs_node object
     if (vn == NULL) {
@@ -84,28 +84,28 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
 void vfs_node_put(vfs_node_t *vn) {
     kassert(vn != NULL);
 
-    spinlock_write_acquire(&vn->lock);
+    lock_acquire_exclusive(&vn->lock);
     vn->refcnt--;
 
     if (vn->refcnt == 0) {
         // Remove it from the hash table
         unsigned long hash_bkt = VFS_NODE_HASH(vn->mount, vn->id);
 
-        spinlock_read_acquire(&vfs_node_hash_table.bkt_lock[hash_bkt]);
+        lock_acquire_shared(&vfs_node_hash_table.bkt_lock[hash_bkt]);
         list_remove(&vfs_node_hash_table.ll_vn_buckets[hash_bkt], &vn->ll_vnode);
-        spinlock_read_release(&vfs_node_hash_table.bkt_lock[hash_bkt]);
+        lock_release_shared(&vfs_node_hash_table.bkt_lock[hash_bkt]);
 
         kmem_slab_free(&vfs_node_slab, (void*)vn);
         return;
     }
 
-    spinlock_write_release(&vn->lock);
+    lock_release_exclusive(&vn->lock);
 }
 
 void vfs_node_ref(vfs_node_t *vn) {
     kassert(vn != NULL);
 
-    spinlock_write_acquire(&vn->lock);
+    lock_acquire_exclusive(&vn->lock);
     vn->refcnt++;
-    spinlock_write_release(&vn->lock);
+    lock_release_exclusive(&vn->lock);
 }

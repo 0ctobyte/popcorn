@@ -1,7 +1,7 @@
 #ifndef _VFS_MOUNT_H_
 #define _VFS_MOUNT_H_
 
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/list.h>
 
 struct vfs_node_s;
@@ -47,7 +47,7 @@ typedef struct {
 } vfs_mount_ops_t;
 
 typedef struct vfs_mount_s {
-    spinlock_t lock;
+    lock_t lock;                   // RW Lock
     list_node_t ll_node;           // Linkage for list of all vfs_mounts
     list_t ll_vfs_nodes;           // Linked list of all existing VFS nodes for this mounted file system
     vfs_mount_ops_t *ops;          // VFS mount operations structure

@@ -2,7 +2,7 @@
 #define _VM_MAP_H_
 
 #include <sys/types.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/rbtree.h>
 #include <kernel/list.h>
 #include <kernel/kresult.h>
@@ -31,7 +31,7 @@ typedef struct {
 // A virtual memory map represents the entire virtual address space of a process. The map contains
 // multiple mappings each of which represents a valid virtual address range that a process can access.
 typedef struct {
-    spinlock_t lock;         // Multiple readers, single writer lock
+    lock_t lock;             // RW lock
     pmap_t *pmap;            // The pmap associated with this vmap
     list_t ll_mappings;      // Linked list of mappings sorted by virtual address. Used to iterate through mappings
     rbtree_t rb_mappings;    // All contiguous virtual memory regions associated with this virtual memory space rooted

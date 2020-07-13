@@ -2,7 +2,7 @@
 #define _VM_OBJECT_H_
 
 #include <sys/types.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/list.h>
 #include <kernel/vm/vm_types.h>
 
@@ -10,7 +10,7 @@
 // An object can be mapped in multiple virtual address maps (i.e. shared) and may not be completely resident in
 // memory. Objects can be backed by actual files or swap space if they are "anonymous" (i.e. not backed by anything)
 typedef struct {
-    spinlock_t lock;
+    lock_t lock;          // RW lock
     list_t ll_resident;   // List of resident pages for this object
     unsigned long refcnt; // How many VM regions are referencing this object
     size_t size;          // Size of the object

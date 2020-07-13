@@ -1,5 +1,5 @@
 #include <kernel/kassert.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/kstdio.h>
 #include <kernel/list.h>
 #include <kernel/arch/arch_asm.h>
@@ -36,7 +36,7 @@ typedef struct {
     size_t total_slab_size;     // Combined size of all slabs from each bin
     unsigned long total_allocs; // Total number of allocations
     unsigned long total_frees;  // Total number of frees
-    spinlock_t lock;            // Lock
+    lock_t lock;                // Lock
 } kmem_t;
 
 kmem_t kmem;
@@ -135,7 +135,7 @@ void* kmem_alloc(size_t size) {
     size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_UP_POW2(size));
     unsigned int bin = GET_BIN_INDEX(size);
 
-    spinlock_acquire(&kmem.lock);
+    lock_acquire(&kmem.lock);
 
     // Update book-keeping
     list_remove(&kmem.ll_lru, &kmem.bins[bin].ll_node);
@@ -152,7 +152,7 @@ void* kmem_alloc(size_t size) {
         kassert(block != NULL);
     }
 
-    spinlock_release(&kmem.lock);
+    lock_release(&kmem.lock);
 
     return block;
 }
@@ -170,7 +170,7 @@ void kmem_free(void *mem, size_t size) {
     size = CONSTRAIN_TO_MIN_BLOCK_SIZE(ROUND_UP_POW2(size));
     unsigned int bin = GET_BIN_INDEX(size);
 
-    spinlock_acquire(&kmem.lock);
+    lock_acquire(&kmem.lock);
 
     // Update book-keeping
     kmem.bins[bin].total_frees++;
@@ -178,7 +178,7 @@ void kmem_free(void *mem, size_t size) {
 
     slab_free(&kmem.bins[bin].slab, mem);
 
-    spinlock_release(&kmem.lock);
+    lock_release(&kmem.lock);
 }
 
 void kmem_stats(void) {

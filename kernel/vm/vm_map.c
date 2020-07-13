@@ -9,12 +9,6 @@ vm_map_t kernel_vmap;
 vm_map_t vm_map_template;
 vm_mapping_t vm_mapping_template;
 
-typedef struct {
-    spinlock_t lock; // Lock
-    slab_t slab;     // Kernel vm_mapping_t slab
-    slab_buf_t slab_buf;
-} vm_mapping_slab_t;
-
 // vm_mapping_t slab
 #define VM_MAPPING_SLAB_NUM (1024)
 kmem_slab_t vm_mapping_slab;
@@ -187,7 +181,7 @@ void vm_map_init(void) {
     buf = (void*)pmap_steal_memory(VM_MAP_SLAB_NUM * sizeof(vm_map_t), NULL, NULL);
     kmem_slab_create_no_vm(&vm_map_slab, sizeof(vm_map_t), VM_MAP_SLAB_NUM, buf);
 
-    spinlock_init(&vm_map_template.lock);
+    lock_init(&vm_map_template.lock);
     vm_map_template.pmap = NULL;
     list_init(&vm_map_template.ll_mappings);
     rbtree_init(&vm_map_template.rb_mappings);
@@ -224,7 +218,7 @@ vm_map_t* vm_map_create(pmap_t *pmap, vaddr_t vmin, vaddr_t vmax) {
 void vm_map_destroy(vm_map_t *vmap) {
     kassert(vmap != NULL);
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
     vmap->refcnt--;
 
     if (vmap->refcnt == 0) {
@@ -240,13 +234,13 @@ void vm_map_destroy(vm_map_t *vmap) {
         return;
     }
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
 }
 
 void vm_map_reference(vm_map_t *vmap) {
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
     vmap->refcnt++;
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
 }
 
 kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_t *object, vm_offset_t offset,
@@ -267,11 +261,11 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
         return KRESULT_NO_SPACE;
     }
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Make sure the address region specified isn't already mapped or partially mapped
     if (rbtree_search(&vmap->rb_mappings, _vm_mapping_overlap, &tmp.rb_snode)) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
@@ -280,7 +274,7 @@ kresult_t vm_map_enter_at(vm_map_t *vmap, vaddr_t vaddr, size_t size, vm_object_
 
     _vm_mapping_enter(vmap, predecessor, &tmp, slot);
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
     return KRESULT_OK;
 }
 
@@ -296,7 +290,7 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
     tmp.object = object;
     tmp.offset = offset;
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Search for a hole in the virtual address space that can fit this request. vm_mapping_t hold the hole_size after
     // the mapping which means we are looking for the successor node, i.e. the node with the next biggest hole size,
@@ -306,7 +300,7 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
 
     // No hole can fit this request
     if (predecessor == NULL) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_NO_SPACE;
     }
 
@@ -323,7 +317,7 @@ kresult_t vm_map_enter(vm_map_t *vmap, vaddr_t *vaddr, size_t size, vm_object_t 
 
     _vm_mapping_enter(vmap, predecessor, &tmp, slot);
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
 
     *vaddr = tmp.vstart;
     return KRESULT_OK;
@@ -340,7 +334,7 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         return KRESULT_INVALID_ARGUMENT;
     }
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Search for the first mapping entry to contain the starting virtual address to be removed
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
@@ -355,7 +349,7 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 
     // There's no mappings to remove
     if (nearest == NULL) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
@@ -381,7 +375,7 @@ kresult_t vm_map_remove(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         mapping = next;
     }
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
     return KRESULT_OK;
 }
 
@@ -396,7 +390,7 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
         return KRESULT_INVALID_ARGUMENT;
     }
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Search for the first mapping entry to contain the starting virtual address of the region specified
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
@@ -411,7 +405,7 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
 
     // There's no mappings to protect
     if (nearest == NULL) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
@@ -430,7 +424,7 @@ kresult_t vm_map_protect(vm_map_t *vmap, vaddr_t start, vaddr_t end, vm_prot_t n
         mapping = next;
     }
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
     return KRESULT_OK;
 }
 
@@ -445,7 +439,7 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         return KRESULT_INVALID_ARGUMENT;
     }
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Search for the first mapping entry to contain the starting virtual address of the region specified
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
@@ -460,7 +454,7 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 
     // There's no mappings to wire
     if (nearest == NULL) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
@@ -494,7 +488,7 @@ kresult_t vm_map_wire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         mapping = next;
     }
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
     return KRESULT_OK;
 }
 
@@ -509,7 +503,7 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         return KRESULT_INVALID_ARGUMENT;
     }
 
-    spinlock_write_acquire(&vmap->lock);
+    lock_acquire_exclusive(&vmap->lock);
 
     // Search for the first mapping entry to contain the starting virtual address of the region specified
     rbtree_search_predecessor(&vmap->rb_mappings, _vm_mapping_compare, &tmp.rb_snode, &nearest_node, NULL);
@@ -524,7 +518,7 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 
     // There's no mappings to unwire
     if (nearest == NULL) {
-        spinlock_write_release(&vmap->lock);
+        lock_release_exclusive(&vmap->lock);
         return KRESULT_INVALID_ARGUMENT;
     }
 
@@ -538,7 +532,7 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
         mapping = next;
     }
 
-    spinlock_write_release(&vmap->lock);
+    lock_release_exclusive(&vmap->lock);
     return KRESULT_OK;
 }
 

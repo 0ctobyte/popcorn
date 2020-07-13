@@ -2,7 +2,7 @@
 #define _VFS_NODE_H_
 
 #include <sys/types.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/list.h>
 #include <kernel/vm/vm_object.h>
 
@@ -118,7 +118,7 @@ typedef struct {
 } vfs_node_ops_t;
 
 typedef struct vfs_node_s {
-    spinlock_t lock;                  // VFS node lock
+    lock_t lock;                      // RW lock
     vfs_ino_t id;                     // Unique ID (serial number) of this node in it's filesystem
     vfs_node_flags_t flags;           // Various flags
     unsigned long refcnt;             // Number of open files referencing this VFS node

@@ -2,7 +2,7 @@
 #define __PMAP_H__
 
 #include <sys/types.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/vm/vm_page.h>
 
@@ -27,7 +27,7 @@ typedef struct {
 } pmap_statistics_t;
 
 typedef struct {
-    spinlock_t lock;
+    lock_t lock;                     // RW lock
     paddr_t ttb;                     // Translation table base address
     unsigned int asid;               // ASID associated with this pmap
     unsigned long refcnt;            // Reference count on the pmap

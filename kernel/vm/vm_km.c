@@ -13,7 +13,7 @@ void vm_km_init(void) {
     pmap_virtual_space(&kernel_virtual_start, &kernel_virtual_end);
 
     // Initialize the kernel vm_map
-    spinlock_init(&kernel_vmap.lock);
+    lock_init(&kernel_vmap.lock);
     kernel_vmap.pmap = pmap_kernel();
     kernel_vmap.start = kernel_virtual_start;
     kernel_vmap.end = max_kernel_virtual_end;

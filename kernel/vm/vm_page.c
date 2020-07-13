@@ -39,7 +39,7 @@ extern paddr_t kernel_physical_end;
  * have wasted pages.
  */
 typedef struct {
-    spinlock_t lock[NUM_BINS];       // One lock per bin
+    lock_t lock[NUM_BINS];           // One RW lock per bin
     vm_page_t *pages;                // Contiguous array of all pages
     list_t ll_page_bins[NUM_BINS];   // Buddy allocation bins
     size_t num_pages;                // Total # of pages
@@ -50,7 +50,7 @@ vm_page_array_t vm_page_array;
 // The hash table keeps track of every single allocated page.
 // Pages are looked up by vm_object_t pointer and offset in that object
 typedef struct {
-    spinlock_t *lock;   // Multiple readers, single writer lock per bucket
+    lock_t *lock;       // RW lock per bucket
     list_t *ll_pages;   // Array of lists; each list contains a chain of vm_page_t's in the same hash bucket
     size_t num_buckets; // Number of buckets
 } vm_page_hash_table_t;
@@ -77,19 +77,19 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
 
     vm_page_t *pages = NULL;
 
-    spinlock_acquire(&vm_page_array.lock[bin_index]);
+    lock_acquire(&vm_page_array.lock[bin_index]);
 
     if (list_is_empty(&vm_page_array.ll_page_bins[bin_index])) {
         // If the bin corresponding to num_pages doesn't have a free buddy check the next bin up
         // Split the contiguous pages into two buddies, place one in the current bin, return the other
         // Just return NULL if we couldn't find a contiguous range of pages of size num_pages
-        spinlock_release(&vm_page_array.lock[bin_index]);
+        lock_release(&vm_page_array.lock[bin_index]);
         pages = _vm_page_bin_pop(num_pages << 1);
         if (pages == NULL) return NULL;
 
         vm_page_t *buddy = GET_CONTIGUOUS_BUDDY(pages, num_pages);
 
-        spinlock_acquire(&vm_page_array.lock[bin_index]);
+        lock_acquire(&vm_page_array.lock[bin_index]);
         kassert(list_push(&vm_page_array.ll_page_bins[bin_index], &buddy->ll_rnode));
     } else {
         // Otherwise pop this buddy off of the bin
@@ -98,7 +98,7 @@ vm_page_t* _vm_page_bin_pop(size_t num_pages) {
         pages = list_entry(node, vm_page_t, ll_rnode);
     }
 
-    spinlock_release(&vm_page_array.lock[bin_index]);
+    lock_release(&vm_page_array.lock[bin_index]);
 
     return pages;
 }
@@ -108,7 +108,7 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
 
     // Don't do anything if bin_index is past the max number of bins we have
     if (bin_index < NUM_BINS) {
-        spinlock_acquire(&vm_page_array.lock[bin_index]);
+        lock_acquire(&vm_page_array.lock[bin_index]);
 
         // The buddy list is ordered by ascending page number, search for the position to insert these freed pages
         kassert(list_insert(&vm_page_array.ll_page_bins[bin_index], _vm_page_compare, &pages->ll_rnode,
@@ -136,7 +136,7 @@ void _vm_page_bin_push(vm_page_t *pages, size_t num_pages) {
             pages = prev;
         }
 
-        spinlock_release(&vm_page_array.lock[bin_index]);
+        lock_release(&vm_page_array.lock[bin_index]);
 
         // Push this contiguous block of free pages in the next higher up bin
         if (merge_buddy) _vm_page_bin_push(pages, num_pages << 1);
@@ -158,9 +158,9 @@ void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm
 
         unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
 
-        spinlock_write_acquire(&vm_page_hash_table.lock[hash_bkt]);
+        lock_acquire_exclusive(&vm_page_hash_table.lock[hash_bkt]);
         kassert(list_insert_last(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
-        spinlock_write_release(&vm_page_hash_table.lock[hash_bkt]);
+        lock_release_exclusive(&vm_page_hash_table.lock[hash_bkt]);
     }
 }
 
@@ -172,9 +172,9 @@ void _vm_page_remove(vm_page_t *pages, size_t num_pages) {
 
         unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
 
-        spinlock_write_acquire(&vm_page_hash_table.lock[hash_bkt]);
+        lock_acquire_exclusive(&vm_page_hash_table.lock[hash_bkt]);
         kassert(list_remove(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
-        spinlock_write_release(&vm_page_hash_table.lock[hash_bkt]);
+        lock_release_exclusive(&vm_page_hash_table.lock[hash_bkt]);
 
         kassert(list_remove(&object->ll_resident, &pages[p].ll_rnode));
 
@@ -192,7 +192,7 @@ void vm_page_init(void) {
     vm_page_array.num_pages = MEMSIZE >> PAGESHIFT;
 
     for (unsigned long i = 0; i < NUM_BINS; i++) {
-        spinlock_init(&vm_page_array.lock[i]);
+        lock_init(&vm_page_array.lock[i]);
         list_init(&vm_page_array.ll_page_bins[i]);
     }
 
@@ -214,9 +214,9 @@ void vm_page_init(void) {
     // Hash table size is 1.5 times the number of pages
     vm_page_hash_table.num_buckets = vm_page_array.num_pages + (vm_page_array.num_pages >> 1);
     size_t size = vm_page_hash_table.num_buckets * sizeof(list_t);
-    size_t lock_size = vm_page_hash_table.num_buckets * sizeof(spinlock_t);
+    size_t lock_size = vm_page_hash_table.num_buckets * sizeof(lock_t);
 
-    vm_page_hash_table.lock = (spinlock_t*)pmap_steal_memory(lock_size, NULL, NULL);
+    vm_page_hash_table.lock = (lock_t*)pmap_steal_memory(lock_size, NULL, NULL);
     vm_page_hash_table.ll_pages = (list_t*)pmap_steal_memory(size, NULL, NULL);
     arch_fast_zero(vm_page_hash_table.ll_pages, size);
     arch_fast_zero(vm_page_hash_table.lock, lock_size);
@@ -242,10 +242,10 @@ void vm_page_init(void) {
 void vm_page_hash_table_dump(void) {
     extern void kprintf(const char *s, ...);
     for (unsigned long i = 0; i < vm_page_hash_table.num_buckets; i++) {
-        spinlock_read_acquire(&vm_page_hash_table.lock[i]);
+        lock_acquire_shared(&vm_page_hash_table.lock[i]);
 
         if (list_is_empty(&vm_page_hash_table.ll_pages[i])) {
-            spinlock_read_release(&vm_page_hash_table.lock[i]);
+            lock_release_shared(&vm_page_hash_table.lock[i]);
             continue;
         }
 
@@ -256,7 +256,7 @@ void vm_page_hash_table_dump(void) {
             kprintf(" -> %p", vm_page_to_pa(page));
         }
 
-        spinlock_read_release(&vm_page_hash_table.lock[i]);
+        lock_release_shared(&vm_page_hash_table.lock[i]);
 
         kprintf("\n");
     }
@@ -269,12 +269,12 @@ vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
     offset = ROUND_PAGE_DOWN(offset);
     unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
 
-    spinlock_read_acquire(&vm_page_hash_table.lock[hash_bkt]);
+    lock_acquire_shared(&vm_page_hash_table.lock[hash_bkt]);
 
     vm_page_t p = { .object = object, .offset = offset };
     list_node_t *node = list_search(&vm_page_hash_table.ll_pages[hash_bkt], _vm_page_find, &p.ll_onode);
 
-    spinlock_read_release(&vm_page_hash_table.lock[hash_bkt]);
+    lock_release_shared(&vm_page_hash_table.lock[hash_bkt]);
 
     return list_entry(node, vm_page_t, ll_onode);
 }
@@ -295,9 +295,9 @@ vm_page_t* vm_page_alloc_contiguous(size_t num_pages, vm_object_t *object, vm_of
 
     // If an object is specified, add the page(s) to that object
     if (first_page != NULL && object != NULL) {
-        spinlock_write_acquire(&object->lock);
+        lock_acquire_exclusive(&object->lock);
         _vm_page_insert(first_page, num_pages, object, offset);
-        spinlock_write_release(&object->lock);
+        lock_release_exclusive(&object->lock);
     }
 
     return first_page;
@@ -314,9 +314,9 @@ void vm_page_free_contiguous(vm_page_t *pages, size_t num_pages) {
     // Assuming all pages belong to the same object
     vm_object_t *object = pages[0].object;
     if (object != NULL) {
-        spinlock_write_acquire(&object->lock);
+        lock_acquire_exclusive(&object->lock);
         _vm_page_remove(pages, num_pages);
-        spinlock_write_release(&object->lock);
+        lock_release_exclusive(&object->lock);
     }
 
     _vm_page_bin_push(pages, num_pages);
@@ -336,15 +336,15 @@ void vm_page_free(vm_page_t *page) {
 }
 
 void vm_page_wire(vm_page_t *page) {
-    if (page->object != NULL) spinlock_write_acquire(&page->object->lock);
+    if (page->object != NULL) lock_acquire_exclusive(&page->object->lock);
     page->status.wired_count++;
-    if (page->object != NULL) spinlock_write_release(&page->object->lock);
+    if (page->object != NULL) lock_release_exclusive(&page->object->lock);
 }
 
 void vm_page_unwire(vm_page_t *page) {
-    if (page->object != NULL) spinlock_write_acquire(&page->object->lock);
+    if (page->object != NULL) lock_acquire_exclusive(&page->object->lock);
     page->status.wired_count--;
-    if (page->object != NULL) spinlock_write_release(&page->object->lock);
+    if (page->object != NULL) lock_release_exclusive(&page->object->lock);
 }
 
 paddr_t vm_page_to_pa(vm_page_t *page) {

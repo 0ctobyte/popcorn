@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 #include <kernel/slab.h>
-#include <kernel/spinlock.h>
+#include <kernel/lock.h>
 
 /* kmem_slab - General purpose slab allocator using the kernel virtual address space and protected by locks
  * kmem_slab is built on the notion that any kernel module that needs to dynamically allocate memory is responsible
@@ -12,9 +12,9 @@
  * memory from the kernel for new slabs.
  */
 
-// kmem_slab is just a slab with a lock using the kernel VM address space
+// kmem_slab is just a slab with mutex lock using the kernel VM address space
 typedef struct {
-    spinlock_t lock;
+    lock_t lock;
     slab_t slab;
     slab_buf_t slab_buf;
     size_t size;
