@@ -155,7 +155,7 @@ kresult_t proc_thread_resume(proc_thread_t *thread) {
 kresult_t proc_thread_suspend(proc_thread_t *thread) {
     if (thread == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    // The next time this thread returns from a trap, it'll be stopped and marked SUSPENDED
+    // FIXME The next time this thread enters the kernel, it'll be stopped and marked SUSPENDED
     spinlock_irq_acquire(&thread->lock);
     thread->suspend_cnt++;
     spinlock_irq_release(&thread->lock);
