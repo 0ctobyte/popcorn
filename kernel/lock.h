@@ -30,7 +30,7 @@ typedef enum {
 
 typedef struct {
     spinlock_t interlock;          // Spinlock protecting this lock's data
-    struct proc_thread_s *thread;  // Thread requesting or holding exclusive ownership to this lock
+    struct proc_thread_s *thread;  // Thread requesting (highest priority) or holding exclusive ownership to this lock
     unsigned int shared_count;     // Count of threads sharing this lock
     lock_state_t state;            // Lock state
 } lock_t;

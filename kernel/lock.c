@@ -10,9 +10,13 @@ void lock_acquire_exclusive(lock_t *lock) {
     // Exclusive locks can only be owned if no one else has the lock
     while (lock->state != LOCK_STATE_FREE) {
         // If the lock is owned in shared state then it needs to be upgraded
+        // Track the highest priority thread requesting exclusive upgrade
         if (lock->state == LOCK_STATE_SHARED) {
             lock->thread = proc_thread_current();
             lock->state = LOCK_STATE_EXCLUSIVE_UPGRADE;
+        } else if ((lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
+            && proc_thread_current()->priority < lock->thread->priority)) {
+            lock->thread = proc_thread_current();
         }
 
         // FIXME Check for exclusive and promote the owning the thread's priority
