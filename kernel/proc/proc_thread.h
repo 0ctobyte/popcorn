@@ -61,12 +61,15 @@ kresult_t proc_thread_suspend(proc_thread_t *thread);
 // Switches the current running thread to the given new thread
 void proc_thread_switch(proc_thread_t *new_thread);
 
-// Puts the thread to sleep. Interruptible indicates whether the sleep can be interrupted
-// by something other then the sleep event
-void proc_thread_sleep(proc_thread_t *thread, proc_event_t event, bool interruptible);
+// Puts the current thread to sleep. Interruptible indicates whether the sleep can be interrupted by something other
+// then the sleep event
+void proc_thread_sleep(proc_event_t event, spinlock_t *interlock, bool interruptible);
 
-// Wakes the thread clearing whatever event it was sleeping on
-void proc_thread_wake(proc_thread_t *thread);
+// Wakes all threads waiting for the event
+void proc_thread_wake(proc_event_t event);
+
+// Wake the specified thread
+void proc_thread_wake_one(proc_thread_t *thread);
 
 // Do whatever necessary to run the given thread
 void proc_thread_run(proc_thread_t *thread);

@@ -12,6 +12,7 @@ target_sources(${target}
         ${CMAKE_CURRENT_SOURCE_DIR}/kmem_slab
         ${CMAKE_CURRENT_SOURCE_DIR}/kstdio
         ${CMAKE_CURRENT_SOURCE_DIR}/list
+        ${CMAKE_CURRENT_SOURCE_DIR}/lock
         ${CMAKE_CURRENT_SOURCE_DIR}/panic
         ${CMAKE_CURRENT_SOURCE_DIR}/rbtree
         ${CMAKE_CURRENT_SOURCE_DIR}/slab
