@@ -6,10 +6,7 @@
 
 struct proc_thread_s;
 
-typedef struct {
-    arch_context_t *context;
-    void *kernel_stack_top;
-} arch_thread_context_t;
+typedef arch_context_t arch_thread_context_t;
 
 typedef enum {
     ARCH_THREAD_PRIVILEGE_USER,
@@ -31,11 +28,10 @@ void arch_thread_set_stack(struct proc_thread_s *thread, void *user_stack);
 // Set the privilege level of the thread (i.e. user or kernel mode)
 void arch_thread_set_privilege(struct proc_thread_s *thread, arch_thread_privilege_t privilege);
 
-// Loads the given context into the CPUs register state
-void arch_thread_load_context(arch_context_t *context);
+// Loads the given context into the CPUs register state. Always returns true
+bool arch_thread_load_context(arch_context_t *context);
 
-// Saves the current CPU context on the current kernel stack returning a pointer to the beginning of the saved context
-// struct
-arch_context_t* arch_thread_save_context(void);
+// Saves the current CPU context. Always returns false
+bool arch_thread_save_context(arch_thread_context_t *context);
 
 #endif // _ARCH_THREAD_H_
