@@ -68,7 +68,7 @@ unsigned int fdt_get_root_node(fdt_header_t *fdth);
 // Returns the offset to the very first node in the FDT (other than the root node)
 unsigned int fdt_get_first_node(fdt_header_t *fdth);
 
-// Search for the property with the specified given the offset to a node
+// Search for the property with the specified name given the offset to a node
 unsigned int fdt_get_prop(fdt_header_t *fdth, unsigned int offset, const char *name);
 
 // Dump just the FDT in a human readable format
