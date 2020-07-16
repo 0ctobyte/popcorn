@@ -11,6 +11,7 @@ target_sources(${target}
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_exceptions
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_interrupts.s
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_mmu.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_timer.s
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_thread
         ${CMAKE_CURRENT_SOURCE_DIR}/pmap
 )

@@ -5,6 +5,7 @@
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
 #include <kernel/arch/arch_exceptions.h>
+#include <kernel/arch/arch_timer.h>
 #include <kernel/vm/vm_init.h>
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_object.h>
@@ -60,7 +61,7 @@ void print_mappings(void) {
 void thread_start(void) {
     proc_thread_t *thread = list_entry(list_first(&proc_task_kernel()->ll_threads), proc_thread_t, ll_tnode);
     for (;;) {
-        kprintf("thread id = %u\n", proc_thread_current()->tid);
+        kprintf("%f s: thread id = %d\n", arch_timer_get_secs(), proc_thread_current()->tid);
         proc_thread_switch(thread);
     }
 }
@@ -103,13 +104,15 @@ void kmain(void) {
 
     kprintf("proc_init() - done!\n");
 
+    kprintf("timer freq = %u\n", arch_timer_get_freq());
+
     proc_thread_t *thread;
     kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);
     proc_thread_set_entry(thread, thread_start);
     proc_thread_resume(thread);
 
     for (;;) {
-        kprintf("thread id = %d\n", proc_thread_current()->tid);
+        kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
         proc_thread_switch(thread);
     }
 
@@ -117,5 +120,5 @@ void kmain(void) {
 
     print_mappings();
 
-    fdt_dump(fdt_header);
+    // fdt_dump(fdt_header);
 }
