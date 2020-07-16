@@ -8,6 +8,7 @@
 #include <kernel/vm/vm_types.h>
 #include <kernel/proc/proc_types.h>
 #include <kernel/proc/proc_task.h>
+#include <kernel/proc/proc_scheduler.h>
 
 typedef enum {
     PROC_THREAD_STATE_SUSPENDED,
@@ -18,20 +19,19 @@ typedef enum {
 } proc_thread_state_t;
 
 typedef struct proc_thread_s {
-    spinlock_t lock;                // Interrupt disabling spin lock
-    proc_thread_id_t tid;           // Thread ID
-    proc_task_t *task;              // Task this thread belongs to
-    proc_thread_state_t state;      // Thread state
-    unsigned int suspend_cnt;       // Number of times this thread has been suspended
-    proc_priority_t priority;       // Thread priority
-    proc_priority_t sched_priority; // Priority computed by scheduler
-    unsigned int refcnt;            // Reference count
-    proc_event_t event;             // Event this thread is sleeping on
-    list_node_t ll_enode;           // Event hash table bucket list linkage
-    list_node_t ll_tnode;           // Thread list linkage
-    list_node_t ll_qnode;           // Run queue list linkage
-    void *kernel_stack;             // Kernel stack
-    arch_thread_context_t context;  // User saved context
+    spinlock_t lock;                       // Interrupt disabling spin lock
+    proc_thread_id_t tid;                  // Thread ID
+    proc_task_t *task;                     // Task this thread belongs to
+    proc_thread_state_t state;             // Thread state
+    unsigned int suspend_cnt;              // Number of times this thread has been suspended
+    unsigned int refcnt;                   // Reference count
+    proc_event_t event;                    // Event this thread is sleeping on
+    list_node_t ll_enode;                  // Event hash table bucket list linkage
+    list_node_t ll_tnode;                  // Thread list linkage
+    list_node_t ll_qnode;                  // Run queue list linkage
+    void *kernel_stack;                    // Kernel stack
+    arch_thread_context_t context;         // User saved context
+    struct proc_scheduler_context_s sched; // Variables needed by the scheduler
 } proc_thread_t;
 
 extern size_t kernel_stack_size;

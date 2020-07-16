@@ -15,7 +15,7 @@ void lock_acquire_exclusive(lock_t *lock) {
             lock->thread = proc_thread_current();
             lock->state = LOCK_STATE_EXCLUSIVE_UPGRADE;
         } else if ((lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-            && proc_thread_current()->priority < lock->thread->priority)) {
+            && proc_thread_current()->sched.priority < lock->thread->sched.priority)) {
             lock->thread = proc_thread_current();
         }
 
@@ -39,7 +39,8 @@ void lock_acquire_shared(lock_t *lock) {
     // upgraded to exclusive; only threads with a higher priority then the thread requesting exclusive access may
     // acquire shared ownership of the lock
     while (lock->state == LOCK_STATE_EXCLUSIVE
-        || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE && proc_thread_current()->priority > lock->thread->priority)) {
+        || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
+        && proc_thread_current()->sched.priority > lock->thread->sched.priority)) {
         // FIXME how to handle priority inversion for all shared owners
         proc_thread_sleep(lock, &lock->interlock, false);
         spinlock_irq_acquire(&lock->interlock);
@@ -72,7 +73,8 @@ bool lock_try_acquire_shared(lock_t *lock) {
     spinlock_irq_acquire(&lock->interlock);
 
     if (lock->state == LOCK_STATE_EXCLUSIVE
-        || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE && proc_thread_current()->priority > lock->thread->priority)) {
+        || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
+        && proc_thread_current()->sched.priority > lock->thread->sched.priority)) {
         return false;
     }
 
