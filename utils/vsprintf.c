@@ -469,7 +469,7 @@ int vsprintf(char *s, const char *fmt, va_list args) {
             double num = va_arg(args, double);
             char str_num[sizeof(long double)];
 
-            unsigned int whole = (unsigned int)num;
+            unsigned long long whole = (unsigned long long)num;
             itoa2(whole, str_num, 10, false);
             size_t len = strlen(str_num);
             for(unsigned int i = 0; i < len; i++) *str++ = str_num[i];
@@ -479,8 +479,9 @@ int vsprintf(char *s, const char *fmt, va_list args) {
                 pow10 *= pow10;
             }
 
-            double frac_part = num - (double)((unsigned int)num);
-            unsigned int frac = (precision > 6) ? (unsigned int)(frac_part * (double)pow10) : (unsigned int)(frac_part * (double)1000000);
+            double frac_part = num - (double)whole;
+            unsigned long long frac = (unsigned long long)((precision > 6) ? (frac_part * (double)pow10)
+                : (frac_part * 1000000.0));
             if(frac == 0 && (flags & SPECIAL)) {
                 *str++ = '.';
                 *str++ = '0';
