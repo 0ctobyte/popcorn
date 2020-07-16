@@ -19,7 +19,7 @@ parser.add_argument("-dtb", help="Use the given DeviceTree blob file", default="
 
 args = parser.parse_args()
 
-qemu = ["qemu-system-aarch64", "-M", "virt"]
+qemu = ["qemu-system-aarch64", "-M", "virt,gic_version=3"]
 qemu += ["-m", args.memsize]
 qemu += ["-cpu", args.cpu]
 qemu += ["-smp", "cores="+ str(args.cores)]

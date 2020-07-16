@@ -1,6 +1,7 @@
 #include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/panic.h>
+#include <kernel/fdt.h>
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
 #include <kernel/arch/arch_exceptions.h>
@@ -16,6 +17,9 @@
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
+extern vaddr_t kernel_virtual_start;
+extern fdt_header_t *fdt_header;
+
 extern void _relocate(unsigned long dst, unsigned long src, size_t size);
 
 unsigned long MEMBASEADDR;
@@ -65,6 +69,9 @@ void kmain(void) {
     // Setup the exception vector table
     arch_exceptions_init();
 
+    // Need the FDT header offset from the beginning of the kernel image in order to adjust the pointer later
+    // when the VM is initialized
+    uintptr_t fdth_offset = (uintptr_t)fdt_header - kernel_physical_start;
     if (!devicetree_find_memory(&MEMBASEADDR, &MEMSIZE)) HALT();
 
     // Relocate the kernel to the base of memory
@@ -73,6 +80,7 @@ void kmain(void) {
         _relocate(MEMBASEADDR, kernel_physical_start, kernel_size);
         kernel_physical_start = MEMBASEADDR;
         kernel_physical_end = kernel_physical_start + kernel_size;
+        fdt_header = (fdt_header_t*)(kernel_physical_start + fdth_offset);
     }
 
     kprintf("Hello World\n");
@@ -85,6 +93,9 @@ void kmain(void) {
     pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT,
         PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
+
+    // Update FDT header virtual address
+    fdt_header = (fdt_header_t*)(kernel_virtual_start + fdth_offset);
 
     kprintf("vm_init() - done!\n");
 
@@ -105,4 +116,6 @@ void kmain(void) {
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 
     print_mappings();
+
+    fdt_dump(fdt_header);
 }
