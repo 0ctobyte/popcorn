@@ -69,7 +69,7 @@ bool spinlock_try_acquire(spinlock_t *lock) {
 
 void spinlock_irq_acquire(spinlock_t *lock) {
     // Get state of interrupts
-    bool _enabled = arch_interrupts_enabled();
+    bool _enabled = arch_interrupts_is_enabled();
     arch_interrupts_disable();
     spinlock_acquire(lock);
 

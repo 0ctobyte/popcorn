@@ -15,9 +15,9 @@ arch_interrupts_disable:
     ret lr
 
 # True if interrupts enabled, false otherwise
-.global arch_interrupts_enabled
+.global arch_interrupts_is_enabled
 .align 2
-arch_interrupts_enabled:
+arch_interrupts_is_enabled:
     # Check if IRQ's are enabled
     mrs x0, DAIF
     tst x0, #0x80

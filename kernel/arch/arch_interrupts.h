@@ -13,6 +13,6 @@ void arch_interrupts_enable(void);
 void arch_interrupts_disable(void);
 
 // Checks if interrupts are enabled on the processor
-bool arch_interrupts_enabled(void);
+bool arch_interrupts_is_enabled(void);
 
 #endif // _ARCH_INTERRUPTS_H_
