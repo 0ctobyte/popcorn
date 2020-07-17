@@ -10,8 +10,7 @@ set(target_bin kernel.img)
 set(CMAKE_C_COMPILER aarch64-none-elf-gcc)
 set(CMAKE_CXX_COMPILER aarch64-none-elf-g++)
 
-set(platform "virt" CACHE STRING "Select target platform")
-string(TOUPPER ${platform} platform_def)
+set(PLATFORM "qemu-virt" CACHE STRING "Select target platform")
 
 enable_language(ASM)
 set(linker_script ${CMAKE_SOURCE_DIR}/linker.ld)
@@ -35,7 +34,6 @@ target_link_options(${target} PRIVATE
     -nostartfiles
     -T ${linker_script}
 )
-target_compile_definitions(${target} PRIVATE ${platform_def})
 target_include_directories(${target} PRIVATE include .)
 
 add_custom_command(TARGET ${target} POST_BUILD
@@ -45,4 +43,4 @@ add_custom_command(TARGET ${target} POST_BUILD
 
 add_subdirectory(kernel)
 add_subdirectory(utils)
-add_subdirectory(platform/${platform})
+add_subdirectory(platform/${PLATFORM})
