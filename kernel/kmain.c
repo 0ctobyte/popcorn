@@ -115,12 +115,6 @@ void kmain(void) {
     arch_timer_start_secs(1);
 
     kprintf("timer_init() - done!\n");
-    uint64_t ctl, tval;
-    for (;;) {
-        asm ("mrs %0, CNTV_CTL_EL0" : "=r" (ctl));
-        asm ("mrs %0, CNTV_TVAL_EL0" : "=r" (tval));
-        kprintf("cntv_ctl_el0 = %x, cntv_tval_el0 = %x\n", ctl, tval);
-    }
 
     proc_thread_t *thread;
     kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);

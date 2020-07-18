@@ -23,7 +23,7 @@ void arm_gicv3_init(void *data) {
     uintptr_t gicr_base = GICR_PE_OFFSET(gicv3, THIS_PE_NUM);
 
     // Initialize the distributor and enable non-secure group 1 interrupts
-    gicd_ctrl_write(gicv3->gicd_base, S_GICD_CTRL_ARE_NS | S_GICD_CTRL_ENABLEGRP1A);
+    gicd_ctrl_write(gicv3->gicd_base, S_GICD_CTRL_ARE | S_GICD_CTRL_ENABLEGRP1);
 
     // Mark this processor as awake in the redistributor
     uint32_t waker = gicr_waker_read(gicr_base);
@@ -37,10 +37,9 @@ void arm_gicv3_init(void *data) {
     icc_sre_el1_w(1);
     asm ("isb sy");
 
-    // Set the priority mask and binary point registers. Allow any priority to preempt but split the 256 priority
-    // levels into groups of 16 that can interrupt the previous group
+    // Set the priority mask and binary point registers. Allow any priority to preempt.
     icc_pmr_el1_w(0xff);
-    icc_bpr1_el1_w(0x3);
+    icc_bpr1_el1_w(0x0);
 
     // Enable split EOI mode
     icc_ctrl_el1_w(S_ICC_CTRL_EOIMODE);
@@ -85,6 +84,9 @@ void arm_gicv3_enable_irq(void *data, irq_id_t id, irq_priority_t priority, irq_
             gicd_icfgr_clr(gicv3->gicd_base, id);
         }
 
+        // Route the interrupt to this CPU
+        gicd_irouter_write(gicv3->gicd_base, id, mpidr_el1_r() & ~S_GICD_IROUTER_INTERRUPT_ROUTING_MODE);
+
         // Enable it
         gicd_isenabler_set(gicr_base, id);
     }
@@ -114,6 +116,18 @@ void arm_gicv3_end_irq(void *data, irq_id_t id) {
     icc_eoir1_el1_w(id);
 }
 
-void arm_gicv3_clr_irq(void *data, irq_id_t id) {
+void arm_gicv3_done_irq(void *data, irq_id_t id) {
     icc_dir_el1_w(id);
+}
+
+void arm_gicv3_clr_irq(void *data, irq_id_t id) {
+    arm_gicv3_t *gicv3 = (arm_gicv3_t*)data;
+
+    uintptr_t gicr_base = GICR_PE_OFFSET(gicv3, THIS_PE_NUM);
+
+    if (IS_SGI_OR_PPI(id)) {
+        gicr_icpendr_set(gicr_base, id);
+    } else {
+        gicd_icpendr_set(gicr_base, id);
+    }
 }

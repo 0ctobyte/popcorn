@@ -1,5 +1,6 @@
 #include <kernel/panic.h>
 #include <kernel/kstdio.h>
+#include <kernel/irq.h>
 #include <kernel/arch/arch_exceptions.h>
 
 #define STRINGIFY(s) #s
@@ -171,12 +172,14 @@ void arch_exception_handler(arch_exception_type_t exc_type, arch_context_t *exc_
         case EXCEPTION_IRQ_SP_ELX:
         case EXCEPTION_IRQ_LL_AARCH64:
         {
+            irq_handler();
             return;
         }
         case EXCEPTION_FIQ_SP_EL0:
         case EXCEPTION_FIQ_SP_ELX:
         case EXCEPTION_FIQ_LL_AARCH64:
         {
+            irq_handler();
             return;
         }
         default:

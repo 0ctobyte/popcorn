@@ -159,7 +159,7 @@
 #define gicr_ipriorityr_clr(b, id)                    GIC_CLR_FLD_RMW_32(b, GICR_IPRIORITYR, 8, id, 0xff)
 
 #define GICR_ICFGR(n)                                 (0x10C00 + (4 * (n)))
-#define gicr_icfgr_set(b, id)                         GIC_SET_FLD_RMW_32(b, GICR_ICFGR, 2, id, 0x1)
+#define gicr_icfgr_set(b, id)                         GIC_SET_FLD_RMW_32(b, GICR_ICFGR, 2, id, 0x2)
 #define gicr_icfgr_clr(b, id)                         GIC_CLR_FLD_RMW_32(b, GICR_ICFGR, 2, id, 0x3)
 
 #define GICR_IGRPMODR(n)                              (0x10D00 + (4 * (n)))

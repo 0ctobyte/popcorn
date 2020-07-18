@@ -1,5 +1,4 @@
 #include <kernel/arch/arch_interrupts.h>
-#include <kernel/kstdio.h>
 #include <kernel/kassert.h>
 #include <kernel/irq.h>
 
@@ -44,22 +43,49 @@ irq_id_t irq_ack(void) {
     return irq_controller.ops->ack(irq_controller.data);
 }
 
-kresult_t irq_end(irq_id_t id) {
-    if (irq_controller.ops->end == NULL) {
+void irq_end(irq_id_t id) {
+    kassert(irq_controller.ops->end != NULL);
+
+    irq_controller.ops->end(irq_controller.data, id);
+}
+
+kresult_t irq_done(irq_id_t id) {
+    if (irq_controller.ops->done == NULL) {
         return KRESULT_OPERATION_NOT_SUPPORTED;
     }
 
-    irq_controller.ops->end(irq_controller.data, id);
+    irq_controller.ops->done(irq_controller.data, id);
 
     return KRESULT_OK;
 }
 
-void irq_clr(irq_id_t id) {
-    kassert(irq_controller.ops->clr != NULL);
+kresult_t irq_clr(irq_id_t id) {
+    if (irq_controller.ops->clr == NULL) {
+        return KRESULT_OPERATION_NOT_SUPPORTED;
+    }
 
     irq_controller.ops->clr(irq_controller.data, id);
+
+    return KRESULT_OK;
 }
 
 void irq_register_thread(irq_id_t id, struct proc_thread_s *thread) {
     // FIXME Add thread to hash table keyed off ID
+}
+
+#include <kernel/arch/arch_timer.h>
+void irq_handler(void) {
+    irq_id_t id = irq_ack();
+
+    // Ignore spurious interrupts for now
+    if (id == IRQ_SPURIOUS_ID) return;
+
+    // FIXME Wake thread from hash table to run with interrupt priority
+    extern void kprintf(const char *fmt, ...);
+    kprintf("id = %u\n", id);
+
+    arch_timer_start_secs(1);
+
+    irq_end(id);
+    irq_done(id);
 }

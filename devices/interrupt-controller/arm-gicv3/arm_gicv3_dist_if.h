@@ -8,9 +8,9 @@
 #define G_GICD_CTRL_ARE_NS(r)                         (((r) >> 4) & 0x1)
 #define G_GICD_CTRL_ENABLEGRP1A(r)                    (((r) >> 1) & 0x1)
 #define G_GICD_CTRL_ENABLEGRP1(r)                     ((r) & 0x1)
-#define S_GICD_CTRL_ARE_NS                            (1 << 4)
-#define S_GICD_CTRL_ENABLEGRP1A                       (1 << 1)
-#define S_GICD_CTRL_ENABLEGRP1                        (1)
+#define S_GICD_CTRL_ARE                               (1 << 4)
+#define S_GICD_CTRL_ENABLEGRP1                        (1 << 1)
+#define S_GICD_CTRL_ENABLEGRP0                        (1)
 #define gicd_ctrl_read(b)                             (MMIO_READ_32(b, GICD_CTRL))
 #define gicd_ctrl_write(b, r)                         (MMIO_WRITE_32(b, GICD_CTRL, r))
 
@@ -96,7 +96,7 @@
 #define gicd_itargetsr_clr(b, id)                     GIC_CLR_FLD_RMW_32(b, GICD_ITARGETSR, 8, id, 0xff)
 
 #define GICD_ICFGR(n)                                 (0x0C00 + (4 * (n)))
-#define gicd_icfgr_set(b, id)                         GIC_SET_FLD_RMW_32(b, GICD_ICFGR, 2, id, 0x1)
+#define gicd_icfgr_set(b, id)                         GIC_SET_FLD_RMW_32(b, GICD_ICFGR, 2, id, 0x2)
 #define gicd_icfgr_clr(b, id)                         GIC_CLR_FLD_RMW_32(b, GICD_ICFGR, 2, id, 0x3)
 
 #define GICD_IGRPMODR(n)                              (0x0D00 + (4 * (n)))
@@ -147,7 +147,7 @@
 #define gicd_ipriorityre_clr(b, id)                   GIC_CLR_FLD_RMW_32(b, GICD_IPRIORITYRE, 8, id, 0xff)
 
 #define GICD_ICFGRE(n)                                (0x3000 + (4 * (n)))
-#define gicd_icfgre_set(b, id)                        GIC_SET_FLD_RMW_32(b, GICD_ICFGRE, 2, id, 0x1)
+#define gicd_icfgre_set(b, id)                        GIC_SET_FLD_RMW_32(b, GICD_ICFGRE, 2, id, 0x2)
 #define gicd_icfgre_clr(b, id)                        GIC_CLR_FLD_RMW_32(b, GICD_ICFGRE, 2, id, 0x3)
 
 #define GICD_IGRPMODRE(n)                             (0x3400 + (4 * (n)))

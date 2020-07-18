@@ -17,6 +17,7 @@ void arm_gicv3_disable_irq(void  *data, irq_id_t id);
 irq_id_t arm_gicv3_get_pending_irq(void *data);
 irq_id_t arm_gicv3_ack_irq(void *data);
 void arm_gicv3_end_irq(void *data, irq_id_t id);
+void arm_gicv3_done_irq(void *data, irq_id_t id);
 void arm_gicv3_clr_irq(void *data, irq_id_t id);
 
 #endif // _ARM_GICV3_H_
