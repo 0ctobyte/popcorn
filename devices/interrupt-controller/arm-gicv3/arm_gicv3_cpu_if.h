@@ -23,97 +23,94 @@
 #define S_ICC_CTRL_PMHE                               (1 << 6)
 #define S_ICC_CTRL_EOIMODE                            (1 << 1)
 #define S_ICC_CTRL_CBPR                               (1)
-static inline uint32_t icc_ctrl_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_4" : "=r" (v));
-    return v;
-}
-static inline void icc_ctrl_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_4, %0" :: "r" (v));
-}
+#define icc_ctrl_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_4" : "=r" (v));\
+    v;\
+}}
+#define icc_ctrl_el1_w(v)                             asm volatile ("msr S3_0_C12_C12_4, %0" :: "r" (v))
 
 #define GICC_PMR                                      (0x0004)
 #define G_GICC_PMR_PRIORITY(r)                        ((r) & 0xff)
 #define F_GICC_PMR_PRIORITY(f)                        ((f) & 0xff)
 #define gicc_pmr_read(b)                              (MMIO_READ_32(b, GICC_PMR))
 #define gicc_pmr_write(b, r)                          (MMIO_WRITE_32(b, GICC_PMR, r))
-static inline uint32_t icc_pmr_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C4_C6_0" : "=r" (v));
-    return v;
-}
-static inline void icc_pmr_el1_w(uint32_t v) {
-    asm ("msr S3_0_C4_C6_0, %0" :: "r" (v));
-}
+#define icc_pmr_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C4_C6_0" : "=r" (v));\
+    v;\
+})
+#define icc_pmr_el1_w(v)                              asm volatile ("msr S3_0_C4_C6_0, %0" :: "r" (v))
 
 #define GICC_BPR                                      (0x0008)
 #define G_GICC_BPR_PRIORITY(r)                        ((r) & 0x7)
 #define F_GICC_BPR_PRIORITY(f)                        ((f) & 0x7)
 #define gicc_bpr_read(b)                              (MMIO_READ_32(b, GICC_BPR))
 #define gicc_bpr_write(b, r)                          (MMIO_WRITE_32(b, GICC_BPR, r))
-static inline uint32_t icc_bpr0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_3" : "=r" (v));
-    return v;
-}
-static inline void icc_bpr0_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C8_3, %0" :: "r" (v));
-}
-static inline uint32_t icc_bpr1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_3" : "=r" (v));
-    return v;
-}
-static inline void icc_bpr1_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_3, %0" :: "r" (v));
-}
+#define icc_bpr0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_3" : "=r" (v));\
+    v;\
+})
+#define icc_bpr0_el1_w(v)                             asm volatile ("msr S3_0_C12_C8_3, %0" :: "r" (v))
+#define icc_bpr1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_3" : "=r" (v));\
+    v;\
+})
+#define icc_bpr1_el1_w(v)                             asm volatile ("msr S3_0_C12_C12_3, %0" :: "r" (v))
 
 #define GICC_IAR                                      (0x000C)
 #define G_GICC_IAR_INTID(r)                           ((r) & 0xffffff)
 #define gicc_iar_read(b)                              (MMIO_READ_32(b, GICC_IAR))
-static inline uint32_t icc_iar0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_0" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_iar1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_0" : "=r" (v));
-    return v;
-}
+#define icc_iar0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_0" : "=r" (v));\
+    v;\
+})
+#define icc_iar1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_0" : "=r" (v));\
+    v;\
+})
 
 #define GICC_EOIR                                     (0x0010)
 #define F_GICC_EOIR_INTID(r)                          ((r) & 0xffffff)
 #define gicc_eoir_write(b, r)                         (MMIO_WRITE_32(b, GICC_EOIR, r))
-static inline void icc_eoir0_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C8_1, %0" :: "r" (v));
-}
-static inline void icc_eoir1_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_1, %0" :: "r" (v));
-}
+#define icc_eoir0_el1_w(v)                            asm volatile ("msr S3_0_C12_C8_1, %0" :: "r" (v));
+#define icc_eoir1_el1_w(v)                            asm volatile ("msr S3_0_C12_C12_1, %0" :: "r" (v));
 
 #define GICC_RPR                                      (0x0014)
 #define G_GICC_RPR_PRIORITY(r)                        ((r) & 0xff)
 #define gicc_rpr_read(b)                              (MMIO_READ_32(b, GICC_RPR))
-static inline uint32_t icc_rpr_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C11_3" : "=r" (v));
-    return v;
-}
+#define icc_rpr_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C11_3" : "=r" (v));\
+    v;\
+})
 
 #define GICC_HPPIR                                    (0x0018)
 #define G_GICC_HPPIR_INTID(r)                         ((r) & 0xffffff)
 #define gicc_hppir_read(b)                            (MMIO_READ_32(b, GICC_HPPIR))
-static inline uint32_t icc_hppir0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_2" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_hppir1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_2" : "=r" (v));
-    return v;
-}
+#define icc_hppir0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_2" : "=r" (v));\
+    v;\
+})
+#define icc_hppir1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_2" : "=r" (v));\
+    v;\
+})
 
 #define GICC_ABPR                                     (0x001C)
 #define G_GICC_ABPR_PRIORITY(r)                       ((r) & 0x7)
@@ -143,46 +140,54 @@ static inline uint32_t icc_hppir1_el1_r(void) {
 
 #define GICC_APR(n)                                   (0x00D0 + (4 * (n)))
 #define gicc_apr_read(b, id)                          (MMIO_READ_32(b, GICC_APR(id / 32))
-static inline uint32_t icc_ap0r0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_4" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap0r1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_5" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap0r2_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_6" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap0r3_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C8_7" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap1r0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C9_0" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap1r1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C9_1" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap1r2_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C9_2" : "=r" (v));
-    return v;
-}
-static inline uint32_t icc_ap1r3_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C9_3" : "=r" (v));
-    return v;
-}
+#define icc_ap0r0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_4" : "=r" (v));\
+    v;\
+})
+#define icc_ap0r1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_5" : "=r" (v));\
+    v;\
+})
+#define icc_ap0r2_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_6" : "=r" (v));\
+    v;\
+})
+#define icc_ap0r3_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C8_7" : "=r" (v));\
+    v;\
+})
+#define icc_ap1r0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C9_0" : "=r" (v));\
+    v;\
+})
+#define icc_ap1r1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C9_1" : "=r" (v));\
+    v;\
+})
+#define icc_ap1r2_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C9_2" : "=r" (v));\
+    v;\
+})
+#define icc_ap1r3_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C9_3" : "=r" (v));\
+    v;\
+})
 
 #define GICC_NSAPR(n)                                 (0x00E0 + (4 * (n)))
 #define gicc_apr_read(b, id)                          (MMIO_READ_32(b, GICC_APR(id / 32))
@@ -197,44 +202,33 @@ static inline uint32_t icc_ap1r3_el1_r(void) {
 #define GICC_DIR                                      (0x1000)
 #define F_GICC_DIR_INTID(r)                           ((r) & 0xffffff)
 #define gicc_dir_write(b, r)                          (MMIO_WRITE_32(b, GICC_DIR, r))
-static inline void icc_dir_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C11_1, %0" :: "r" (v));
-}
+#define icc_dir_el1_w(v)                              asm volatile ("msr S3_0_C12_C11_1, %0" :: "r" (v));
 
-static inline void icc_sgi0r_el1_w(uint64_t v) {
-    asm ("msr S3_0_C12_C11_7, %0" :: "r" (v));
-}
-static inline void icc_sgi1r_el1_w(uint64_t v) {
-    asm ("msr S3_0_C12_C11_5, %0" :: "r" (v));
-}
-static inline void icc_asgi1r_el1_w(uint64_t v) {
-    asm ("msr S3_0_C12_C11_6, %0" :: "r" (v));
-}
+#define icc_sgi0r_el1_w(v)                            asm volatile ("msr S3_0_C12_C11_7, %0" :: "r" (v));
+#define icc_sgi1r_el1_w(v)                            asm volatile ("msr S3_0_C12_C11_5, %0" :: "r" (v));
+#define icc_asgi1r_el1_w(v)                           asm volatile ("msr S3_0_C12_C11_6, %0" :: "r" (v));
 
-static inline uint32_t icc_sre_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_5" : "=r" (v));
-    return v;
-}
-static inline void icc_sre_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_5, %0" :: "r" (v));
-}
+#define icc_sre_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_5" : "=r" (v));\
+    v;\
+})
+#define icc_sre_el1_w(v)                              asm volatile ("msr S3_0_C12_C12_5, %0" :: "r" (v));
 
-static inline uint32_t icc_igrpen0_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_6" : "=r" (v));
-    return v;
-}
-static inline void icc_igrpen0_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_6, %0" :: "r" (v));
-}
-static inline uint32_t icc_igrpen1_el1_r(void) {
-    uint32_t v;
-    asm ("mrs %0, S3_0_C12_C12_7" : "=r" (v));
-    return v;
-}
-static inline void icc_igrpen1_el1_w(uint32_t v) {
-    asm ("msr S3_0_C12_C12_7, %0" :: "r" (v));
-}
+#define icc_igrpen0_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_6" : "=r" (v));\
+    v;\
+})
+#define icc_igrpen0_el1_w(v)                          asm volatile ("msr S3_0_C12_C12_6, %0" :: "r" (v));
+#define icc_igrpen1_el1_r()\
+({\
+    uint32_t v;\
+    asm ("mrs %0, S3_0_C12_C12_7" : "=r" (v));\
+    v;\
+})
+#define icc_igrpen1_el1_w(v)                          asm volatile ("msr S3_0_C12_C12_7, %0" :: "r" (v));
 
 #endif // _ARM_GICV3_CPU_IF_H_

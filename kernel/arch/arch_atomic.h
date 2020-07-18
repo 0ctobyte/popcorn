@@ -8,12 +8,12 @@ typedef long atomic_t;
 #define arch_atomic_test_and_set(ptr, val)\
 ({\
     int result;\
-    asm inline ("ldxr %0, [%1]\n"\
-                "cbnz %0, _exit%=\n"\
-                "stxr %w0, %2, [%1]\n"\
-                "_exit%=:\n"\
-                : "=r" (result)\
-                : "r" (ptr), "r" (val));\
+    asm ("ldxr %0, [%1]\n"\
+         "cbnz %0, _exit%=\n"\
+         "stxr %w0, %2, [%1]\n"\
+         "_exit%=:\n"\
+         : "=r" (result)\
+         : "r" (ptr), "r" (val));\
     result;\
 })
 
@@ -22,15 +22,15 @@ typedef long atomic_t;
 #define arch_atomic_test_and_set_bit(ptr, bit)\
 ({\
     int result;\
-    asm inline ("ldxr %0, [%1]\n"\
-                "tst %0, %2\n"\
-                "bne _exit%=\n"\
-                "orr x3, %0, %2\n"\
-                "stxr %w0, x3, [%1]\n"\
-                "_exit%=:\n"\
-                : "+r" (result)\
-                : "r" (ptr), "r" (bit)\
-                : "x3");\
+    asm ("ldxr %0, [%1]\n"\
+         "tst %0, %2\n"\
+         "bne _exit%=\n"\
+         "orr x3, %0, %2\n"\
+         "stxr %w0, x3, [%1]\n"\
+         "_exit%=:\n"\
+         : "+r" (result)\
+         : "r" (ptr), "r" (bit)\
+         : "x3");\
     result;\
 })
 
@@ -38,15 +38,15 @@ typedef long atomic_t;
 #define arch_atomic_inc(v)\
 ({\
     atomic_t result;\
-    asm inline ("loop%=:\n"\
-                "ldxr x1, [%1]\n"\
-                "add x2, x1, #1\n"\
-                "stxr w3, x2, [%1]\n"\
-                "cbnz w3, loop%=\n"\
-                "mov %0, x1\n"\
-                : "=r" (result)\
-                : "r" (v)\
-                : "x1", "x2", "w3");\
+    asm ("loop%=:\n"\
+         "ldxr x1, [%1]\n"\
+         "add x2, x1, #1\n"\
+         "stxr w3, x2, [%1]\n"\
+         "cbnz w3, loop%=\n"\
+         "mov %0, x1\n"\
+         : "=r" (result)\
+         : "r" (v)\
+         : "x1", "x2", "w3");\
     result;\
 })
 
@@ -54,15 +54,15 @@ typedef long atomic_t;
 #define arch_atomic_dec(v)\
 ({\
     atomic_t result;\
-    asm inline ("loop%=:\n"\
-                "ldxr x1, [%1]\n"\
-                "sub x2, x1, #1\n"\
-                "stxr w3, x2, [%1]\n"\
-                "cbnz w3, loop%=\n"\
-                "mov %0, x1\n"\
-                : "=r" (result)\
-                : "r" (v)\
-                : "x1", "x2", "w3");\
+    asm ("loop%=:\n"\
+         "ldxr x1, [%1]\n"\
+         "sub x2, x1, #1\n"\
+         "stxr w3, x2, [%1]\n"\
+         "cbnz w3, loop%=\n"\
+         "mov %0, x1\n"\
+         : "=r" (result)\
+         : "r" (v)\
+         : "x1", "x2", "w3");\
     result;\
 })
 

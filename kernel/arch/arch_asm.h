@@ -7,11 +7,11 @@
 #define arch_umod(n, m)\
 ({\
     unsigned long result = 0;\
-    asm inline ("udiv x2, %1, %2\n"\
-                "msub %0, x2, %2, %1\n"\
-                : "=r" (result)\
-                : "r" (n), "r" (m)\
-                : "x2");\
+    asm ("udiv x2, %1, %2\n"\
+         "msub %0, x2, %2, %1\n"\
+         : "=r" (result)\
+         : "r" (n), "r" (m)\
+         : "x2");\
     result;\
 })
 
@@ -20,10 +20,10 @@
 #define arch_ctz(n)\
 ({\
     unsigned long result = 0;\
-    asm inline ("rbit %0, %1\n"\
-                "clz %0, %0\n"\
-                : "+r" (result)\
-                : "r" (n));\
+    asm ("rbit %0, %1\n"\
+         "clz %0, %0\n"\
+         : "+r" (result)\
+         : "r" (n));\
     result;\
 })
 
@@ -32,9 +32,9 @@
 #define arch_clz(n)\
 ({\
     unsigned long result = 0;\
-    asm inline ("clz %0, %1\n"\
-                : "=r" (result)\
-                : "r" (n));\
+    asm ("clz %0, %1\n"\
+         : "=r" (result)\
+         : "r" (n));\
     result;\
 })
 
@@ -43,9 +43,9 @@
 #define arch_rbit(n)\
 ({\
     unsigned long result = 0;\
-    asm inline ("rbit %0, %1\n"\
-                : "=r" (result)\
-                : "r" (n));\
+    asm ("rbit %0, %1\n"\
+         : "=r" (result)\
+         : "r" (n));\
     result;\
 })
 
@@ -53,17 +53,17 @@
 #define arch_rev32(n)\
 ({\
     unsigned long result = 0;\
-    asm inline ("rev %w0, %w1\n"\
-                : "=r" (result)\
-                : "r" (n));\
+    asm ("rev %w0, %w1\n"\
+         : "=r" (result)\
+         : "r" (n));\
     result;\
 })
 #define arch_rev64(n)\
 ({\
     unsigned long result = 0;\
-    asm inline ("rev %0, %1\n"\
-                : "=r" (result)\
-                : "r" (n));\
+    asm ("rev %0, %1\n"\
+         : "=r" (result)\
+         : "r" (n));\
     result;\
 })
 

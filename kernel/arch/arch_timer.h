@@ -8,8 +8,8 @@ void arch_timer_init(void);
 #define arch_timer_get_freq()\
 ({\
     unsigned long result;\
-    asm inline ("mrs %0, CNTFRQ_EL0\n"\
-                : "=r" (result) :);\
+    asm ("mrs %0, CNTFRQ_EL0\n"\
+         : "=r" (result) :);\
     result;\
 })
 
@@ -20,8 +20,8 @@ void arch_timer_init(void);
 #define arch_timer_get_ticks()\
 ({\
     unsigned long result;\
-    asm inline ("mrs %0, CNTPCT_EL0\n"\
-                : "=r" (result) :);\
+    asm ("mrs %0, CNTPCT_EL0\n"\
+         : "=r" (result) :);\
     result;\
 })
 
@@ -32,12 +32,12 @@ void arch_timer_init(void);
 // Enable the generic timer to fire an interrupt after the given time has passed in number of counter ticks
 #define arch_timer_start(ticks)\
 ({\
-    asm inline ("msr CNTP_TVAL_EL0, %0\n"\
-                "mov x1, #1\n"\
-                "msr CNTP_CTL_EL0, x1\n"\
-                "isb sy\n"\
-                :: "r" (ticks)\
-                : "x1");\
+    asm volatile ("msr CNTP_TVAL_EL0, %0\n"\
+                  "mov x1, #1\n"\
+                  "msr CNTP_CTL_EL0, x1\n"\
+                  "isb sy\n"\
+                  :: "r" (ticks)\
+                  : "x1");\
 })
 
 #define ARCH_TIMER_SECS_TO_TICKS(t)  ((unsigned long)((double)(t) * (double)arch_timer_get_freq()))

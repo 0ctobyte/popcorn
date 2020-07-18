@@ -6,9 +6,9 @@
 // Invalidates the icache completely to the polong of unification
 #define arch_icache_invalidate_all()\
 ({\
-    asm inline ("ic ialluis\n"\
-                "dsb sy\n"\
-                "isb sy\n");\
+    asm volatile ("ic ialluis\n"\
+                  "dsb sy\n"\
+                  "isb sy\n");\
 })
 
 // Flushes every level of dcache completely by set/way

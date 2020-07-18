@@ -7,19 +7,19 @@
 #define INTERRUPT_UNLOCK if(__en) interrupts_enable();
 
 // Enables interrupts on the processor
-#define arch_interrupts_enable() asm inline ("msr DAIFclr, #0x3")
+#define arch_interrupts_enable() asm volatile ("msr DAIFclr, #0x3")
 
 // Disables interrupts on the processor
-#define arch_interrupts_disable() asm inline ("msr DAIFset, #0x3")
+#define arch_interrupts_disable() asm volatile ("msr DAIFset, #0x3")
 
 // Checks if interrupts are enabled on the processor
 #define arch_interrupts_is_enabled()\
 ({\
     bool result;\
-    asm inline ("mrs %0, DAIF\n"\
-                "tst %0, #0xc\n"\
-                "cset %0, eq\n"\
-                : "+r" (result) ::);\
+    asm ("mrs %0, DAIF\n"\
+         "tst %0, #0xc\n"\
+         "cset %0, eq\n"\
+         : "+r" (result) :);\
     result;\
 })
 
