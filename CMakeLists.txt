@@ -44,3 +44,7 @@ add_custom_command(TARGET ${target} POST_BUILD
 add_subdirectory(kernel)
 add_subdirectory(utils)
 add_subdirectory(platform/${PLATFORM})
+
+if(${PLATFORM} STREQUAL "qemu-virt")
+    add_subdirectory(devices/interrupt-controller/arm-gicv3)
+endif()

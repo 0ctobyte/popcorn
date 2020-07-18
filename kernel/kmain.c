@@ -4,6 +4,7 @@
 #include <kernel/fdt.h>
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
+#include <kernel/irq.h>
 #include <kernel/arch/arch_exceptions.h>
 #include <kernel/arch/arch_timer.h>
 #include <kernel/vm/vm_init.h>
@@ -105,20 +106,35 @@ void kmain(void) {
     kprintf("proc_init() - done!\n");
 
     kprintf("timer freq = %u\n", arch_timer_get_freq());
+    irq_init();
+
+    kprintf("irq_init() - done!\n");
+
+    extern void platform_timer_init(void);
+    platform_timer_init();
+    arch_timer_start_secs(1);
+
+    kprintf("timer_init() - done!\n");
+    uint64_t ctl, tval;
+    for (;;) {
+        asm ("mrs %0, CNTV_CTL_EL0" : "=r" (ctl));
+        asm ("mrs %0, CNTV_TVAL_EL0" : "=r" (tval));
+        kprintf("cntv_ctl_el0 = %x, cntv_tval_el0 = %x\n", ctl, tval);
+    }
 
     proc_thread_t *thread;
     kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);
     proc_thread_set_entry(thread, thread_start);
     proc_thread_resume(thread);
 
-    for (;;) {
-        kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
-        proc_thread_switch(thread);
-    }
+    //for (;;) {
+    //    kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
+    //    proc_thread_switch(thread);
+    //}
 
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 
-    print_mappings();
+    // print_mappings();
 
     // fdt_dump(fdt_header);
 }
