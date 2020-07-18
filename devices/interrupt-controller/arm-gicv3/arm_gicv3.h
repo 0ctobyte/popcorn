@@ -9,6 +9,8 @@ typedef struct {
     uintptr_t gicr_base;
 } arm_gicv3_t;
 
+extern irq_controller_dev_ops_t arm_gicv3_ops;
+
 #define ARM_GICV3_SPURIOUS_IRQ_ID (1023)
 
 void arm_gicv3_init(void *data);

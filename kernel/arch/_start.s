@@ -1,4 +1,4 @@
-.text
+.section ".text.start"
 
 .global _start
 .align 2
@@ -62,8 +62,12 @@ _not_el2:
 
     # Flush and invalidate the dcache and icache and TLB
     bl arch_dcache_flush_all
-    bl arch_icache_invalidate_all
-    bl arch_tlb_invalidate_all
+    ic ialluis
+    dsb sy
+    isb sy
+    tlbi vmalle1is
+    dsb sy
+    isb sy
 
     # Enable the icache, dcache
     mrs x0, SCTLR_EL1

@@ -1,77 +1,10 @@
 .text
 
-.global arch_tlb_invalidate_all
-.align 2
-arch_tlb_invalidate_all:
-    tlbi vmalle1is
-    dsb sy
-    isb sy
-    ret lr
-
-# x0 - va_start
-# x1 - asid
-.global arch_tlb_invalidate_va
-.align 2
-arch_tlb_invalidate_va:
-    lsr x0, x0, #12
-    bfi x0, xzr, #48, #16
-    bfi x0, x1, #48, #16
-    tlbi vale1is, x0
-    dsb sy
-    isb sy
-    ret lr
-
-# x0 - asid
-.global arch_tlb_invalidate_asid
-.align 2
-arch_tlb_invalidate_asid:
-    mov x1, xzr
-    bfi x1, x0, #48, #16
-    tlbi aside1is, x1
-    dsb sy
-    isb sy
-    ret lr
-
-.global arch_mmu_is_4kb_granule_supported
-.align 2
-arch_mmu_is_4kb_granule_supported:
-    mrs x0, ID_AA64MMFR0_EL1
-    ubfx x0, x0, #28, #4
-    cmp x0, #0x0
-    csetm x0, eq
-    ret lr
-
-.global arch_mmu_is_16kb_granule_supported
-.align 2
-arch_mmu_is_16kb_granule_supported:
-    mrs x0, ID_AA64MMFR0_EL1
-    ubfx x0, x0, #20, #4
-    cmp x0, #0x1
-    csetm x0, eq
-    ret lr
-
-.global arch_mmu_is_64kb_granule_supported
-.align 2
-arch_mmu_is_64kb_granule_supported:
-    mrs x0, ID_AA64MMFR0_EL1
-    ubfx x0, x0, #24, #4
-    cmp x0, #0x0
-    csetm x0, eq
-    ret lr
-
-.global arch_mmu_is_enabled
-.align 2
-arch_mmu_is_enabled:
-    mrs x0, SCTLR_EL1
-    tst x0, #1
-    csetm x0, ne
-    ret lr
-
-// Enable the MMU
-// x0 - TTBR0
-// x1 - TTBR1
-// x2 - MAIR
-// x3 - Page Size
+# Enable the MMU
+# x0 - TTBR0
+# x1 - TTBR1
+# x2 - MAIR
+# x3 - Page Size
 .global arch_mmu_enable
 .align 2
 arch_mmu_enable:
@@ -82,7 +15,9 @@ arch_mmu_enable:
     mov fp, sp
 
     # Check if mmu is enabled and exit if so
-    bl arch_mmu_is_enabled
+    mrs x0, SCTLR_EL1
+    tst x0, #1
+    csetm x0, ne
     cbnz x0, _mmu_enable_exit
     ldp x2, x3, [sp, #32]
     ldp x0, x1, [sp, #48]
@@ -142,7 +77,9 @@ arch_mmu_enable:
     isb sy
 
     # Invalidate the TLB
-    bl arch_tlb_invalidate_all
+    tlbi vmalle1is
+    dsb sy
+    isb sy
 
 _mmu_enable_exit:
     ldp lr, fp, [sp], #16
@@ -180,18 +117,6 @@ _mmu_kernel_longjmp_loop:
 
 _mmu_kernel_longjmp_done:
     ldp fp, lr, [sp], #16
-    ret lr
-
-.global arch_mmu_get_ttbr1
-.align 2
-arch_mmu_get_ttbr1:
-    mrs x0, TTBR1_EL1
-    ret lr
-
-.global arch_mmu_get_ttbr0
-.align 2
-arch_mmu_get_ttbr0:
-    mrs x0, TTBR0_EL1
     ret lr
 
 # x0 - Translation Table Base address
@@ -254,17 +179,4 @@ arch_mmu_clear_ttbr0:
     msr DAIF, x2
     isb sy
 
-    ret lr
-
-# x0 - VA to translate
-.global arch_mmu_translate_va
-.align 2
-arch_mmu_translate_va:
-    at S1E1R, x0
-    mrs x1, PAR_EL1
-    ubfx x0, x1, #12, #36
-    lsl x0, x0, #12
-    mvn x2, xzr
-    tst x1, #1
-    csel x0, x0, x2, eq
     ret lr

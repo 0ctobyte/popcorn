@@ -69,8 +69,9 @@ kresult_t irq_clr(irq_id_t id) {
     return KRESULT_OK;
 }
 
-void irq_register_thread(irq_id_t id, struct proc_thread_s *thread) {
-    // FIXME Add thread to hash table keyed off ID
+kresult_t irq_thread_sleep(struct proc_thread_s *thread, irq_id_t id) {
+    // FIXME Add the thread to the event hash table; event is (irq_controller.data << 16) | id
+    return KRESULT_UNIMPLEMENTED;
 }
 
 #include <kernel/arch/arch_timer.h>

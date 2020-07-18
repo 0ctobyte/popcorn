@@ -11,6 +11,17 @@
 #define IS_SGI_OR_PPI(id)     ((id) < 32)
 #define IS_SPI(id)            ((id) < 1020 && (id) >= 32)
 
+irq_controller_dev_ops_t arm_gicv3_ops = {
+    .init = arm_gicv3_init,
+    .enable = arm_gicv3_enable_irq,
+    .disable = arm_gicv3_disable_irq,
+    .get_pending = arm_gicv3_get_pending_irq,
+    .ack = arm_gicv3_ack_irq,
+    .end = arm_gicv3_end_irq,
+    .done = arm_gicv3_done_irq,
+    .clr = arm_gicv3_clr_irq
+};
+
 static inline uint64_t mpidr_el1_r(void) {
     uint64_t v;
     asm ("mrs %0, MPIDR_EL1" : "=r" (v));

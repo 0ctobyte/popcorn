@@ -3,8 +3,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-
-extern unsigned long arch_umod(unsigned long n, unsigned long m);
+#include <kernel/arch/arch_asm.h>
 
 // Length sub specifiers
 #define _hh (0x1)

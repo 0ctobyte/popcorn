@@ -1,57 +1,6 @@
 # This file implements some basic functions that can only be implemented through assembly
 .text
 
-# Unsigned integer modulo
-# operand1 % operand2
-# r0 [in] - operand1
-# r1 [in] - operand2
-# r0 [out] - The modulo value
-.global arch_umod
-.align 2
-arch_umod:
-    udiv x2, x0, x1
-    msub x0, x2, x1, x0
-    ret lr
-
-# Count trailing zeros
-# Returns the number of trailing zeros
-.global arch_ctz
-.align 2
-arch_ctz:
-    rbit x0, x0
-    clz x0, x0
-    ret lr
-
-# Count leading zeros
-# Returns the number of leading zeros
-.global arch_clz
-.align 2
-arch_clz:
-    clz x0, x0
-    ret lr
-
-# Reverse bit order
-# Returns the 64-bit integer in reversed bit order
-.global arch_rbit
-.align 2
-arch_rbit:
-    rbit x0, x0
-    ret lr
-
-# Reverse byte order in a 32-bit word. Use to convert between big and little endian
-.global arch_rev32
-.align 2
-arch_rev32:
-    rev w0, w0
-    ret lr
-
-# Reverse byte order in a 64-bit word. Use to convert between big and little endian
-.global arch_rev64
-.align 2
-arch_rev64:
-    rev x0, x0
-    ret lr
-
 # Counts the number of bits set
 .global arch_popcnt
 .align 2

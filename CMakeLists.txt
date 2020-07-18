@@ -13,7 +13,7 @@ set(CMAKE_CXX_COMPILER aarch64-none-elf-g++)
 set(PLATFORM "qemu-virt" CACHE STRING "Select target platform")
 
 enable_language(ASM)
-set(linker_script ${CMAKE_SOURCE_DIR}/linker.ld)
+set(linker_script ${CMAKE_SOURCE_DIR}/kernel/arch/linker.ld)
 
 set(CMAKE_OBJCOPY aarch64-none-elf-objcopy)
 set(OC_FLAGS --target elf64-littleaarch64 -O binary)
@@ -41,10 +41,9 @@ add_custom_command(TARGET ${target} POST_BUILD
     COMMENT "Generating ${target_bin}"
 )
 
+include(platform/${PLATFORM}/CMakeConfig.txt)
+
 add_subdirectory(kernel)
 add_subdirectory(utils)
-add_subdirectory(platform/${PLATFORM})
-
-if(${PLATFORM} STREQUAL "qemu-virt")
-    add_subdirectory(devices/interrupt-controller/arm-gicv3)
-endif()
+add_subdirectory(platform)
+add_subdirectory(devices)

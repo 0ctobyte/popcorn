@@ -13,17 +13,6 @@
 
 arm_gicv3_t arm_gicv3;
 
-irq_controller_dev_ops_t arm_gicv3_ops = {
-    .init = arm_gicv3_init,
-    .enable = arm_gicv3_enable_irq,
-    .disable = arm_gicv3_disable_irq,
-    .get_pending = arm_gicv3_get_pending_irq,
-    .ack = arm_gicv3_ack_irq,
-    .end = arm_gicv3_end_irq,
-    .done = arm_gicv3_done_irq,
-    .clr = arm_gicv3_clr_irq
-};
-
 void platform_irq_init(irq_controller_dev_t *irq_controller) {
     arm_gicv3.gicd_base = max_kernel_virtual_end + GICD_BASE;
     for (size_t offset = 0; offset < GICD_SIZE; offset += PAGESIZE) {

@@ -4,23 +4,68 @@
 #include <sys/types.h>
 
 // Unsigned integer modulo
-unsigned long arch_umod(unsigned long n, unsigned long m);
+#define arch_umod(n, m)\
+({\
+    unsigned long result = 0;\
+    asm inline ("udiv x2, %1, %2\n"\
+                "msub %0, x2, %2, %1\n"\
+                : "=r" (result)\
+                : "r" (n), "r" (m)\
+                : "x2");\
+    result;\
+})
 
 // Count trailing zeros
 // Returns the # of continuous zeroes from the least significant bit
-unsigned long arch_ctz(unsigned long n);
+#define arch_ctz(n)\
+({\
+    unsigned long result = 0;\
+    asm inline ("rbit %0, %1\n"\
+                "clz %0, %0\n"\
+                : "+r" (result)\
+                : "r" (n));\
+    result;\
+})
 
 // Count leading zeros
 // Returns the # of continuous zeros from the most significant bit
-unsigned long arch_clz(unsigned long n);
+#define arch_clz(n)\
+({\
+    unsigned long result = 0;\
+    asm inline ("clz %0, %1\n"\
+                : "=r" (result)\
+                : "r" (n));\
+    result;\
+})
 
 // Reverse bits
 // Reverses the bit order on the 32-bit integer
-unsigned long arch_rbit(unsigned long n);
+#define arch_rbit(n)\
+({\
+    unsigned long result = 0;\
+    asm inline ("rbit %0, %1\n"\
+                : "=r" (result)\
+                : "r" (n));\
+    result;\
+})
 
 // Reverse byte order in a 32-bit or 64-bit word. Use to convert between big and little endian
-unsigned long arch_rev32(unsigned long n);
-unsigned long arch_rev64(unsigned long n);
+#define arch_rev32(n)\
+({\
+    unsigned long result = 0;\
+    asm inline ("rev %w0, %w1\n"\
+                : "=r" (result)\
+                : "r" (n));\
+    result;\
+})
+#define arch_rev64(n)\
+({\
+    unsigned long result = 0;\
+    asm inline ("rev %0, %1\n"\
+                : "=r" (result)\
+                : "r" (n));\
+    result;\
+})
 
 // Counts the number of bits set
 unsigned long arch_popcnt(unsigned long n);
