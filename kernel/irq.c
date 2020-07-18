@@ -82,7 +82,7 @@ void irq_handler(void) {
 
     // FIXME Wake thread from hash table to run with interrupt priority
     extern void kprintf(const char *fmt, ...);
-    kprintf("id = %u\n", id);
+    kprintf("%f\n", arch_timer_get_secs());
 
     arch_timer_start_secs(1);
 
