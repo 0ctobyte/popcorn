@@ -121,6 +121,14 @@ uint32_t fdt_next_data_from_prop(fdt_prop_t *prop, unsigned int *data_offset) {
     return data;
 }
 
+uint64_t fdt_next_data_cells_from_prop(fdt_prop_t *prop, unsigned int *data_offset, unsigned int num_cells) {
+    uint64_t data = 0;
+    for (unsigned int i = 0; i < num_cells; i++) {
+        data = (data << 32) | fdt_next_data_from_prop(prop, data_offset);
+    }
+    return data;
+}
+
 const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_offset) {
     if (arch_rev32(prop->token) != FDT_PROP || fdt_get_len_from_prop(prop) == 0) {
         *string_offset = 0;
@@ -158,11 +166,12 @@ unsigned int fdt_next_node(fdt_header_t *fdth, unsigned int offset) {
         else if (token == FDT_END_NODE) subnode_depth--;
     }
 
-    // We've found the matching end node token. Get the next token which should hopefully be a begin node token
-    // If it is not, then we've reached the end of the parent node which means there is no next node in this sub-tree;
-    // return 0
-    token = _fdt_next_token(fdth, &offset);
-    return (token != FDT_BEGIN_NODE) ? 0 : offset;
+    // We've found the matching end node token for the previous node. Find the next begin node token
+    for (token = _fdt_next_token(fdth, &offset); token != FDT_BEGIN_NODE; token = _fdt_next_token(fdth, &offset)) {
+        if (token == FDT_END || token == FDT_INVALID) return 0;
+    }
+
+    return offset;
 }
 
 unsigned int fdt_next_subnode(fdt_header_t *fdth, unsigned int offset) {
@@ -207,6 +216,33 @@ unsigned int fdt_get_node(fdt_header_t *fdth, const char *path) {
         // If any point during the search we can't find a node, then return 0
         if (offset == 0) return 0;
     } while (subpath != NULL);
+
+    return offset;
+}
+
+unsigned int fdt_get_node_from_phandle(fdt_header_t *fdth, int phandle) {
+    if (arch_rev32(fdth->magic) != FDT_MAGIC) return 0;
+
+    unsigned int offset = arch_rev32(fdth->off_dt_struct);
+
+    do {
+        // Check the phandle property
+        unsigned int prop = fdt_get_prop(fdth, offset, "phandle");
+        if (prop != 0) {
+            unsigned int data_offset = 0;
+            int ph = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &data_offset);
+
+            if (ph == phandle) return offset;
+        }
+
+        // Get the next sub node. If there is no next subnode then get the next node
+        unsigned int next_offset = fdt_next_subnode(fdth, offset);
+        if (next_offset == 0) {
+            offset = fdt_next_node(fdth, offset);
+        } else {
+            offset = next_offset;
+        }
+    } while (offset != 0);
 
     return offset;
 }

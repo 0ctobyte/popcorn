@@ -50,11 +50,7 @@ int arm_pl011_write(void *data, const char *src, size_t count) {
 
         // Output a carriage return after a newline
         if (src[i] == '\n') {
-            // Check if transmit FIFO is full again
-            if (G_UARTFR_TXFF(uartfr_read(pl011->uart_base)) != 0) {
-                return i;
-            }
-
+            while (G_UARTFR_TXFF(uartfr_read(pl011->uart_base)) != 0);
             uartdr_write(pl011->uart_base, F_UARTDR_DATA('\r'));
         }
     }

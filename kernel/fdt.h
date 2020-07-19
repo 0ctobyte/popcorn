@@ -47,6 +47,10 @@ uint32_t fdt_get_len_from_prop(fdt_prop_t *prop);
 uint32_t fdt_next_data_from_prop(fdt_prop_t *prop, unsigned int *data_offset);
 const char* fdt_next_string_from_prop(fdt_prop_t *prop, unsigned int *string_offset);
 
+// Iterate through the property data returning a group of cells specified by num_cells rather than one cell at at time
+// The return value is 64-bits so this function only returns the last 2 cells of the data value
+uint64_t fdt_next_data_cells_from_prop(fdt_prop_t *prop, unsigned int *data_offset, unsigned int num_cells);
+
 // Get's the node/prop/rsv at the specified offset
 fdt_node_t* fdt_get_node_from_offset(fdt_header_t *fdth, unsigned int offset);
 fdt_prop_t* fdt_get_prop_from_offset(fdt_header_t *fdth, unsigned int offset);
@@ -60,7 +64,10 @@ unsigned int fdt_next_prop(fdt_header_t *fdth, unsigned int offset);
 
 // Search for the node with the specified path. If unit addresses are provided in the path it will search
 // for the unique node otherwise it will stop after the finding the first matching node
-unsigned int fdt_get_node(fdt_header_t *fdth, const char *name);
+unsigned int fdt_get_node(fdt_header_t *fdth, const char *path);
+
+// Searches for the node with the matching phandle
+unsigned int fdt_get_node_from_phandle(fdt_header_t *fdth, int phandle);
 
 // Returns the offset to the root node
 unsigned int fdt_get_root_node(fdt_header_t *fdth);

@@ -43,10 +43,12 @@ typedef struct {
 typedef struct {
     void *data;                    // Device specific data
     irq_id_t spurious_id;          // The ID of the spurious interrupt
+    irq_id_t timer_id;             // The timer interrupt ID
     irq_controller_dev_ops_t *ops; // Device operations
 } irq_controller_dev_t;
 
 #define IRQ_SPURIOUS_ID (irq_controller.spurious_id)
+#define IRQ_TIMER_ID    (irq_controller.timer_id)
 
 // Initialized by platform code
 extern irq_controller_dev_t irq_controller;

@@ -88,14 +88,14 @@ void kmain(void) {
     }
 
     // Early initialization of the platform/board
-    platform_early_init();
+    platform_early_init(fdt_header);
 
     vm_init();
 
     // Update FDT header virtual address
     fdt_header = (fdt_header_t*)(kernel_virtual_start + fdth_offset);
 
-    platform_init();
+    platform_init(fdt_header);
     serial_init();
 
     kprintf("serial_init() - done!\n");

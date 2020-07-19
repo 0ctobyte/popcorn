@@ -1,5 +1,4 @@
 #include <kernel/irq_types.h>
-#include <kernel/fdt.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <devices/serial/bcm2387-miniuart/bcm2387_miniuart.h>
@@ -11,10 +10,10 @@
 
 bcm2387_miniuart_t bcm2387_miniuart;
 
-void platform_early_init(void) {
+void platform_early_init(fdt_header_t *fdth) {
 }
 
-void platform_init(void) {
+void platform_init(fdt_header_t *fdth) {
     bcm2387_miniuart.uart_base = max_kernel_virtual_end + MU_BASE;
 
     uintptr_t mu_base = MU_BASE & ~(PAGESIZE - 1);
