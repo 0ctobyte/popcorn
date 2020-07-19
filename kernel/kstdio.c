@@ -1,12 +1,17 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <kernel/kresult.h>
 #include <kernel/serial.h>
 #include <kernel/kstdio.h>
 
 int kputs(const char *s) {
-    size_t len = strlen(s);
-    serial_write(s, len);
+    size_t len = strlen(s), count = len;
+    kresult_t res;
+
+    do {
+        res = serial_write(s, &count);
+    } while (res = KRESULT_OK && count < len);
 
     return 0;
 }

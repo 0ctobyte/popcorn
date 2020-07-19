@@ -8,10 +8,12 @@ typedef struct {
     void (*init)(void*);
 
     // Writes the given number of characters to the serial device
-    void (*write)(void*, const char*, size_t);
+    // Returns the number of consecutive characters written
+    int (*write)(void*, const char*, size_t);
 
     // Reads the given number of characters from the serial device
-    void (*read)(void*, char*, size_t);
+    // Returns the number of characters read
+    int (*read)(void*, char*, size_t);
 } serial_dev_ops_t;
 
 typedef struct {

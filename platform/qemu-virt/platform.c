@@ -9,6 +9,7 @@
 
 #define UART0_BASE (0x09000000)
 #define UART0_SIZE (0x1000)
+#define UART0_CLOCK_FREQUENCY (24000000.0)
 
 #define GICD_BASE (0x08000000)
 #define GICD_SIZE (0x10000)
@@ -29,6 +30,13 @@ void platform_init(void) {
         pmap_kenter_pa(arm_pl011.uart_base + offset, UART0_BASE + offset, VM_PROT_DEFAULT,
             PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     }
+
+    arm_pl011.uart_clock = UART0_CLOCK_FREQUENCY;
+    arm_pl011.baud = ARM_PL011_BAUD_115200;
+    arm_pl011.cbits = ARM_PL011_CBITS_8;
+    arm_pl011.two_stop_bits = false;
+    arm_pl011.even_parity = false;
+    arm_pl011.enable_parity = false;
 
     serial_dev.data = (void*)&arm_pl011;
     serial_dev.ops = &arm_pl011_ops;

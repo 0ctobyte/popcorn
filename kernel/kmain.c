@@ -95,13 +95,13 @@ void kmain(void) {
     // Update FDT header virtual address
     fdt_header = (fdt_header_t*)(kernel_virtual_start + fdth_offset);
 
-    kprintf("vm_init() - done!\n");
-
     platform_init();
+    serial_init();
+
+    kprintf("serial_init() - done!\n");
     kprintf("platform_init() - done!\n");
 
-    serial_init();
-    kprintf("serial_init() - done!\n");
+    kprintf("vm_init() - done!\n");
 
     proc_init();
     kprintf("proc_init() - done!\n");
