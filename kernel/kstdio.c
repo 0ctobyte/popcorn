@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <kernel/kresult.h>
-#include <kernel/serial.h>
+#include <kernel/console.h>
 #include <kernel/kstdio.h>
 
 int kputs(const char *s) {
@@ -10,7 +10,7 @@ int kputs(const char *s) {
     kresult_t res;
 
     do {
-        res = serial_write(s, &count);
+        res = console_write(s, &count);
     } while (res = KRESULT_OK && count < len);
 
     return 0;

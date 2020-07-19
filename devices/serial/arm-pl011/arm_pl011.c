@@ -1,7 +1,7 @@
 #include "arm_pl011_if.h"
 #include "arm_pl011.h"
 
-serial_dev_ops_t arm_pl011_ops = {
+console_dev_ops_t arm_pl011_ops = {
     .init = arm_pl011_init,
     .write = arm_pl011_write,
     .read = arm_pl011_read

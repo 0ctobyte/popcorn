@@ -1,5 +1,3 @@
-#include <kernel/irq_types.h>
-#include <kernel/serial_types.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/panic.h>
@@ -16,7 +14,7 @@ typedef struct {
     int size_cells;
 } platform_fdt_info_t;
 
-bool _platform_init_serial(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
+bool _platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     // Check if there is a /chosen node with the stdout-path property
     unsigned int node = fdt_get_node(fdth, "/chosen");
     unsigned int prop = fdt_get_prop(fdth, node, "stdout-path");
@@ -28,9 +26,7 @@ bool _platform_init_serial(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     offset = 0;
     const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    if (strcmp("arm,pl011", compatible) != 0) {
-        panic("platform_init_serial: Unsupported serial device");
-    }
+    if (strcmp("arm,pl011", compatible) != 0) return false;
 
     // Get the uart base address and size
     prop = fdt_get_prop(fdth, node, "reg");
@@ -62,8 +58,8 @@ bool _platform_init_serial(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     arm_pl011.even_parity = false;
     arm_pl011.enable_parity = false;
 
-    serial_dev.data = (void*)&arm_pl011;
-    serial_dev.ops = &arm_pl011_ops;
+    console_dev.data = (void*)&arm_pl011;
+    console_dev.ops = &arm_pl011_ops;
 
     return true;
 }
@@ -166,7 +162,7 @@ void platform_init(fdt_header_t *fdth) {
     offset = 0;
     fdt_info.size_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    _platform_init_serial(fdth, &fdt_info);
+    _platform_init_console(fdth, &fdt_info);
 
     if (!_platform_init_irq(fdth, &fdt_info)) {
         panic("platform: Failed to initialize interrupt controller");

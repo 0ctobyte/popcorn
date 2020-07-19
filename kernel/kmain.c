@@ -4,7 +4,7 @@
 #include <kernel/fdt.h>
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
-#include <kernel/serial.h>
+#include <kernel/console.h>
 #include <kernel/irq.h>
 #include <kernel/arch/arch_exceptions.h>
 #include <kernel/arch/arch_timer.h>
@@ -96,9 +96,9 @@ void kmain(void) {
     fdt_header = (fdt_header_t*)(kernel_virtual_start + fdth_offset);
 
     platform_init(fdt_header);
-    serial_init();
+    console_init();
 
-    kprintf("serial_init() - done!\n");
+    kprintf("console_init() - done!\n");
     kprintf("platform_init() - done!\n");
 
     kprintf("vm_init() - done!\n");

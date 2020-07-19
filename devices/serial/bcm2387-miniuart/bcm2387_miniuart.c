@@ -8,7 +8,7 @@
 #define REG_RD32(R) (*((uint32_t*)(R)))
 #define REG_WR32(R, V) *((uint32_t*)(R)) = (V)
 
-serial_dev_ops_t bcm2387_miniuart_ops = {
+console_dev_ops_t bcm2387_miniuart_ops = {
     .init = bcm2387_miniuart_init,
     .write = bcm2387_miniuart_write,
     .read = bcm2387_miniuart_read

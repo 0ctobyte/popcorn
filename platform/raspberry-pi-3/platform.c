@@ -1,4 +1,3 @@
-#include <kernel/irq_types.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <devices/serial/bcm2387-miniuart/bcm2387_miniuart.h>
@@ -23,6 +22,6 @@ void platform_init(fdt_header_t *fdth) {
             PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     }
 
-    serial_dev.data = (void*)&bcm2387_miniuart;
-    serial_dev.ops = &bcm2387_miniuart_ops;
+    console_dev.data = (void*)&bcm2387_miniuart;
+    console_dev.ops = &bcm2387_miniuart_ops;
 }

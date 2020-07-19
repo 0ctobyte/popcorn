@@ -2,7 +2,7 @@
 #define _ARM_PL011_H_
 
 #include <sys/types.h>
-#include <kernel/serial_types.h>
+#include <kernel/console_types.h>
 
 typedef enum {
     ARM_PL011_CBITS_5 = 0,
@@ -36,7 +36,7 @@ typedef struct {
     bool enable_parity;      // Enable parity bit and checking
 } arm_pl011_t;
 
-extern serial_dev_ops_t arm_pl011_ops;
+extern console_dev_ops_t arm_pl011_ops;
 
 void arm_pl011_init(void *data);
 int arm_pl011_write(void *data, const char *src, size_t count);
