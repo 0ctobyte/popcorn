@@ -1,6 +1,8 @@
 #ifndef _IRQ_TYPES_H_
 #define _IRQ_TYPES_H_
 
+#include <sys/types.h>
+
 typedef uint8_t irq_priority_t;
 typedef uint16_t irq_id_t;
 
@@ -37,5 +39,16 @@ typedef struct {
     // Clears the pending interrupt
     void (*clr)(void*, irq_id_t);
 } irq_controller_dev_ops_t;
+
+typedef struct {
+    void *data;                    // Device specific data
+    irq_id_t spurious_id;          // The ID of the spurious interrupt
+    irq_controller_dev_ops_t *ops; // Device operations
+} irq_controller_dev_t;
+
+#define IRQ_SPURIOUS_ID (irq_controller.spurious_id)
+
+// Initialized by platform code
+extern irq_controller_dev_t irq_controller;
 
 #endif // _IRQ_TYPES_H_

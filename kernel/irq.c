@@ -4,11 +4,8 @@
 
 irq_controller_dev_t irq_controller;
 
-extern void platform_irq_init(irq_controller_dev_t *irq_controller);
-
 void irq_init(void) {
-    platform_irq_init(&irq_controller);
-
+    // The irq_controller data structure should be intialized by platform code earlier
     kassert(irq_controller.ops != NULL && irq_controller.ops->init != NULL);
     irq_controller.ops->init(irq_controller.data);
 

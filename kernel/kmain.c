@@ -4,6 +4,7 @@
 #include <kernel/fdt.h>
 #include <kernel/devicetree.h>
 #include <kernel/rbtree.h>
+#include <kernel/serial.h>
 #include <kernel/irq.h>
 #include <kernel/arch/arch_exceptions.h>
 #include <kernel/arch/arch_timer.h>
@@ -16,6 +17,7 @@
 #include <kernel/proc/proc_thread.h>
 #include <kernel/vfs/vfs_mount.h>
 #include <kernel/vfs/vfs_node.h>
+#include <platform/platform.h>
 
 extern paddr_t kernel_physical_start;
 extern paddr_t kernel_physical_end;
@@ -85,36 +87,29 @@ void kmain(void) {
         fdt_header = (fdt_header_t*)(kernel_physical_start + fdth_offset);
     }
 
-    kprintf("Hello World\n");
+    // Early initialization of the platform/board
+    platform_early_init();
 
     vm_init();
-
-    // FIXME switching UART to VA address
-    extern unsigned long uart_base_addr;
-    vaddr_t uart_base_va = 0xFFFFFFFFC0000000;
-    pmap_kenter_pa(uart_base_va, uart_base_addr & ~(PAGESIZE - 1), VM_PROT_DEFAULT,
-        PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
-    uart_base_addr = uart_base_va + (uart_base_addr & (PAGESIZE - 1));
 
     // Update FDT header virtual address
     fdt_header = (fdt_header_t*)(kernel_virtual_start + fdth_offset);
 
     kprintf("vm_init() - done!\n");
 
-    proc_init();
+    platform_init();
+    kprintf("platform_init() - done!\n");
 
+    serial_init();
+    kprintf("serial_init() - done!\n");
+
+    proc_init();
     kprintf("proc_init() - done!\n");
 
-    kprintf("timer freq = %u\n", arch_timer_get_freq());
     irq_init();
-
     kprintf("irq_init() - done!\n");
 
-    extern void platform_timer_init(void);
-    platform_timer_init();
     arch_timer_start_secs(1);
-
-    kprintf("timer_init() - done!\n");
 
     proc_thread_t *thread;
     kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);

@@ -16,6 +16,7 @@ target_sources(${target}
         ${CMAKE_CURRENT_SOURCE_DIR}/lock
         ${CMAKE_CURRENT_SOURCE_DIR}/panic
         ${CMAKE_CURRENT_SOURCE_DIR}/rbtree
+        ${CMAKE_CURRENT_SOURCE_DIR}/serial
         ${CMAKE_CURRENT_SOURCE_DIR}/slab
         ${CMAKE_CURRENT_SOURCE_DIR}/spinlock
 )

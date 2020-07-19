@@ -1,8 +1,8 @@
 #ifndef _IRQ_H_
 #define _IRQ_H_
 
-#include <sys/types.h>
 #include <kernel/kresult.h>
+#include <kernel/irq_types.h>
 
 /* irq - This module provides a common generic interface to a variety of interrupt controller devices
  * Each supported platform shall initialize the irq_controller struct with the appropriate device specific data
@@ -10,16 +10,6 @@
  * enable, disable, ack and end shall be supported. Some assumptions made here: the number of priority levels, the
  * number of IRQ IDs and the IRQ "types".
  */
-
-#include <kernel/irq_types.h>
-
-typedef struct {
-    void *data;                    // Device specific data
-    irq_id_t spurious_id;          // The ID of the spurious interrupt
-    irq_controller_dev_ops_t *ops; // Device operations
-} irq_controller_dev_t;
-
-#define IRQ_SPURIOUS_ID (irq_controller.spurious_id)
 
 struct proc_thread_s;
 

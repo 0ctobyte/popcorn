@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <kernel/arch/arch_asm.h>
 
 // Length sub specifiers
 #define _hh (0x1)
@@ -93,7 +92,7 @@ char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
 
     int i = 0;
     while(num != 0) {
-        unsigned long R = arch_umod(num, base);
+        unsigned long R = num % base;
         num = num / base;
         tmp[i++] = (upcase) ? upper[R] : lower[R];
     }
