@@ -75,9 +75,7 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
     offset = 0;
     const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    if (strcmp("arm,gic-v3", compatible) != 0) {
-        panic("qemu_virt_platform_init_irq: Unsupported interrupt controller");
-    }
+    if (strcmp("arm,gic-v3", compatible) != 0) return false;
 
     // Get the GICD base address and size
     prop = fdt_get_prop(fdth, node, "reg");
@@ -112,9 +110,7 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
     offset = 0;
 
     compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
-    if (strcmp("arm,armv8-timer", compatible) != 0 && strcmp("arm,armv7-timer", compatible) != 0) {
-        panic("qemu_virt_platform_init_irq: Unsupported interrupt controller");
-    }
+    if (strcmp("arm,armv8-timer", compatible) != 0 && strcmp("arm,armv7-timer", compatible) != 0) return false;
 
     prop = fdt_get_prop(fdth, node, "interrupts");
     p_prop = fdt_get_prop_from_offset(fdth, prop);
@@ -124,11 +120,14 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
     int int_id = 0;
     int int_trigger_type = 0;
 
-    do {
+    // The interrupt cells are layed out in this order:
+    // Secure timer, non-secure timer, virtual timer and hypervisor timer
+    // Get the third interrupt cell for the non-secure physical timer
+    for (int i = 0; i < 2; i++) {
         int_type = fdt_next_data_from_prop(p_prop, &offset);
         int_id = fdt_next_data_from_prop(p_prop, &offset);
         int_trigger_type = fdt_next_data_from_prop(p_prop, &offset);
-    } while (int_id != 14);
+    }
 
     // Enable the timer interrupt
     irq_controller.timer_id = ((int_type == 1) ? 16 : 32) + int_id;
