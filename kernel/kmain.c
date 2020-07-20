@@ -98,7 +98,7 @@ void kmain(void) {
 
     kprintf("vm_init() - done!\n");
 
-    fdt_dump(fdt_header);
+    //fdt_dump(fdt_header);
 
     proc_init();
     kprintf("proc_init() - done!\n");
