@@ -1,2 +1,0 @@
-set(PLATFORM_INTERRUPT_CONTROLLER "arm-gicv3")
-set(PLATFORM_SERIAL "arm-pl011")

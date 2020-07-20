@@ -199,9 +199,6 @@ typedef struct {
 #define BLOCK_SIZE                             (1l << (PAGESHIFT + PAGESHIFT - 3l))
 #define IS_BLOCK_ALIGNED(addr)                 (((long)(addr) & (BLOCK_SIZE - 1l)) == 0)
 
-#define KVA_TO_PA(kva)                         (((kva) - kernel_virtual_start) + kernel_physical_start)
-#define PA_TO_KVA(pa)                          (((pa) - kernel_physical_start) + kernel_virtual_start)
-
 #define PTE_TO_PA(pte)                         (((pte) & 0xffffffffffff) & -(PAGESIZE))
 #define PA_TO_PTE(pa)                          PTE_TO_PA(pa)
 #define TABLE_PA_TO_KVA(table_pa)              PA_TO_KVA(table_pa)

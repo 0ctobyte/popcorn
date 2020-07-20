@@ -9,10 +9,7 @@
 
 bcm2385_aux_uart_t bcm2385_aux_uart;
 
-void platform_early_init(fdt_header_t *fdth) {
-}
-
-void platform_init(fdt_header_t *fdth) {
+void raspberry_pi_3_platform_init(fdt_header_t *fdth) {
     bcm2385_aux_uart.uart_base = max_kernel_virtual_end + MU_BASE;
 
     uintptr_t mu_base = MU_BASE & ~(PAGESIZE - 1);

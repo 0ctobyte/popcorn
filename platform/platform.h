@@ -3,9 +3,6 @@
 
 #include <kernel/fdt.h>
 
-// This is invoked before the virtual memory system is setup
-void platform_early_init(fdt_header_t *fdth);
-
 // This is invoked for further initialization after the virtual memory system is setup
 void platform_init(fdt_header_t *fdth);
 

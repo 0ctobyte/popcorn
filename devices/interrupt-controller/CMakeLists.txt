@@ -1,1 +1,1 @@
-add_subdirectory(${PLATFORM_INTERRUPT_CONTROLLER})
+add_subdirectory(arm-gicv3)

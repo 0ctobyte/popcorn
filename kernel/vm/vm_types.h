@@ -12,13 +12,19 @@ extern unsigned long PAGESHIFT;
 #define IS_PAGE_ALIGNED(addr)       (((long)(addr) & ((long)(PAGESIZE) - 1l)) == 0)
 #define ROUND_PAGE_DOWN(addr)       ((long)(addr) & ~((long)((PAGESIZE) - 1l)))
 #define ROUND_PAGE_UP(addr)         (IS_PAGE_ALIGNED(addr) ? (long)(addr) : ROUND_PAGE_DOWN(addr) + (long)(PAGESIZE))
+#define KVA_TO_PA(kva)              (((kva) - kernel_virtual_start) + kernel_physical_start)
+#define PA_TO_KVA(pa)               (((pa) - kernel_physical_start) + kernel_virtual_start)
 
 // Virtual address
 typedef uintptr_t vaddr_t;
 extern vaddr_t max_kernel_virtual_end;
+extern vaddr_t kernel_virtual_start;
+extern vaddr_t kernel_virtual_end;
 
 // Physical address
 typedef uintptr_t paddr_t;
+extern vaddr_t kernel_physical_start;
+extern vaddr_t kernel_physical_end;
 
 typedef unsigned long vm_offset_t;
 

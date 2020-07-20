@@ -14,7 +14,7 @@ typedef struct {
     int size_cells;
 } platform_fdt_info_t;
 
-bool _platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
+bool _qemu_virt_platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     // Check if there is a /chosen node with the stdout-path property
     unsigned int node = fdt_get_node(fdth, "/chosen");
     unsigned int prop = fdt_get_prop(fdth, node, "stdout-path");
@@ -64,7 +64,7 @@ bool _platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     return true;
 }
 
-bool _platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
+bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     unsigned int node = fdt_get_root_node(fdth);
     unsigned int prop = fdt_get_prop(fdth, node, "interrupt-parent");
     unsigned int offset = 0;
@@ -76,7 +76,7 @@ bool _platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
     if (strcmp("arm,gic-v3", compatible) != 0) {
-        panic("platform_init_irq: Unsupported interrupt controller");
+        panic("qemu_virt_platform_init_irq: Unsupported interrupt controller");
     }
 
     // Get the GICD base address and size
@@ -113,7 +113,7 @@ bool _platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
 
     compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
     if (strcmp("arm,armv8-timer", compatible) != 0 && strcmp("arm,armv7-timer", compatible) != 0) {
-        panic("platform_init_irq: Unsupported interrupt controller");
+        panic("qemu_virt_platform_init_irq: Unsupported interrupt controller");
     }
 
     prop = fdt_get_prop(fdth, node, "interrupts");
@@ -138,19 +138,7 @@ bool _platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
     return true;
 }
 
-void platform_early_init(fdt_header_t *fdth) {
-    // Make sure we're running on the right platform
-    unsigned int root = fdt_get_root_node(fdth);
-    unsigned int prop = fdt_get_prop(fdth, root, "compatible");
-    unsigned int offset = 0;
-
-    const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
-    if (strcmp("linux,dummy-virt", compatible) != 0) {
-        panic("Wrong platform!");
-    }
-}
-
-void platform_init(fdt_header_t *fdth) {
+void qemu_virt_platform_init(fdt_header_t *fdth) {
     // Get # of address and size cells
     platform_fdt_info_t fdt_info;
     unsigned int root = fdt_get_root_node(fdth);
@@ -162,9 +150,9 @@ void platform_init(fdt_header_t *fdth) {
     offset = 0;
     fdt_info.size_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    _platform_init_console(fdth, &fdt_info);
+    _qemu_virt_platform_init_console(fdth, &fdt_info);
 
-    if (!_platform_init_irq(fdth, &fdt_info)) {
-        panic("platform: Failed to initialize interrupt controller");
+    if (!_qemu_virt_platform_init_irq(fdth, &fdt_info)) {
+        panic("qemu_virt_platform: Failed to initialize interrupt controller");
     }
 }

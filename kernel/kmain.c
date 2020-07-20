@@ -8,6 +8,7 @@
 #include <kernel/irq.h>
 #include <kernel/arch/arch_exceptions.h>
 #include <kernel/arch/arch_timer.h>
+#include <kernel/vm/vm_types.h>
 #include <kernel/vm/vm_init.h>
 #include <kernel/vm/vm_map.h>
 #include <kernel/vm/vm_object.h>
@@ -19,9 +20,6 @@
 #include <kernel/vfs/vfs_node.h>
 #include <platform/platform.h>
 
-extern paddr_t kernel_physical_start;
-extern paddr_t kernel_physical_end;
-extern vaddr_t kernel_virtual_start;
 extern fdt_header_t *fdt_header;
 
 extern void _relocate(unsigned long dst, unsigned long src, size_t size);
@@ -86,9 +84,6 @@ void kmain(void) {
         kernel_physical_end = kernel_physical_start + kernel_size;
         fdt_header = (fdt_header_t*)(kernel_physical_start + fdth_offset);
     }
-
-    // Early initialization of the platform/board
-    platform_early_init(fdt_header);
 
     vm_init();
 
