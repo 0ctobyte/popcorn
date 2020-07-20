@@ -4,8 +4,9 @@
 #include <platform/platform_table.h>
 #include <platform/platform.h>
 
+const platform_table_entry_t platform_table[PLATFORM_TABLE_SIZE] = PLATFORM_TABLE;
+
 void platform_init(fdt_header_t *fdth) {
-    const platform_table_entry_t platform_table[PLATFORM_TABLE_SIZE] = PLATFORM_TABLE;
     const platform_table_entry_t *platform_entry = NULL;
 
     // Make sure we're running on the right platform
