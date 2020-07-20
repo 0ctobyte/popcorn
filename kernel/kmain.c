@@ -98,6 +98,8 @@ void kmain(void) {
 
     kprintf("vm_init() - done!\n");
 
+    //fdt_dump(fdt_header);
+
     proc_init();
     kprintf("proc_init() - done!\n");
 
@@ -119,6 +121,4 @@ void kmain(void) {
     kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
 
     // print_mappings();
-
-    // fdt_dump(fdt_header);
 }

@@ -30,8 +30,8 @@ bool _qemu_virt_platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *f
 
     // Get the uart base address and size
     prop = fdt_get_prop(fdth, node, "reg");
-    offset = 0;
     fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
+    offset = 0;
     uint64_t uart_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
     uint64_t uart_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
