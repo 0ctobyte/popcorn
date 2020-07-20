@@ -1,12 +1,5 @@
+#include "bcm2385_aux_uart_if.h"
 #include "bcm2385_aux_uart.h"
-
-#define O_MU_IO   (0x00)
-#define O_MU_LSR  (0x14)
-#define O_MU_STAT (0x24)
-#define O_MU_IIR  (0x08)
-
-#define REG_RD32(R) (*((uint32_t*)(R)))
-#define REG_WR32(R, V) *((uint32_t*)(R)) = (V)
 
 console_dev_ops_t bcm2385_aux_uart_ops = {
     .init = bcm2385_aux_uart_init,
@@ -22,19 +15,33 @@ int bcm2385_aux_uart_write(void *data, const char *src, size_t count) {
 
     for (size_t i = 0; i < count; i++) {
         // Check if transmit FIFO is full
-        if ((REG_RD32(miniuart->uart_base + O_MU_LSR) & (1 << 5)) == 0) {
+        if (G_AUX_MU_STAT_REG_SPACE_AVAILABLE(aux_mu_stat_reg_read(miniuart->uart_base)) == 0) {
             return i;
         }
 
-        REG_WR32(miniuart->uart_base + O_MU_IO, src[i]);
+        aux_mu_io_reg_write(miniuart->uart_base, F_AUX_MU_IO_REG_DATA(src[i]));
 
         // Output a carriage return after a newline
         if (src[i] == '\n') {
-            while ((REG_RD32(miniuart->uart_base + O_MU_LSR) & (1 << 5)) == 0);
-            REG_WR32(miniuart->uart_base + O_MU_IO, '\r');
+            while (G_AUX_MU_STAT_REG_SPACE_AVAILABLE(aux_mu_stat_reg_read(miniuart->uart_base)) == 0);
+            aux_mu_io_reg_write(miniuart->uart_base, F_AUX_MU_IO_REG_DATA('\r'));
         }
     }
+
+    return count;
 }
 
 int bcm2385_aux_uart_read(void *data, char *dst, size_t count) {
+    bcm2385_aux_uart_t *miniuart = (bcm2385_aux_uart_t*)data;
+
+    for (size_t i = 0; i < count; i++) {
+        // Check if receive FIFO is empty
+        if (G_AUX_MU_STAT_REG_SYMBOL_AVAILABLE(aux_mu_stat_reg_read(miniuart->uart_base)) == 0) {
+            return i;
+        }
+
+        dst[i] = G_AUX_MU_IO_REG_DATA(aux_mu_io_reg_read(miniuart->uart_base));
+    }
+
+    return count;
 }

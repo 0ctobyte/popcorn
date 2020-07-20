@@ -5,8 +5,6 @@
 #include <platform/platform.h>
 
 //#define R_UART0_BASE (0x3F201000) // Raspberry Pi 3 UART0
-#define MU_BASE (0x3f215040)
-#define MU_SIZE (0x1000)
 
 bcm2385_aux_uart_t bcm2385_aux_uart;
 
@@ -47,20 +45,10 @@ bool _raspberry_pi_3_platform_init_console(fdt_header_t *fdth, platform_fdt_info
 
     if (strcmp("brcm,bcm2835-aux-uart", compatible) != 0) return false;
 
-    // Get the uart base address
-    prop = fdt_get_prop(fdth, node, "reg");
-    p_prop = fdt_get_prop_from_offset(fdth, prop);
-    offset = 0;
-    uint64_t uart_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-    uart_base = (uart_base - fdt_info->remap[0]) + fdt_info->remap[1];
-
-    // Get the uart base clock frequency
-    node = fdt_get_node(fdth, "/clocks/clk-osc");
-    prop = fdt_get_prop(fdth, node, "clock-frequency");
-    offset = 0;
-    uint64_t uart_clock = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
-
-    bcm2385_aux_uart.uart_base = max_kernel_virtual_end + uart_base;
+    // The aux miniuart is part of a larger auxillary peripherals block; use the base address of that block
+    bcm2385_aux_uart.uart_base = max_kernel_virtual_end + aux_base;
+    bcm2385_aux_uart.cbits = BCM2385_AUX_UART_CBITS_8;
+    bcm2385_aux_uart.baud = BCM2385_AUX_UART_BAUD_115200;
 
     console_dev.data = (void*)&bcm2385_aux_uart;
     console_dev.ops = &bcm2385_aux_uart_ops;
