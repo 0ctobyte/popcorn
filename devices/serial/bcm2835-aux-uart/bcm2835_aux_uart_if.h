@@ -1,5 +1,5 @@
-#ifndef _BCM2385_AUX_UART_IF_H_
-#define _BCM2385_AUX_UART_IF_H_
+#ifndef _BCM2835_AUX_UART_IF_H_
+#define _BCM2835_AUX_UART_IF_H_
 
 #define MMIO_READ_32(base, reg)                       (*((uint32_t*)((base) + (reg))))
 #define MMIO_READ_64(base, reg)                       (*((uint64_t*)((base) + (reg))))
@@ -110,4 +110,4 @@
 #define aux_mu_baud_reg_read(b)                       (MMIO_READ_32(b, AUX_MU_BAUD_REG))
 #define aux_mu_baud_reg_write(b)                      (MMIO_WRITE_32(b, AUX_MU_BAUD_REG, r))
 
-#endif // _BCM2385_AUX_UART_IF_H_
+#endif // _BCM2835_AUX_UART_IF_H_

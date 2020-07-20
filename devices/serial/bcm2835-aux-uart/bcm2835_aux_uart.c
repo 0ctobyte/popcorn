@@ -1,17 +1,17 @@
-#include "bcm2385_aux_uart_if.h"
-#include "bcm2385_aux_uart.h"
+#include "bcm2835_aux_uart_if.h"
+#include "bcm2835_aux_uart.h"
 
-console_dev_ops_t bcm2385_aux_uart_ops = {
-    .init = bcm2385_aux_uart_init,
-    .write = bcm2385_aux_uart_write,
-    .read = bcm2385_aux_uart_read
+console_dev_ops_t bcm2835_aux_uart_ops = {
+    .init = bcm2835_aux_uart_init,
+    .write = bcm2835_aux_uart_write,
+    .read = bcm2835_aux_uart_read
 };
 
-void bcm2385_aux_uart_init(void *data) {
+void bcm2835_aux_uart_init(void *data) {
 }
 
-int bcm2385_aux_uart_write(void *data, const char *src, size_t count) {
-    bcm2385_aux_uart_t *miniuart = (bcm2385_aux_uart_t*)data;
+int bcm2835_aux_uart_write(void *data, const char *src, size_t count) {
+    bcm2835_aux_uart_t *miniuart = (bcm2835_aux_uart_t*)data;
 
     for (size_t i = 0; i < count; i++) {
         // Check if transmit FIFO is full
@@ -31,8 +31,8 @@ int bcm2385_aux_uart_write(void *data, const char *src, size_t count) {
     return count;
 }
 
-int bcm2385_aux_uart_read(void *data, char *dst, size_t count) {
-    bcm2385_aux_uart_t *miniuart = (bcm2385_aux_uart_t*)data;
+int bcm2835_aux_uart_read(void *data, char *dst, size_t count) {
+    bcm2835_aux_uart_t *miniuart = (bcm2835_aux_uart_t*)data;
 
     for (size_t i = 0; i < count; i++) {
         // Check if receive FIFO is empty

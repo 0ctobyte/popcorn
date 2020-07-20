@@ -1,12 +1,12 @@
 #include <string.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
-#include <devices/serial/bcm2385-aux-uart/bcm2385_aux_uart.h>
+#include <devices/serial/bcm2835-aux-uart/bcm2835_aux_uart.h>
 #include <platform/platform.h>
 
 //#define R_UART0_BASE (0x3F201000) // Raspberry Pi 3 UART0
 
-bcm2385_aux_uart_t bcm2385_aux_uart;
+bcm2835_aux_uart_t bcm2835_aux_uart;
 
 typedef struct {
     int address_cells;
@@ -46,12 +46,12 @@ bool _raspberry_pi_3_platform_init_console(fdt_header_t *fdth, platform_fdt_info
     if (strcmp("brcm,bcm2835-aux-uart", compatible) != 0) return false;
 
     // The aux miniuart is part of a larger auxillary peripherals block; use the base address of that block
-    bcm2385_aux_uart.uart_base = max_kernel_virtual_end + aux_base;
-    bcm2385_aux_uart.cbits = BCM2385_AUX_UART_CBITS_8;
-    bcm2385_aux_uart.baud = BCM2385_AUX_UART_BAUD_115200;
+    bcm2835_aux_uart.uart_base = max_kernel_virtual_end + aux_base;
+    bcm2835_aux_uart.cbits = BCM2835_AUX_UART_CBITS_8;
+    bcm2835_aux_uart.baud = BCM2835_AUX_UART_BAUD_115200;
 
-    console_dev.data = (void*)&bcm2385_aux_uart;
-    console_dev.ops = &bcm2385_aux_uart_ops;
+    console_dev.data = (void*)&bcm2835_aux_uart;
+    console_dev.ops = &bcm2835_aux_uart_ops;
 }
 
 void raspberry_pi_3_platform_init(fdt_header_t *fdth) {
