@@ -72,7 +72,7 @@ irq_id_t bcm2836_l1_intc_get_pending_irq(void *data) {
     unsigned int core = mpidr_el1_r() & 0xff;
 
     irq_id_t id = intc_core_interrupt_source_read(intc->intc_base, core);
-    id = id & ~(id - 1);
+    id = arch_ctz(id & ~(id - 1));
 
     return id;
 }
