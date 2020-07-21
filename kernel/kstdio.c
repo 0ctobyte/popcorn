@@ -6,11 +6,13 @@
 #include <kernel/kstdio.h>
 
 int kputs(const char *s) {
-    size_t len = strlen(s), count = len;
+    size_t len = strlen(s), count = 0;
     kresult_t res;
 
     do {
-        res = console_write(s, &count);
+        size_t c = 0;
+        res = console_write(s + count, len, &c);
+        count += c;
     } while (res = KRESULT_OK && count < len);
 
     return 0;

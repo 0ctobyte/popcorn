@@ -17,9 +17,10 @@ _start:
     mrs x0, CurrentEL
     cmp x0, #4
     beq _not_el2
-    # Enable AARCH64 mode in EL1
+
+    # Enable AARCH64 mode in EL1; Disable general exceptions trap
     mov x0, #1
-    mrs x1, HCR_EL2
+    mov x1, xzr
     bfi x1, x0, #31, #1
     msr HCR_EL2, x1
     # Switch to EL1

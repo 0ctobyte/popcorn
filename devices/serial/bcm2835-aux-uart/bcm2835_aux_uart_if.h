@@ -34,6 +34,7 @@
 #define G_AUX_MU_IIR_REG_FIFO_ENABLES(r)              (((r) >> 6) & 3)
 #define G_AUX_MU_IIR_REG_INTERRUPT_ID(r)              (((r) >> 1) & 3)
 #define G_AUX_MU_IIR_REG_INTERRUPT_PENDING(r)         ((r) & 1)
+#define F_AUX_MU_IIR_REG_FIFO_ENABLES(r)              (((r) & 3) << 6)
 #define S_AUX_MU_IIR_REG_TRANSMIT_FIFO_CLEAR          (1 << 2)
 #define S_AUX_MU_IIR_REG_RECEIVE_FIFO_CLEAR           (1 << 1)
 #define aux_mu_iir_reg_read(b)                        (MMIO_READ_32(b, AUX_MU_IIR_REG))
@@ -47,7 +48,7 @@
 #define S_AUX_MU_LCR_REG_BREAK                        (1 << 6)
 #define F_AUX_MU_LCR_REG_DATA_SIZE(f)                 ((f) & 3)
 #define aux_mu_lcr_reg_read(b)                        (MMIO_READ_32(b, AUX_MU_LCR_REG))
-#define aux_mu_lcr_reg_write(b, r)                    (MMIO_READ_32(b, AUX_MU_LCR_REG, r))
+#define aux_mu_lcr_reg_write(b, r)                    (MMIO_WRITE_32(b, AUX_MU_LCR_REG, r))
 
 #define AUX_MU_MCR_REG                                (0x0050)
 #define G_AUX_MU_MCR_REG_RTS(r)                       (((r) >> 1) & 1)
@@ -108,6 +109,6 @@
 #define G_AUX_MU_BAUD_REG_BAUDRATE(r)                 ((r) & 0xffff)
 #define F_AUX_MU_BAUD_REG_BAUDRATE(f)                 ((f) & 0xffff)
 #define aux_mu_baud_reg_read(b)                       (MMIO_READ_32(b, AUX_MU_BAUD_REG))
-#define aux_mu_baud_reg_write(b)                      (MMIO_WRITE_32(b, AUX_MU_BAUD_REG, r))
+#define aux_mu_baud_reg_write(b, r)                   (MMIO_WRITE_32(b, AUX_MU_BAUD_REG, r))
 
 #endif // _BCM2835_AUX_UART_IF_H_

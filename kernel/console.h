@@ -13,9 +13,9 @@
 // Kernel interface
 kresult_t console_init(void);
 
-// The number of characters that need to read or written is provided in count
-// It's also used to return the number of characters that were actually read/written
-kresult_t console_write(const char *src, size_t *count);
-kresult_t console_read(char *dst, size_t *count);
+// The number of characters that need to read or written is provided in len
+// the number of characters that were actually read/written is returned is count
+kresult_t console_write(const char *src, size_t len, size_t *count);
+kresult_t console_read(char *dst, size_t len, size_t *count);
 
 #endif // _CONSOLE_H_

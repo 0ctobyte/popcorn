@@ -8,6 +8,16 @@ console_dev_ops_t bcm2835_aux_uart_ops = {
 };
 
 void bcm2835_aux_uart_init(void *data) {
+    bcm2835_aux_uart_t *miniuart = (bcm2835_aux_uart_t*)data;
+
+    aux_mu_cntl_reg_write(miniuart->uart_base, 0);
+    aux_mu_lcr_reg_write(miniuart->uart_base, F_AUX_MU_LCR_REG_DATA_SIZE(miniuart->cbits));
+    aux_mu_mcr_reg_write(miniuart->uart_base, 0);
+    aux_mu_ier_reg_write(miniuart->uart_base, 0);
+    aux_mu_iir_reg_write(miniuart->uart_base, S_AUX_MU_IIR_REG_TRANSMIT_FIFO_CLEAR
+        | S_AUX_MU_IIR_REG_RECEIVE_FIFO_CLEAR | F_AUX_MU_IIR_REG_FIFO_ENABLES(3));
+    aux_mu_cntl_reg_write(miniuart->uart_base, S_AUX_MU_CNTL_REG_TRANSMITTER_ENABLE
+        | S_AUX_MU_CNTL_REG_RECEIVER_ENABLE);
 }
 
 int bcm2835_aux_uart_write(void *data, const char *src, size_t count) {

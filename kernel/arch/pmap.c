@@ -663,6 +663,8 @@ void pmap_bootstrap(void) {
     // are in TTBR1
     pmap_t identity_pmap;
     paddr_t identity_tables = tables;
+    arch_fast_zero((void*)identity_tables, total_tables_size);
+
     lock_init(&identity_pmap.lock);
     identity_pmap.ttb = identity_tables;
     identity_tables += PAGESIZE;
