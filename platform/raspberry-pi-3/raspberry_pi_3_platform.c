@@ -70,8 +70,8 @@ bool _raspberry_pi_3_platform_init_console(fdt_header_t *fdth, platform_fdt_info
                 PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
         }
 
-        // FIXME Assuming default UART clock rate of 3MHz; need to mailbox query VC for actual clock rate
-        arm_pl011.uart_clock = 3000000;
+        // FIXME Assuming default UART clock rate of 48MHz; need to mailbox query VC for actual clock rate
+        arm_pl011.uart_clock = 48000000;
         arm_pl011.baud = ARM_PL011_BAUD_115200;
         arm_pl011.cbits = ARM_PL011_CBITS_8;
         arm_pl011.two_stop_bits = false;
