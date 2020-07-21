@@ -5,7 +5,7 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 
 project(arm-kernel)
 set(target kernel.elf)
-set(target_bin kernel.img)
+set(target_bin kernel.bin)
 
 set(CMAKE_C_COMPILER aarch64-none-elf-gcc)
 set(CMAKE_CXX_COMPILER aarch64-none-elf-g++)

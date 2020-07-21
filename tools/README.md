@@ -2,7 +2,7 @@
 
 Run the QEMU emulator:
 
-`./run-qemu.py <kernel.img> -debug`
+`./run-qemu.py <kernel.bin> -debug`
 
 And then run GDB:
 
