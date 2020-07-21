@@ -10,6 +10,12 @@ console_dev_ops_t bcm2835_aux_uart_ops = {
 void bcm2835_aux_uart_init(void *data) {
     bcm2835_aux_uart_t *miniuart = (bcm2835_aux_uart_t*)data;
 
+    // Turn on AUX block
+    aux_enables_write(miniuart->uart_base, S_AUX_ENABLES_MINI_UART_ENABLE);
+
+    // Wait for transmitter to go idle
+    while (G_AUX_MU_LSR_REG_TRANSMITTER_IDLE(aux_mu_lsr_reg_read(miniuart->uart_base)) == 0);
+
     aux_mu_cntl_reg_write(miniuart->uart_base, 0);
     aux_mu_lcr_reg_write(miniuart->uart_base, F_AUX_MU_LCR_REG_DATA_SIZE(miniuart->cbits));
     aux_mu_mcr_reg_write(miniuart->uart_base, 0);

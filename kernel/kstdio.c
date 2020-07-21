@@ -11,9 +11,9 @@ int kputs(const char *s) {
 
     do {
         size_t c = 0;
-        res = console_write(s + count, len, &c);
+        res = console_write(s + count, len - count, &c);
         count += c;
-    } while (res = KRESULT_OK && count < len);
+    } while (res == KRESULT_OK && count < len);
 
     return 0;
 }
