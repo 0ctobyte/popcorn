@@ -9,7 +9,8 @@ Currently the kernel is able to boot and run in virtual memory mode on the follo
 |---------------------------- |---------------|-------------|-----------|
 |QEMU ARM Virt Platform       |ARM Cortex-A53 |Configurable |Yes (QEMU) |
 |QEMU Raspberry Pi 3          |ARM Cortex-A53 |Configurable |Yes (QEMU) |
-|Raspberry Pi 3               |ARM Cortex-A53 |768MB        |No         |
+|Raspberry Pi 3               |ARM Cortex-A53 |960MB        |No         |
+|Raspberry Pi 4               |ARM Cortex-A72 |960MB        |No         |
 
 It's still a work in progress and is far from complete.
 

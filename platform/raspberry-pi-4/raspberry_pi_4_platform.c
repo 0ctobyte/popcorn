@@ -45,7 +45,7 @@ bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info
         prop = fdt_get_prop(fdth, aux_node, "reg");
         fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
         offset = 0;
-        uint64_t aux_base = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
+        uint64_t aux_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->soc_address_cells);
         uint64_t aux_size = PAGESIZE;
 
         for (int i = 0; i < 3; i++) {
@@ -75,7 +75,7 @@ bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info
         prop = fdt_get_prop(fdth, node, "reg");
         fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
         offset = 0;
-        uint64_t uart_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
+        uint64_t uart_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->soc_address_cells);;
         uint64_t uart_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
         for (int i = 0; i < 3; i++) {
