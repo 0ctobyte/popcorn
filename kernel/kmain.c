@@ -27,38 +27,6 @@ extern void _relocate(unsigned long dst, unsigned long src, size_t size);
 unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
-void vm_mapping_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_snode);
-    kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n",
-        mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
-}
-
-void _vm_mapping_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_snode);
-    kprintf("%x:%x:%c\n", (vaddr_t)node, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
-}
-
-void vm_mapping_hole_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hnode);
-    kprintf("mapping hole - vstart = %p, vend = %p\n", mapping->vend, mapping->vend + mapping->hole_size);
-}
-
-void _vm_mapping_hole_walk(rbtree_node_t *node) {
-    vm_mapping_t *mapping = rbtree_entry(node, vm_mapping_t, rb_hnode);
-    kprintf("%x:%x:%c\n", (vaddr_t)mapping, mapping->vstart, rbtree_is_black(node) ? 'b' : 'r');
-}
-
-void print_mappings(void) {
-    rbtree_walk_inorder(&vm_map_kernel()->rb_mappings, vm_mapping_walk);
-    rbtree_walk_inorder(&vm_map_kernel()->rb_holes, vm_mapping_hole_walk);
-
-    vm_mapping_t *mapping = NULL;
-    list_for_each_entry(&vm_map_kernel()->ll_mappings, mapping, ll_node) {
-        kprintf("mapping - vstart = %p, vend = %p, prot = %p, object = %p, offset = %p\n",
-            mapping->vstart, mapping->vend, mapping->prot, mapping->object, mapping->offset);
-    }
-}
-
 void thread_start(void) {
     proc_thread_t *thread = list_entry(list_first(&proc_task_kernel()->ll_threads), proc_thread_t, ll_tnode);
     for (;;) {
@@ -98,8 +66,6 @@ void kmain(void) {
 
     kprintf("vm_init() - done!\n");
 
-    //fdt_dump(fdt_header);
-
     proc_init();
     kprintf("proc_init() - done!\n");
 
@@ -113,12 +79,8 @@ void kmain(void) {
     proc_thread_set_entry(thread, thread_start);
     proc_thread_resume(thread);
 
-    //for (;;) {
-    //    kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
-    //    proc_thread_switch(thread);
-    //}
-
-    kprintf("sizeof(vm_page_t) == %llu\n", sizeof(vm_page_t));
-
-    // print_mappings();
+    // for (;;) {
+    //     kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
+    //     proc_thread_switch(thread);
+    // }
 }

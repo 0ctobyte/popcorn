@@ -4,17 +4,24 @@
 #include <kernel/vm/vm_types.h>
 #include <devices/serial/bcm2835-aux-uart/bcm2835_aux_uart.h>
 #include <devices/serial/arm-pl011/arm_pl011.h>
-#include <devices/interrupt-controller/bcm2836-l1-intc/bcm2836_l1_intc.h>
+#include <devices/interrupt-controller/arm-gicv2/arm_gicv2.h>
 #include <platform/platform.h>
 
 arm_pl011_t arm_pl011;
 bcm2835_aux_uart_t bcm2835_aux_uart;
-bcm2836_l1_intc_t bcm2836_l1_intc;
+arm_gicv2_t arm_gicv2;
+
+typedef struct {
+    uint64_t old_base;
+    uint64_t new_base;
+    uint64_t size;
+} platform_fdt_info_remap_t;
 
 typedef struct {
     int address_cells;
+    int soc_address_cells;
     int size_cells;
-    uint64_t remap[3];
+    platform_fdt_info_remap_t remap[3];
 } platform_fdt_info_t;
 
 bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
@@ -39,8 +46,16 @@ bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info
         fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
         offset = 0;
         uint64_t aux_base = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
-        aux_base = (aux_base - fdt_info->remap[0]) + fdt_info->remap[1];
         uint64_t aux_size = PAGESIZE;
+
+        for (int i = 0; i < 3; i++) {
+            uint64_t old_base = fdt_info->remap[i].old_base;
+
+            if (aux_base >= old_base && aux_base < (old_base + fdt_info->remap[i].size)) {
+                aux_base = (aux_base - old_base) + fdt_info->remap[i].new_base;
+                break;
+            }
+        }
 
         for (size_t offset = 0; offset < aux_size; offset += PAGESIZE) {
             pmap_kenter_pa(max_kernel_virtual_end + aux_base + offset, aux_base + offset, VM_PROT_DEFAULT,
@@ -61,8 +76,16 @@ bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info
         fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
         offset = 0;
         uint64_t uart_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-        uart_base = (uart_base - fdt_info->remap[0]) + fdt_info->remap[1];
         uint64_t uart_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+
+        for (int i = 0; i < 3; i++) {
+            uint64_t old_base = fdt_info->remap[i].old_base;
+
+            if (uart_base >= old_base && uart_base < (old_base + fdt_info->remap[i].size)) {
+                uart_base = (uart_base - old_base) + fdt_info->remap[i].new_base;
+                break;
+            }
+        }
 
         arm_pl011.uart_base = max_kernel_virtual_end + uart_base;
         for (size_t offset = 0; offset < uart_size; offset += PAGESIZE) {
@@ -99,51 +122,52 @@ bool _raspberry_pi_4_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *
     offset = 0;
     const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    if (strcmp("brcm,bcm2836-armctrl-ic", compatible) != 0) return false;
+    if (strcmp("arm,gic-400", compatible) != 0) return false;
 
+    // Get the GICD base address and size
     prop = fdt_get_prop(fdth, node, "reg");
     fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
     offset = 0;
-    uint64_t intc_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-    intc_base = (intc_base - fdt_info->remap[0]) + fdt_info->remap[1];
-    uint64_t intc_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+    uint64_t gicd_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->soc_address_cells);
+    uint64_t gicd_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
-    bcm2836_l1_intc.intc_armctrl_base = max_kernel_virtual_end + intc_base;
-    for (size_t offset = 0; offset < intc_size; offset += PAGESIZE) {
-        uintptr_t va = ROUND_PAGE_DOWN(bcm2836_l1_intc.intc_armctrl_base + offset);
-        uintptr_t pa = ROUND_PAGE_DOWN(intc_base + offset);
+    for (int i = 0; i < 3; i++) {
+        uint64_t old_base = fdt_info->remap[i].old_base;
 
-        pmap_kenter_pa(va, pa, VM_PROT_DEFAULT, PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        if (gicd_base >= old_base && gicd_base < (old_base + fdt_info->remap[i].size)) {
+            gicd_base = (gicd_base - old_base) + fdt_info->remap[i].new_base;
+            break;
+        }
     }
 
-    // Find the local interrupt-controller
-    prop = fdt_get_prop(fdth, node, "interrupt-parent");
-    offset = 0;
-    intc_phandle = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
+    // Get the GICC base address and size
+    uint64_t gicc_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->soc_address_cells);
+    uint64_t gicc_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
-    node = fdt_get_node_from_phandle(fdth, intc_phandle);
-    prop = fdt_get_prop(fdth, node, "compatible");
-    offset = 0;
-    compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
+    for (int i = 0; i < 3; i++) {
+        uint64_t old_base = fdt_info->remap[i].old_base;
 
-    if (strcmp("brcm,bcm2836-l1-intc", compatible) != 0) return false;
+        if (gicc_base >= old_base && gicc_base < (old_base + fdt_info->remap[i].size)) {
+            gicc_base = (gicc_base - old_base) + fdt_info->remap[i].new_base;
+            break;
+        }
+    }
 
-    // Get the base address and size
-    prop = fdt_get_prop(fdth, node, "reg");
-    p_prop = fdt_get_prop_from_offset(fdth, prop);
-    offset = 0;
-    intc_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-    intc_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
-
-    bcm2836_l1_intc.intc_base = max_kernel_virtual_end + intc_base;
-    for (size_t offset = 0; offset < intc_size; offset += PAGESIZE) {
-        pmap_kenter_pa(bcm2836_l1_intc.intc_base + offset, intc_base + offset, VM_PROT_DEFAULT,
+    arm_gicv2.gicd_base = max_kernel_virtual_end + gicd_base;
+    for (size_t offset = 0; offset < gicd_size; offset += PAGESIZE) {
+        pmap_kenter_pa(arm_gicv2.gicd_base + offset, gicd_base + offset, VM_PROT_DEFAULT,
             PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
     }
 
-    irq_controller.data = (void*)&bcm2836_l1_intc;
-    irq_controller.ops = &bcm2836_l1_intc_ops;
-    irq_controller.spurious_id = BCM2836_L1_INTC_SPURIOUS_IRQ_ID;
+    arm_gicv2.gicc_base = max_kernel_virtual_end + gicc_base;
+    for (size_t offset = 0; offset < gicc_size; offset += PAGESIZE) {
+        pmap_kenter_pa(arm_gicv2.gicc_base + offset, gicc_base + offset, VM_PROT_DEFAULT,
+            PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+    }
+
+    irq_controller.data = (void*)&arm_gicv2;
+    irq_controller.ops = &arm_gicv2_ops;
+    irq_controller.spurious_id = ARM_GICV2_SPURIOUS_IRQ_ID;
 
     // Setup the system timer interrupt
     node = fdt_get_node(fdth, "/timer");
@@ -157,20 +181,23 @@ bool _raspberry_pi_4_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *
     p_prop = fdt_get_prop_from_offset(fdth, prop);
     offset = 0;
 
+    int int_type = 0;
     int int_id = 0;
     int int_trigger_type = 0;
 
     // The interrupt cells are layed out in this order:
     // Secure timer, non-secure timer, virtual timer and hypervisor timer
-    // Get the third interrupt cell for the non-secure physical timer
+    // Get the second interrupt cell for the non-secure physical timer
     for (int i = 0; i < 2; i++) {
+        int_type = fdt_next_data_from_prop(p_prop, &offset);
         int_id = fdt_next_data_from_prop(p_prop, &offset);
         int_trigger_type = fdt_next_data_from_prop(p_prop, &offset);
     }
 
+
     // Enable the timer interrupt
     irq_controller.timer_id = int_id;
-    irq_type_t irq_type = int_trigger_type == 4 ? IRQ_TYPE_LEVEL_SENSITIVE : IRQ_TYPE_EDGE_TRIGGERED;
+    irq_type_t irq_type = (int_trigger_type & 0xf) > 2 ? IRQ_TYPE_LEVEL_SENSITIVE : IRQ_TYPE_EDGE_TRIGGERED;
     irq_controller.ops->enable(irq_controller.data, irq_controller.timer_id, 0, irq_type);
 
     return true;
@@ -191,15 +218,19 @@ void raspberry_pi_4_platform_init(fdt_header_t *fdth) {
     unsigned int node = fdt_get_node(fdth, "/soc");
     prop = fdt_get_prop(fdth, node, "#address-cells");
     offset = 0;
-    unsigned int soc_address_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
+    fdt_info.soc_address_cells = fdt_next_data_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
     prop = fdt_get_prop(fdth, node, "ranges");
     fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
     offset = 0;
 
-    fdt_info.remap[0] = fdt_next_data_cells_from_prop(p_prop, &offset, soc_address_cells);
-    fdt_info.remap[1] = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info.address_cells);
-    fdt_info.remap[2] = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info.size_cells);
+    int i = 0;
+    do {
+        fdt_info.remap[i].old_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info.soc_address_cells);
+        fdt_info.remap[i].new_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info.address_cells);
+        fdt_info.remap[i].size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info.size_cells);
+        i++;
+    } while (offset != 0);
 
     _raspberry_pi_4_platform_init_console(fdth, &fdt_info);
 

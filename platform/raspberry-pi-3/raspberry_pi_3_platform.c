@@ -162,7 +162,7 @@ bool _raspberry_pi_3_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *
 
     // The interrupt cells are layed out in this order:
     // Secure timer, non-secure timer, virtual timer and hypervisor timer
-    // Get the third interrupt cell for the non-secure physical timer
+    // Get the second interrupt cell for the non-secure physical timer
     for (int i = 0; i < 2; i++) {
         int_id = fdt_next_data_from_prop(p_prop, &offset);
         int_trigger_type = fdt_next_data_from_prop(p_prop, &offset);
