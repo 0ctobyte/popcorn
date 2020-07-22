@@ -29,7 +29,7 @@ arch_mmu_enable:
     bfi x4, x5, #0, #6
     bfi x4, x5, #16, #6
     # Set IRGN and ORGN to normal write-back, read-allocate, write-allocate for TTBR0 & TTBR1
-    mov x5, #0x11
+    mov x5, #0x5
     bfi x4, x5, #8, #4
     bfi x4, x5, #24, #4
     # Shareability for TTBR0 & TTBR1 is inner shareable
