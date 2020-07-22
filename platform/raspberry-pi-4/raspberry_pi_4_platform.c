@@ -111,7 +111,6 @@ bool _raspberry_pi_4_platform_init_console(fdt_header_t *fdth, platform_fdt_info
 }
 
 bool _raspberry_pi_4_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_info) {
-    // Find the global interrupt controller
     unsigned int node = fdt_get_root_node(fdth);
     unsigned int prop = fdt_get_prop(fdth, node, "interrupt-parent");
     unsigned int offset = 0;
@@ -196,7 +195,7 @@ bool _raspberry_pi_4_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *
 
 
     // Enable the timer interrupt
-    irq_controller.timer_id = int_id;
+    irq_controller.timer_id = ((int_type == 1) ? 16 : 32) + int_id;
     irq_type_t irq_type = (int_trigger_type & 0xf) > 2 ? IRQ_TYPE_LEVEL_SENSITIVE : IRQ_TYPE_EDGE_TRIGGERED;
     irq_controller.ops->enable(irq_controller.data, irq_controller.timer_id, 0, irq_type);
 
