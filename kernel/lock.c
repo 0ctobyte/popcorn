@@ -1,4 +1,5 @@
 #include <kernel/proc/proc_thread.h>
+#include <kernel/proc/proc_scheduler.h>
 #include <kernel/kassert.h>
 #include <kernel/lock.h>
 
@@ -14,8 +15,8 @@ void lock_acquire_exclusive(lock_t *lock) {
         if (lock->state == LOCK_STATE_SHARED) {
             lock->thread = proc_thread_current();
             lock->state = LOCK_STATE_EXCLUSIVE_UPGRADE;
-        } else if ((lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-            && proc_thread_current()->sched.virtual_runtime < lock->thread->sched.virtual_runtime)) {
+        } else if (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
+            && proc_scheduler_deserve(proc_thread_current(), lock->thread)) {
             lock->thread = proc_thread_current();
         }
 
@@ -39,7 +40,7 @@ void lock_acquire_shared(lock_t *lock) {
     // acquire shared ownership of the lock
     while (lock->state == LOCK_STATE_EXCLUSIVE
         || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-        && proc_thread_current()->sched.virtual_runtime > lock->thread->sched.virtual_runtime)) {
+        && proc_scheduler_deserve(lock->thread, proc_thread_current()))) {
         proc_thread_sleep(lock, &lock->interlock, false);
         spinlock_irq_acquire(&lock->interlock);
     }
@@ -72,7 +73,7 @@ bool lock_try_acquire_shared(lock_t *lock) {
 
     if (lock->state == LOCK_STATE_EXCLUSIVE
         || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-        && proc_thread_current()->sched.virtual_runtime > lock->thread->sched.virtual_runtime)) {
+        && proc_scheduler_deserve(lock->thread, proc_thread_current()))) {
         return false;
     }
 
