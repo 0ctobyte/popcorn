@@ -23,7 +23,6 @@ typedef struct proc_task_s {
     vm_map_t *vm_map;           // Virtual memory map
     list_t ll_threads;          // All threads belonging to this task
     size_t num_threads;         // Number of threads in task
-    proc_priority_t priority;   // Default priority passed on to new threads when created
     struct proc_task_s *parent; // Parent task
     list_t ll_children;         // List of all children tasks
     list_node_t ll_snode;       // Sibling task list linkage

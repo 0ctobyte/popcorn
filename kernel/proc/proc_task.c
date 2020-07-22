@@ -34,7 +34,6 @@ void proc_task_init(void) {
     kernel_task.vm_map = vm_map_kernel();
     list_init(&kernel_task.ll_threads);
     kernel_task.num_threads = 0;
-    kernel_task.priority = UINT8_MAX;
     kernel_task.parent = NULL;
     list_init(&kernel_task.ll_children);
     list_node_init(&kernel_task.ll_snode);
@@ -52,7 +51,6 @@ void proc_task_init(void) {
     proc_task_template.vm_map = NULL;
     list_init(&proc_task_template.ll_threads);
     proc_task_template.num_threads = 0;
-    proc_task_template.priority = UINT8_MAX;
     proc_task_template.parent = proc_task_kernel();
     list_init(&proc_task_template.ll_children);
     list_node_init(&proc_task_template.ll_snode);

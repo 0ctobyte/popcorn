@@ -36,8 +36,6 @@ void proc_thread_init(void) {
     thread_template.task = proc_task_kernel();
     thread_template.state = PROC_THREAD_STATE_SUSPENDED;
     thread_template.suspend_cnt = 1;
-    thread_template.sched.priority = proc_task_kernel()->priority;
-    thread_template.sched.inherited_priority = 0;
     thread_template.refcnt = 1;
     thread_template.event = 0;
     list_node_init(&thread_template.ll_enode);

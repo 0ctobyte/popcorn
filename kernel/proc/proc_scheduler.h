@@ -6,8 +6,6 @@
 struct proc_thread_s;
 
 typedef struct proc_scheduler_context_s {
-    proc_priority_t priority;           // Thread's fixed priority
-    proc_priority_t inherited_priority; // Thread's inherited priority
     unsigned long virtual_runtime;      // Thread's CPU runtime
 } proc_scheduler_context_t;
 

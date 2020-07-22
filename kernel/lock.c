@@ -10,16 +10,15 @@ void lock_acquire_exclusive(lock_t *lock) {
     // Exclusive locks can only be owned if no one else has the lock
     while (lock->state != LOCK_STATE_FREE) {
         // If the lock is owned in shared state then it needs to be upgraded
-        // Track the highest priority thread requesting exclusive upgrade
+        // Track the thread with the lowest virtual runtime requesting exclusive upgrade
         if (lock->state == LOCK_STATE_SHARED) {
             lock->thread = proc_thread_current();
             lock->state = LOCK_STATE_EXCLUSIVE_UPGRADE;
         } else if ((lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-            && proc_thread_current()->sched.priority < lock->thread->sched.priority)) {
+            && proc_thread_current()->sched.virtual_runtime < lock->thread->sched.virtual_runtime)) {
             lock->thread = proc_thread_current();
         }
 
-        // FIXME Check for exclusive and promote the owning the thread's priority
         proc_thread_sleep(lock, &lock->interlock, false);
         spinlock_irq_acquire(&lock->interlock);
     }
@@ -36,12 +35,11 @@ void lock_acquire_shared(lock_t *lock) {
     spinlock_irq_acquire(&lock->interlock);
 
     // Shared locks can only be owned if the lock is free or already being shared. Special case for locks waiting to be
-    // upgraded to exclusive; only threads with a higher priority then the thread requesting exclusive access may
+    // upgraded to exclusive; only threads with a lower virtual runtime then the thread requesting exclusive access may
     // acquire shared ownership of the lock
     while (lock->state == LOCK_STATE_EXCLUSIVE
         || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-        && proc_thread_current()->sched.priority > lock->thread->sched.priority)) {
-        // FIXME how to handle priority inversion for all shared owners
+        && proc_thread_current()->sched.virtual_runtime > lock->thread->sched.virtual_runtime)) {
         proc_thread_sleep(lock, &lock->interlock, false);
         spinlock_irq_acquire(&lock->interlock);
     }
@@ -74,7 +72,7 @@ bool lock_try_acquire_shared(lock_t *lock) {
 
     if (lock->state == LOCK_STATE_EXCLUSIVE
         || (lock->state == LOCK_STATE_EXCLUSIVE_UPGRADE
-        && proc_thread_current()->sched.priority > lock->thread->sched.priority)) {
+        && proc_thread_current()->sched.virtual_runtime > lock->thread->sched.virtual_runtime)) {
         return false;
     }
 
