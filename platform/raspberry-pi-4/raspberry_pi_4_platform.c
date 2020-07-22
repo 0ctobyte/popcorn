@@ -203,9 +203,6 @@ void raspberry_pi_4_platform_init(fdt_header_t *fdth) {
 
     _raspberry_pi_4_platform_init_console(fdth, &fdt_info);
 
-    extern void fdt_dump(fdt_header_t *fdth);
-    fdt_dump(fdth);
-
     if (!_raspberry_pi_4_platform_init_irq(fdth, &fdt_info)) {
         panic("raspberry_pi_4_platform: Failed to initialize interrupt controller");
     }
