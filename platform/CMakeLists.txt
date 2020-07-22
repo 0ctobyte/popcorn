@@ -1,5 +1,6 @@
 add_subdirectory(qemu-virt)
 add_subdirectory(raspberry-pi-3)
+add_subdirectory(raspberry-pi-4)
 
 target_sources(${target}
     PRIVATE
