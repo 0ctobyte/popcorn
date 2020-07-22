@@ -1,11 +1,13 @@
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/panic.h>
+#include <devices/interrupt-controller/arm-gicv2/arm_gicv2.h>
 #include <devices/interrupt-controller/arm-gicv3/arm_gicv3.h>
 #include <devices/serial/arm-pl011/arm_pl011.h>
 #include <string.h>
 #include <platform/platform.h>
 
+arm_gicv2_t arm_gicv2;
 arm_gicv3_t arm_gicv3;
 arm_pl011_t arm_pl011;
 
@@ -75,34 +77,63 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
     offset = 0;
     const char *compatible = fdt_next_string_from_prop(fdt_get_prop_from_offset(fdth, prop), &offset);
 
-    if (strcmp("arm,gic-v3", compatible) != 0) return false;
+    if (strcmp("arm,gic-v3", compatible) == 0) {
+        // Get the GICD base address and size
+        prop = fdt_get_prop(fdth, node, "reg");
+        fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
+        offset = 0;
+        uint64_t gicd_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
+        uint64_t gicd_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
-    // Get the GICD base address and size
-    prop = fdt_get_prop(fdth, node, "reg");
-    fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
-    offset = 0;
-    uint64_t gicd_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-    uint64_t gicd_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+        // Get the GICR base address and size
+        uint64_t gicr_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
+        uint64_t gicr_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
 
-    // Get the GICR base address and size
-    uint64_t gicr_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
-    uint64_t gicr_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+        arm_gicv3.gicd_base = max_kernel_virtual_end + gicd_base;
+        for (size_t offset = 0; offset < gicd_size; offset += PAGESIZE) {
+            pmap_kenter_pa(arm_gicv3.gicd_base + offset, gicd_base + offset, VM_PROT_DEFAULT,
+                PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        }
 
-    arm_gicv3.gicd_base = max_kernel_virtual_end + gicd_base;
-    for (size_t offset = 0; offset < gicd_size; offset += PAGESIZE) {
-        pmap_kenter_pa(arm_gicv3.gicd_base + offset, gicd_base + offset, VM_PROT_DEFAULT,
-            PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        arm_gicv3.gicr_base = max_kernel_virtual_end + gicr_base;
+        for (size_t offset = 0; offset < gicr_size; offset += PAGESIZE) {
+            pmap_kenter_pa(arm_gicv3.gicr_base + offset, gicr_base + offset, VM_PROT_DEFAULT,
+                PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        }
+
+        irq_controller.data = (void*)&arm_gicv3;
+        irq_controller.ops = &arm_gicv3_ops;
+        irq_controller.spurious_id = ARM_GICV3_SPURIOUS_IRQ_ID;
+    } else if (strcmp("arm,cortex-a15-gic", compatible) == 0) {
+        // Get the GICD base address and size
+        prop = fdt_get_prop(fdth, node, "reg");
+        fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
+        offset = 0;
+        uint64_t gicd_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
+        uint64_t gicd_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+
+        // Get the GICC base address and size
+        uint64_t gicc_base = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->address_cells);
+        uint64_t gicc_size = fdt_next_data_cells_from_prop(p_prop, &offset, fdt_info->size_cells);
+
+        arm_gicv2.gicd_base = max_kernel_virtual_end + gicd_base;
+        for (size_t offset = 0; offset < gicd_size; offset += PAGESIZE) {
+            pmap_kenter_pa(arm_gicv2.gicd_base + offset, gicd_base + offset, VM_PROT_DEFAULT,
+                PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        }
+
+        arm_gicv2.gicc_base = max_kernel_virtual_end + gicc_base;
+        for (size_t offset = 0; offset < gicc_size; offset += PAGESIZE) {
+            pmap_kenter_pa(arm_gicv2.gicc_base + offset, gicc_base + offset, VM_PROT_DEFAULT,
+                PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
+        }
+
+        irq_controller.data = (void*)&arm_gicv2;
+        irq_controller.ops = &arm_gicv2_ops;
+        irq_controller.spurious_id = ARM_GICV2_SPURIOUS_IRQ_ID;
+    } else {
+        return false;
     }
-
-    arm_gicv3.gicr_base = max_kernel_virtual_end + gicr_base;
-    for (size_t offset = 0; offset < gicr_size; offset += PAGESIZE) {
-        pmap_kenter_pa(arm_gicv3.gicr_base + offset, gicr_base + offset, VM_PROT_DEFAULT,
-            PMAP_FLAGS_READ | PMAP_FLAGS_WRITE | PMAP_FLAGS_NOCACHE);
-    }
-
-    irq_controller.data = (void*)&arm_gicv3;
-    irq_controller.ops = &arm_gicv3_ops;
-    irq_controller.spurious_id = ARM_GICV3_SPURIOUS_IRQ_ID;
 
     // Setup the system timer interrupt
     node = fdt_get_node(fdth, "/timer");
@@ -113,7 +144,7 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
     if (strcmp("arm,armv8-timer", compatible) != 0 && strcmp("arm,armv7-timer", compatible) != 0) return false;
 
     prop = fdt_get_prop(fdth, node, "interrupts");
-    p_prop = fdt_get_prop_from_offset(fdth, prop);
+    fdt_prop_t *p_prop = fdt_get_prop_from_offset(fdth, prop);
     offset = 0;
 
     int int_type = 0;
@@ -131,7 +162,7 @@ bool _qemu_virt_platform_init_irq(fdt_header_t *fdth, platform_fdt_info_t *fdt_i
 
     // Enable the timer interrupt
     irq_controller.timer_id = ((int_type == 1) ? 16 : 32) + int_id;
-    irq_type_t irq_type = int_trigger_type == 4 ? IRQ_TYPE_LEVEL_SENSITIVE : IRQ_TYPE_EDGE_TRIGGERED;
+    irq_type_t irq_type = (int_trigger_type & 0xf) < 2 ? IRQ_TYPE_LEVEL_SENSITIVE : IRQ_TYPE_EDGE_TRIGGERED;
     irq_controller.ops->enable(irq_controller.data, irq_controller.timer_id, 0, irq_type);
 
     return true;
