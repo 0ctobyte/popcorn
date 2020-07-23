@@ -14,6 +14,7 @@
 #include <kernel/vm/vm_object.h>
 #include <kernel/vm/vm_km.h>
 #include <kernel/proc/proc_init.h>
+#include <kernel/proc/proc_scheduler.h>
 #include <kernel/proc/proc_task.h>
 #include <kernel/proc/proc_thread.h>
 #include <kernel/vfs/vfs_mount.h>
@@ -28,10 +29,12 @@ unsigned long MEMBASEADDR;
 unsigned long MEMSIZE;
 
 void thread_start(void) {
-    proc_thread_t *thread = list_entry(list_first(&proc_task_kernel()->ll_threads), proc_thread_t, ll_tnode);
+    unsigned long delay = 1000;
+
     for (;;) {
+        unsigned long start = arch_timer_get_msecs();
         kprintf("%f s: thread id = %d\n", arch_timer_get_secs(), proc_thread_current()->tid);
-        proc_thread_switch(thread);
+        while ((arch_timer_get_msecs() - start) < delay);
     }
 }
 
@@ -72,15 +75,16 @@ void kmain(void) {
     irq_init();
     kprintf("irq_init() - done!\n");
 
-    arch_timer_start_secs(1);
+#define NUM_THREADS (4)
+    proc_thread_t *threads[NUM_THREADS];
 
-    proc_thread_t *thread;
-    kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);
-    proc_thread_set_entry(thread, thread_start);
-    proc_thread_resume(thread);
+    for (int i = 0; i < NUM_THREADS; i++) {
+        proc_thread_t *thread;
+        kassert(proc_thread_create(proc_task_kernel(), &thread) == KRESULT_OK);
+        proc_thread_set_entry(thread, thread_start);
+        proc_thread_resume(thread);
+    }
 
-    // for (;;) {
-    //     kprintf("%f ms: thread id = %d\n", arch_timer_get_msecs(), proc_thread_current()->tid);
-    //     proc_thread_switch(thread);
-    // }
+    arch_timer_start_msecs(5000);
+    thread_start();
 }

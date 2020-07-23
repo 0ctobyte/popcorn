@@ -1,5 +1,7 @@
-#include <kernel/arch/arch_interrupts.h>
 #include <kernel/kassert.h>
+#include <kernel/arch/arch_interrupts.h>
+#include <kernel/arch/arch_timer.h>
+#include <kernel/proc/proc_scheduler.h>
 #include <kernel/irq.h>
 
 irq_controller_dev_t irq_controller;
@@ -71,7 +73,6 @@ kresult_t irq_thread_sleep(struct proc_thread_s *thread, irq_id_t id) {
     return KRESULT_UNIMPLEMENTED;
 }
 
-#include <kernel/arch/arch_timer.h>
 void irq_handler(void) {
     irq_id_t id = irq_ack();
 
@@ -79,11 +80,11 @@ void irq_handler(void) {
     if (id == IRQ_SPURIOUS_ID) return;
 
     // FIXME Wake thread from hash table to run with interrupt priority
-    extern void kprintf(const char *fmt, ...);
-    kprintf("%f\n", arch_timer_get_secs());
-
-    arch_timer_start_secs(1);
+    arch_timer_stop();
 
     irq_end(id);
     irq_done(id);
+
+    arch_timer_start_msecs(5000);
+    proc_scheduler_choose();
 }

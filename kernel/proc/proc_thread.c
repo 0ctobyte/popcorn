@@ -4,6 +4,7 @@
 #include <kernel/arch/arch_asm.h>
 #include <kernel/arch/arch_atomic.h>
 #include <kernel/arch/arch_thread.h>
+#include <kernel/proc/proc_scheduler.h>
 #include <kernel/proc/proc_task.h>
 #include <kernel/proc/proc_thread.h>
 
@@ -40,8 +41,9 @@ void proc_thread_init(void) {
     thread_template.event = 0;
     list_node_init(&thread_template.ll_enode);
     list_node_init(&thread_template.ll_tnode);
-    list_node_init(&thread_template.ll_qnode);
     thread_template.kernel_stack = NULL;
+    rbtree_node_init(&thread_template.sched.rb_node);
+    thread_template.sched.vruntime = 0;
 
     // Create a thread for the currently running kernel code
     proc_thread_t *kernel_thread = kmem_slab_alloc(&proc_thread_slab);
@@ -53,6 +55,8 @@ void proc_thread_init(void) {
     kernel_thread->state = PROC_THREAD_STATE_RUNNING;
     kernel_thread->suspend_cnt = 0;
     kernel_thread->kernel_stack = (void*)ROUND_PAGE_DOWN(&stack_var);
+    rbtree_node_init(&kernel_thread->sched.rb_node);
+    kernel_thread->sched.vruntime = 0;
 
     spinlock_irq_acquire(&proc_task_kernel()->lock);
     kassert(list_insert_last(&proc_task_kernel()->ll_threads, &kernel_thread->ll_tnode));
@@ -143,7 +147,7 @@ kresult_t proc_thread_resume(proc_thread_t *thread) {
     spinlock_irq_acquire(&thread->lock);
 
     thread->suspend_cnt--;
-    if (thread->suspend_cnt == 0) thread->state = PROC_THREAD_STATE_RUNNABLE;
+    if (thread->suspend_cnt == 0) proc_scheduler_add(thread);
 
     spinlock_irq_release(&thread->lock);
 

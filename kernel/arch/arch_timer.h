@@ -40,9 +40,16 @@ void arch_timer_init(void);
                   : "x1");\
 })
 
-#define ARCH_TIMER_SECS_TO_TICKS(t)  ((unsigned long)((double)(t) * (double)arch_timer_get_freq()))
-#define ARCH_TIMER_MSECS_TO_TICKS(t) (ARCH_TIMER_SECS_TO_TICKS(t) / 1000.0)
-#define ARCH_TIMER_USECS_TO_TICKS(t) (ARCH_TIMER_MSECS_TO_TICKS(t) / 1000.0)
+#define arch_timer_stop()\
+({\
+    asm volatile ("msr CNTP_CTL_EL0, xzr\n"\
+                  "isb sy\n"\
+                  ::);\
+})
+
+#define ARCH_TIMER_SECS_TO_TICKS(t)  ARCH_TIMER_MSECS_TO_TICKS(t*1000)
+#define ARCH_TIMER_MSECS_TO_TICKS(t) ARCH_TIMER_USECS_TO_TICKS(t*1000)
+#define ARCH_TIMER_USECS_TO_TICKS(t) ((unsigned long)((double)(t) * ((double)arch_timer_get_freq() / 1000000.0)))
 
 #define arch_timer_start_secs(t)  (arch_timer_start(ARCH_TIMER_SECS_TO_TICKS(t)))
 #define arch_timer_start_msecs(t) (arch_timer_start(ARCH_TIMER_MSECS_TO_TICKS(t)))

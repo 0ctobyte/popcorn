@@ -17,8 +17,8 @@
 ({\
     bool result;\
     asm ("mrs %0, DAIF\n"\
-         "tst %0, #0xc\n"\
-         "cset %0, eq\n"\
+         "tst %0, #0xc0\n"\
+         "csetm %0, eq\n"\
          : "+r" (result) :);\
     result;\
 })

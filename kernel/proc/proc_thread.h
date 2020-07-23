@@ -28,7 +28,6 @@ typedef struct proc_thread_s {
     proc_event_t event;                    // Event this thread is sleeping on
     list_node_t ll_enode;                  // Event hash table bucket list linkage
     list_node_t ll_tnode;                  // Thread list linkage
-    list_node_t ll_qnode;                  // Run queue list linkage
     void *kernel_stack;                    // Kernel stack
     arch_thread_context_t context;         // User saved context
     struct proc_scheduler_context_s sched; // Variables needed by the scheduler
