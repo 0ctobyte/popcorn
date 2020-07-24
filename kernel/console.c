@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/console_types.h>
 #include <kernel/console.h>
 

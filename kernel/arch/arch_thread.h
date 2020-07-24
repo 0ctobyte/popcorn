@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _ARCH_THREAD_H_
 #define _ARCH_THREAD_H_
 

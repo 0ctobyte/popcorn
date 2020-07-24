@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/proc/proc_scheduler.h>
 #include <kernel/proc/proc_task.h>
 #include <kernel/proc/proc_thread.h>

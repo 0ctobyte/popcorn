@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include "bcm2835_aux_uart_if.h"
 #include "bcm2835_aux_uart.h"
 

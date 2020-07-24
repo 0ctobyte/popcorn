@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2015 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <stdio.h>
 
 long sprintf(char *s, const char *fmt, ...) {

@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/kassert.h>
 #include <kernel/kstdio.h>
 #include <kernel/list.h>

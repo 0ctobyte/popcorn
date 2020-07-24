@@ -1,9 +1,16 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _KMEM_H_
 #define _KMEM_H_
 
 #include <sys/types.h>
 
-/* kmem - General purpose kernel memory allocator (CURRENTLY UNUSED)
+/*
+ * kmem - General purpose kernel memory allocator (CURRENTLY UNUSED)
  * kmem is built on top of slabs, in fact it allocates slabs for each of the power of 2 block sizes up to some maximum
  * (i.e. 64KB). The minimum block size it can allocate is 32 bytes so anything smaller will waste space. It will round
  * up allocation requests to the nearest power of 2 block size and allocate a block from the slab holding those blocks.

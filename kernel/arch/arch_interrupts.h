@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _ARCH_INTERRUPTS_H_
 #define _ARCH_INTERRUPTS_H_
 

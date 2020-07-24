@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/arch/pmap.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/panic.h>

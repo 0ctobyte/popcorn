@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/kassert.h>
 #include <kernel/vm/vm_page.h>
 #include <kernel/vm/vm_object.h>

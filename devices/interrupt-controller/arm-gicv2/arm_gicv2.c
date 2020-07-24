@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/kassert.h>
 #include "arm_gicv2_dist_if.h"
 #include "arm_gicv2_cpu_if.h"

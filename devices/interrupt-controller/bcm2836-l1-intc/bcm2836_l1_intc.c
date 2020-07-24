@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/kassert.h>
 #include <kernel/arch/arch_asm.h>
 #include "bcm2836_l1_intc_if.h"

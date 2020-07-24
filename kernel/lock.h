@@ -1,10 +1,17 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _LOCK_H_
 #define _LOCK_H_
 
 #include <sys/types.h>
 #include <kernel/spinlock.h>
 
-/* Lock - A general purpose lock supporting exclusive and shared lock ownership.
+/*
+ * lock - A general purpose lock supporting exclusive and shared lock ownership.
  * Multiple threads can gain shared ownership of the lock but only one thread can gain exclusive ownership at a time.
  * If a thread requests exclusive ownership while the lock is being shared, it will prevent future shared ownership
  * of the lock from threads with lower priority. Priority inversion is handled for exclusive only ownership of the

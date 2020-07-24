@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _KMEM_SLAB_H_
 #define _KMEM_SLAB_H_
 
@@ -5,7 +11,8 @@
 #include <kernel/slab.h>
 #include <kernel/lock.h>
 
-/* kmem_slab - General purpose slab allocator using the kernel virtual address space and protected by locks
+/*
+ * kmem_slab - General purpose slab allocator using the kernel virtual address space and protected by locks
  * kmem_slab is built on the notion that any kernel module that needs to dynamically allocate memory is responsible
  * for setting up their own slab of objects to allocate from. The modules will handle out of memory conditions
  * themselves (typically by purging least recently used objects and freeing them). kmem_slab will grab free virtual

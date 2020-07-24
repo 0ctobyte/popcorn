@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _BCM2835_AUX_UART_H_
 #define _BCM2835_AUX_UART_H_
 

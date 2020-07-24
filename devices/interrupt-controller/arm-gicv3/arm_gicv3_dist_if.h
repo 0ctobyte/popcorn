@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _ARM_GICV3_DIST_IF_H_
 #define _ARM_GICV3_DIST_IF_H_
 

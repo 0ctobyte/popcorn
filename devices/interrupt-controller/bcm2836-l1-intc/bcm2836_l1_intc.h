@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _BCM2836_L1_INTC_H_
 #define _BCM2836_L1_INTC_H_
 

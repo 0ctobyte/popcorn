@@ -1,10 +1,17 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _CONSOLE_H_
 #define _CONSOLE_H_
 
 #include <kernel/kresult.h>
 #include <kernel/console_types.h>
 
-/* console - Common generic console interface for a variety of console devices
+/*
+ * console - Common generic console interface for a variety of console devices
  * This is mostly needed for early kernel initialization and for printing errors when no display drivers are available.
  * A console device may or may not actually be connected/setup by platform code. In that case the functions here won't
  * do anything.

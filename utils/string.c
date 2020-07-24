@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2015 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <string.h>
 
 extern void arch_fast_move(uintptr_t dst_addr, uintptr_t src_addr, size_t num);

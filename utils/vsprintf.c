@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2015 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>

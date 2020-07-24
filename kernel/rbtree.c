@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <kernel/rbtree.h>
 
 rbtree_node_t* _rbtree_deepest(rbtree_node_t *node) {

@@ -1,10 +1,17 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #ifndef _IRQ_H_
 #define _IRQ_H_
 
 #include <kernel/kresult.h>
 #include <kernel/irq_types.h>
 
-/* irq - This module provides a common generic interface to a variety of interrupt controller devices
+/*
+ * irq - This module provides a common generic interface to a variety of interrupt controller devices
  * Each supported platform shall initialize the irq_controller struct with the appropriate device specific data
  * and populate the device function pointers. Not all the functions may be supported by a device. At the minimum init,
  * enable, disable, ack and end shall be supported. Some assumptions made here: the number of priority levels, the

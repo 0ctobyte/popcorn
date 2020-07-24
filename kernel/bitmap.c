@@ -1,3 +1,9 @@
+/* 
+ * Copyright (c) 2020 Sekhar Bhattacharya
+ *
+ * SPDS-License-Identifier: MIT
+ */
+
 #include <limits.h>
 #include <kernel/arch/arch_asm.h>
 #include <kernel/bitmap.h>
