@@ -91,6 +91,6 @@ void kmain(void) {
         proc_thread_resume(thread);
     }
 
-    arch_timer_start_msecs(5000);
+    arch_timer_start_msecs(10);
     thread_start();
 }

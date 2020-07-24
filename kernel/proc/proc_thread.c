@@ -227,7 +227,7 @@ void proc_thread_sleep(proc_event_t event, spinlock_t *interlock, bool interrupt
     current->event = event;
     kassert(list_insert_last(&event_table.ll_threads[hash_bkt], &current->ll_enode));
 
-    // Now we can unlock the interlock
+    // Now we can release the interlock
     spinlock_release_irq(interlock);
 
     spinlock_release_irq(&current->lock);
@@ -237,7 +237,7 @@ void proc_thread_sleep(proc_event_t event, spinlock_t *interlock, bool interrupt
     proc_scheduler_sleep();
 }
 
-void proc_thread_wake(proc_event_t event) {
+void proc_thread_wake(proc_event_t event, unsigned int n) {
     uint64_t hash_bkt = PROC_EVENT_HASH(event);
 
     spinlock_acquire_irq(&event_table.lock[hash_bkt]);
@@ -245,24 +245,21 @@ void proc_thread_wake(proc_event_t event) {
     // Wake up all threads sleeping on this event
     proc_thread_t *thread = NULL;
     list_for_each_entry(&event_table.ll_threads[hash_bkt], thread, ll_enode) {
-        if (thread->event == event) proc_scheduler_wake(thread);
-    }
+        if (n == 0) break;
 
-    spinlock_release_irq(&event_table.lock[hash_bkt]);
-}
+        spinlock_acquire_irq(&thread->lock);
 
-void proc_thread_wake_one(proc_event_t event) {
-    uint64_t hash_bkt = PROC_EVENT_HASH(event);
-
-    spinlock_acquire_irq(&event_table.lock[hash_bkt]);
-
-    // Wake up the first thread sleeping on this event
-    proc_thread_t *thread = NULL;
-    list_for_each_entry(&event_table.ll_threads[hash_bkt], thread, ll_enode) {
-        if (thread->event == event) {
-            proc_scheduler_wake(thread);
-            break;
+        if (thread->event != event) {
+            spinlock_release_irq(&thread->lock);
+            continue;
         }
+
+        // Remove the thread from the event hash table
+        kassert(list_remove(&event_table.ll_threads[hash_bkt], &thread->ll_enode));
+        spinlock_release_irq(&thread->lock);
+
+        proc_scheduler_wake(thread);
+        n--;
     }
 
     spinlock_release_irq(&event_table.lock[hash_bkt]);

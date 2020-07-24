@@ -14,6 +14,7 @@ kresult_t console_init(void) {
         return KRESULT_UNIMPLEMENTED;
     }
 
+    lock_init(&console_dev.lock);
     console_dev.ops->init(console_dev.data);
 
     return KRESULT_OK;
@@ -24,7 +25,9 @@ kresult_t console_write(const char *src, size_t len, size_t *count) {
         return KRESULT_UNIMPLEMENTED;
     }
 
+    lock_acquire_exclusive(&console_dev.lock);
     *count = console_dev.ops->write(console_dev.data, src, len);
+    lock_release_exclusive(&console_dev.lock);
 
     return KRESULT_OK;
 }
@@ -34,7 +37,9 @@ kresult_t console_read(char *dst, size_t len, size_t *count) {
         return KRESULT_UNIMPLEMENTED;
     }
 
+    lock_acquire_exclusive(&console_dev.lock);
     *count = console_dev.ops->read(console_dev.data, dst, len);
+    lock_release_exclusive(&console_dev.lock);
 
     return KRESULT_OK;
 }

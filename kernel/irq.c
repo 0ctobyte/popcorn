@@ -91,6 +91,6 @@ void irq_handler(void) {
     irq_end(id);
     irq_done(id);
 
-    arch_timer_start_msecs(5000);
+    arch_timer_start_msecs(10);
     proc_scheduler_choose();
 }

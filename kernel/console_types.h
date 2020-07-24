@@ -8,6 +8,7 @@
 #define _CONSOLE_TYPES_H_
 
 #include <sys/types.h>
+#include <kernel/lock.h>
 
 typedef struct {
     // Initializes the console device
@@ -23,7 +24,8 @@ typedef struct {
 } console_dev_ops_t;
 
 typedef struct {
-    void *data;            // Device specific data;
+    lock_t lock;            // Lock
+    void *data;             // Device specific data;
     console_dev_ops_t *ops; // Device operations
 } console_dev_t;
 

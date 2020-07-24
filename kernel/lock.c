@@ -104,7 +104,7 @@ void lock_release_exclusive(lock_t *lock) {
     spinlock_release_irq(&lock->interlock);
 
     // Wakeup threads waiting for this lock
-    proc_thread_wake(lock);
+    proc_thread_wake(lock, -1);
 }
 
 void lock_release_shared(lock_t *lock) {
@@ -133,9 +133,9 @@ void lock_release_shared(lock_t *lock) {
     // Otherwise wakeup all the threads waiting for this lock
     if (do_wake) {
         if (thread != NULL) {
-            proc_thread_wake_one(thread);
+            proc_thread_wake(thread, 1);
         } else {
-            proc_thread_wake(lock);
+            proc_thread_wake(lock, -1);
         }
     }
 }
