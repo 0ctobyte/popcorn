@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2020 Sekhar Bhattacharya
  *
  * SPDS-License-Identifier: MIT
@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <kernel/vm/vm_types.h>
 
-/* 
+/*
  * Kernel virtual address space allocator.
  * This module allows allocating/freeing virtual address space in the kernel's virtual memory map
  */
