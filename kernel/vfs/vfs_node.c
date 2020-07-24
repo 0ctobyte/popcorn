@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2020 Sekhar Bhattacharya
  *
  * SPDS-License-Identifier: MIT
@@ -65,7 +65,7 @@ void vfs_node_init(void) {
 
 vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
     // Lookup hash table for existing node
-    unsigned long hash_bkt = VFS_NODE_HASH(mnt, id);
+    uint64_t hash_bkt = VFS_NODE_HASH(mnt, id);
 
     lock_acquire_shared(&vfs_node_hash_table.lock[hash_bkt]);
 
@@ -75,11 +75,15 @@ vfs_node_t* vfs_node_get(struct vfs_mount_s *mnt, vfs_ino_t id) {
 
     lock_release_shared(&vfs_node_hash_table.lock[hash_bkt]);
 
-    // If it didn't exist in the hash table then allocate a new vfs_node object
+    // If it didn't exist in the hash table then allocate a new vfs_node object and add it to the hash table
     if (vn == NULL) {
         vfs_node_t *vn = (vfs_node_t*)kmem_slab_alloc(&vfs_node_slab);
         kassert(vn != NULL);
         *vn = vfs_node_template;
+
+        lock_acquire_shared(&vfs_node_hash_table.lock[hash_bkt]);
+        kassert(list_insert_last(&vfs_node_hash_table.ll_vnodes[hash_bkt], &vn->ll_vnode));
+        lock_release_shared(&vfs_node_hash_table.lock[hash_bkt]);
     }
 
     vfs_node_ref(vn);
@@ -95,10 +99,10 @@ void vfs_node_put(vfs_node_t *vn) {
 
     if (vn->refcnt == 0) {
         // Remove it from the hash table
-        unsigned long hash_bkt = VFS_NODE_HASH(vn->mount, vn->id);
+        uint64_t hash_bkt = VFS_NODE_HASH(vn->mount, vn->id);
 
         lock_acquire_shared(&vfs_node_hash_table.lock[hash_bkt]);
-        list_remove(&vfs_node_hash_table.ll_vnodes[hash_bkt], &vn->ll_vnode);
+        kassert(list_remove(&vfs_node_hash_table.ll_vnodes[hash_bkt], &vn->ll_vnode));
         lock_release_shared(&vfs_node_hash_table.lock[hash_bkt]);
 
         kmem_slab_free(&vfs_node_slab, (void*)vn);

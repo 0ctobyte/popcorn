@@ -33,6 +33,9 @@ void proc_scheduler_choose(void);
 // This will cause a context switch to another runnable thread
 void proc_scheduler_sleep(void);
 
+// Waking a thread involves marking it runnable and adding it back in the scheduler's queues
+#define proc_scheduler_wake(thread) proc_scheduler_add(thread)
+
 // Macro to compare vruntime of two threads to determine which is more deserving of CPU time
 // True if t1 deserves time over t2, false otherwise
 #define proc_scheduler_deserve(t1, t2) ((t1)->sched.vruntime < (t2)->sched.vruntime)

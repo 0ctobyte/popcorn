@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2020 Sekhar Bhattacharya
  *
  * SPDS-License-Identifier: MIT
@@ -162,7 +162,7 @@ void _vm_page_insert(vm_page_t *pages, size_t num_pages, vm_object_t *object, vm
 
         kassert(list_insert_last(&object->ll_resident, &pages[p].ll_rnode));
 
-        unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
+        uint64_t hash_bkt = VM_PAGE_HASH(object, offset);
 
         lock_acquire_exclusive(&vm_page_hash_table.lock[hash_bkt]);
         kassert(list_insert_last(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
@@ -176,7 +176,7 @@ void _vm_page_remove(vm_page_t *pages, size_t num_pages) {
         vm_object_t *object = pages[p].object;
         vm_offset_t offset = pages[p].offset;
 
-        unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
+        uint64_t hash_bkt = VM_PAGE_HASH(object, offset);
 
         lock_acquire_exclusive(&vm_page_hash_table.lock[hash_bkt]);
         kassert(list_remove(&vm_page_hash_table.ll_pages[hash_bkt], &pages[p].ll_onode));
@@ -273,7 +273,7 @@ vm_page_t* vm_page_lookup(vm_object_t *object, vm_offset_t offset) {
     kassert(object != NULL);
 
     offset = ROUND_PAGE_DOWN(offset);
-    unsigned long hash_bkt = VM_PAGE_HASH(object, offset);
+    uint64_t hash_bkt = VM_PAGE_HASH(object, offset);
 
     lock_acquire_shared(&vm_page_hash_table.lock[hash_bkt]);
 

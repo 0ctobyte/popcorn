@@ -73,8 +73,8 @@ void proc_thread_sleep(proc_event_t event, spinlock_t *interlock, bool interrupt
 // Wakes all threads waiting for the event
 void proc_thread_wake(proc_event_t event);
 
-// Wake the specified thread
-void proc_thread_wake_one(proc_thread_t *thread);
+// Wakes only the first thread waiting for the event
+void proc_thread_wake_one(proc_event_t event);
 
 // Do whatever necessary to run the given thread
 void proc_thread_run(proc_thread_t *thread);

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2020 Sekhar Bhattacharya
  *
  * SPDS-License-Identifier: MIT
@@ -31,7 +31,7 @@ kmem_slab_t proc_thread_slab;
 kmem_slab_t kernel_stack_slab;
 
 #define NUM_BUCKETS              (1024)
-#define PROC_THREAD_HASH(event)  (hash64_fnv1a((uint64_t)event) % NUM_BUCKETS)
+#define PROC_EVENT_HASH(event)   (hash64_fnv1a((uint64_t)event) % NUM_BUCKETS)
 
 typedef struct {
     spinlock_t lock[NUM_BUCKETS];
@@ -217,19 +217,55 @@ void proc_thread_switch(proc_thread_t *new_thread) {
 void proc_thread_sleep(proc_event_t event, spinlock_t *interlock, bool interruptible) {
     kassert(interlock != NULL);
 
-    // FIXME Add this thread to the event hash table and mark it blocked and call the scheduler
+    uint64_t hash_bkt = PROC_EVENT_HASH(event);
+    proc_thread_t *current = proc_thread_current();
+
+    spinlock_acquire_irq(&event_table.lock[hash_bkt]);
+    spinlock_acquire_irq(&current->lock);
+
+    // Add this thread to event hash table
+    current->event = event;
+    kassert(list_insert_last(&event_table.ll_threads[hash_bkt], &current->ll_enode));
+
+    // Now we can unlock the interlock
+    spinlock_release_irq(interlock);
+
+    spinlock_release_irq(&current->lock);
+    spinlock_release_irq(&event_table.lock[hash_bkt]);
+
+    // Call the scheduler
+    proc_scheduler_sleep();
 }
 
 void proc_thread_wake(proc_event_t event) {
-    // FIXME Remove this thread from the event hash table and mark it runnable, call the scheduler
+    uint64_t hash_bkt = PROC_EVENT_HASH(event);
+
+    spinlock_acquire_irq(&event_table.lock[hash_bkt]);
+
+    // Wake up all threads sleeping on this event
+    proc_thread_t *thread = NULL;
+    list_for_each_entry(&event_table.ll_threads[hash_bkt], thread, ll_enode) {
+        if (thread->event == event) proc_scheduler_wake(thread);
+    }
+
+    spinlock_release_irq(&event_table.lock[hash_bkt]);
 }
 
-void proc_thread_wake_one(proc_thread_t *thread) {
-    kassert(thread != NULL);
+void proc_thread_wake_one(proc_event_t event) {
+    uint64_t hash_bkt = PROC_EVENT_HASH(event);
 
-    // FIXME Remove this thread from the event hash table and mark it runnable, call the scheduler
-    spinlock_acquire_irq(&thread->lock);
-    spinlock_release_irq(&thread->lock);
+    spinlock_acquire_irq(&event_table.lock[hash_bkt]);
+
+    // Wake up the first thread sleeping on this event
+    proc_thread_t *thread = NULL;
+    list_for_each_entry(&event_table.ll_threads[hash_bkt], thread, ll_enode) {
+        if (thread->event == event) {
+            proc_scheduler_wake(thread);
+            break;
+        }
+    }
+
+    spinlock_release_irq(&event_table.lock[hash_bkt]);
 }
 
 kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t *context) {
