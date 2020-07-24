@@ -45,9 +45,9 @@ void proc_task_init(void) {
     list_node_init(&kernel_task.ll_snode);
     list_node_init(&kernel_task.ll_tnode);
 
-    spinlock_acquire(&proc_task_list.lock);
+    spinlock_acquire_irq(&proc_task_list.lock);
     list_insert_last(&proc_task_list.tasks, &kernel_task.ll_tnode);
-    spinlock_release(&proc_task_list.lock);
+    spinlock_release_irq(&proc_task_list.lock);
 
     spinlock_init(&proc_task_template.lock);
     proc_task_template.pid = 0;

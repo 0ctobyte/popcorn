@@ -22,7 +22,7 @@
 #define GET_BIN_INDEX(num_pages)                     (arch_ctz(num_pages))
 #define WHICH_BUDDY(vm_page_index, bin)              (vm_page_index) & ~((1l << (bin)) - 1)
 
-#define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((unsigned long)object, offset) %\
+#define VM_PAGE_HASH(object, offset)                 (hash64_fnv1a_pair((uint64_t)object, offset) %\
     vm_page_hash_table.num_buckets)
 
 extern paddr_t kernel_physical_start;

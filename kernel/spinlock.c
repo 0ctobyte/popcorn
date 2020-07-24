@@ -69,11 +69,11 @@ void spinlock_release(spinlock_t *lock) {
     _spinlock_release(lock, SPINLOCK_ACQUIRED | SPINLOCK_ENABLED);
 }
 
-bool spinlock_try_acquire(spinlock_t *lock) {
+bool spinlock_acquire_try(spinlock_t *lock) {
     return !arch_atomic_test_and_set_bit(lock, SPINLOCK_ACQUIRED);
 }
 
-void spinlock_irq_acquire(spinlock_t *lock) {
+void spinlock_acquire_irq(spinlock_t *lock) {
     // Get state of interrupts
     bool _enabled = arch_interrupts_is_enabled();
     arch_interrupts_disable();
@@ -83,14 +83,14 @@ void spinlock_irq_acquire(spinlock_t *lock) {
     SET_ENABLED_BIT(lock, _enabled);
 }
 
-void spinlock_irq_release(spinlock_t *lock) {
+void spinlock_release_irq(spinlock_t *lock) {
     // Get the previous interrupt enabled state
     bool _enabled = GET_ENABLED_BIT(lock);
     spinlock_release(lock);
     if(_enabled) arch_interrupts_enable();
 }
 
-void spinlock_read_acquire(spinlock_t *lock) {
+void spinlock_acquire_read(spinlock_t *lock) {
     // Attempt to set the lightswitch bit
     _spinlock_acquire(lock, SPINLOCK_LIGHTSWITCH);
 
@@ -105,7 +105,7 @@ void spinlock_read_acquire(spinlock_t *lock) {
     _spinlock_release(lock, SPINLOCK_LIGHTSWITCH);
 }
 
-void spinlock_read_release(spinlock_t *lock) {
+void spinlock_release_read(spinlock_t *lock) {
     // Attempt to set the lightswitch bit
     _spinlock_release(lock, SPINLOCK_LIGHTSWITCH);
 

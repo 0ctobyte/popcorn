@@ -6,6 +6,7 @@
 
 #include <kernel/kassert.h>
 #include <kernel/kmem_slab.h>
+#include <kernel/hash.h>
 #include <kernel/vm/vm_types.h>
 #include <kernel/arch/arch_asm.h>
 #include <kernel/arch/arch_atomic.h>
@@ -29,6 +30,16 @@ kmem_slab_t proc_thread_slab;
 #define KERNEL_STACK_SLAB_NUM (1024)
 kmem_slab_t kernel_stack_slab;
 
+#define NUM_BUCKETS              (1024)
+#define PROC_THREAD_HASH(event)  (hash64_fnv1a((uint64_t)event) % NUM_BUCKETS)
+
+typedef struct {
+    spinlock_t lock[NUM_BUCKETS];
+    list_t ll_threads[NUM_BUCKETS];
+} proc_thread_event_hash_table_t;
+
+proc_thread_event_hash_table_t event_table;
+
 void proc_thread_init(void) {
     // Initialize the slab for allocating proc_thread_t structs
     kmem_slab_create(&proc_thread_slab, sizeof(proc_thread_t), PROC_THREAD_SLAB_NUM);
@@ -36,6 +47,10 @@ void proc_thread_init(void) {
     // Initialize the slab for allocating kernel stacks. Kernel stacks are the size of one page
     kernel_stack_size = PAGESIZE;
     kmem_slab_create(&kernel_stack_slab, kernel_stack_size, KERNEL_STACK_SLAB_NUM);
+
+    // Initialize the event hash table
+    arch_fast_zero(event_table.lock, sizeof(spinlock_t) * NUM_BUCKETS);
+    arch_fast_zero(event_table.ll_threads, sizeof(list_t) * NUM_BUCKETS);
 
     // Setup the thread template object
     spinlock_init(&thread_template.lock);
@@ -64,10 +79,10 @@ void proc_thread_init(void) {
     rbtree_node_init(&kernel_thread->sched.rb_node);
     kernel_thread->sched.vruntime = 0;
 
-    spinlock_irq_acquire(&proc_task_kernel()->lock);
+    spinlock_acquire_irq(&proc_task_kernel()->lock);
     kassert(list_insert_last(&proc_task_kernel()->ll_threads, &kernel_thread->ll_tnode));
     proc_task_kernel()->num_threads++;
-    spinlock_irq_release(&proc_task_kernel()->lock);
+    spinlock_release_irq(&proc_task_kernel()->lock);
 
     proc_thread_current() = kernel_thread;
 }
@@ -92,7 +107,7 @@ kresult_t proc_thread_create(proc_task_t *task, proc_thread_t **thread) {
     // Initialize the thread context
     arch_thread_init(new_thread);
 
-    spinlock_irq_acquire(&new_thread->task->lock);
+    spinlock_acquire_irq(&new_thread->task->lock);
 
     // Thread starts out in suspended state
     new_thread->suspend_cnt = new_thread->task->suspend_cnt + 1;
@@ -107,7 +122,7 @@ kresult_t proc_thread_create(proc_task_t *task, proc_thread_t **thread) {
     kassert(list_insert_last(&new_thread->task->ll_threads, &new_thread->ll_tnode));
     new_thread->task->num_threads++;
 
-    spinlock_irq_release(&new_thread->task->lock);
+    spinlock_release_irq(&new_thread->task->lock);
 
     *thread = new_thread;
     return KRESULT_OK;
@@ -116,29 +131,29 @@ kresult_t proc_thread_create(proc_task_t *task, proc_thread_t **thread) {
 void proc_thread_reference(proc_thread_t *thread) {
     kassert(thread != NULL);
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     thread->refcnt++;
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 }
 
 void proc_thread_unreference(proc_thread_t *thread) {
     kassert(thread != NULL);
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
 
     thread->refcnt--;
 
     // FIXME need to terminate or suspend a thread
     if (thread->refcnt == 0) {
-        spinlock_irq_acquire(&thread->task->lock);
+        spinlock_acquire_irq(&thread->task->lock);
         kassert(list_remove(&thread->task->ll_threads, &thread->ll_tnode));
-        spinlock_irq_release(&thread->task->lock);
+        spinlock_release_irq(&thread->task->lock);
 
         kmem_slab_free(&kernel_stack_slab, thread->kernel_stack);
         kmem_slab_free(&proc_thread_slab, thread);
     }
 
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 }
 
 kresult_t proc_thread_terminate(proc_thread_t *thread) {
@@ -150,12 +165,12 @@ kresult_t proc_thread_terminate(proc_thread_t *thread) {
 kresult_t proc_thread_resume(proc_thread_t *thread) {
     if (thread == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
 
     thread->suspend_cnt--;
     if (thread->suspend_cnt == 0) proc_scheduler_add(thread);
 
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }
@@ -164,9 +179,9 @@ kresult_t proc_thread_suspend(proc_thread_t *thread) {
     if (thread == NULL) return KRESULT_INVALID_ARGUMENT;
 
     // FIXME The next time this thread enters the kernel, it'll be stopped and marked SUSPENDED
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     thread->suspend_cnt++;
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }
@@ -175,13 +190,13 @@ void proc_thread_switch(proc_thread_t *new_thread) {
     kassert(new_thread != NULL);
 
     if (proc_thread_current() == new_thread) {
-        spinlock_irq_acquire(&new_thread->lock);
+        spinlock_acquire_irq(&new_thread->lock);
     } else if (proc_thread_current() < new_thread) {
-        spinlock_irq_acquire(&proc_thread_current()->lock);
-        spinlock_irq_acquire(&new_thread->lock);
+        spinlock_acquire_irq(&proc_thread_current()->lock);
+        spinlock_acquire_irq(&new_thread->lock);
     } else {
-        spinlock_irq_acquire(&new_thread->lock);
-        spinlock_irq_acquire(&proc_thread_current()->lock);
+        spinlock_acquire_irq(&new_thread->lock);
+        spinlock_acquire_irq(&proc_thread_current()->lock);
     }
 
     new_thread = arch_thread_switch(new_thread, proc_thread_current());
@@ -189,13 +204,13 @@ void proc_thread_switch(proc_thread_t *new_thread) {
     proc_thread_current() = new_thread;
 
     if (cur_thread == new_thread) {
-        spinlock_irq_release(&new_thread->lock);
+        spinlock_release_irq(&new_thread->lock);
     } else if (cur_thread < new_thread) {
-        spinlock_irq_release(&cur_thread->lock);
-        spinlock_irq_release(&new_thread->lock);
+        spinlock_release_irq(&cur_thread->lock);
+        spinlock_release_irq(&new_thread->lock);
     } else {
-        spinlock_irq_release(&new_thread->lock);
-        spinlock_irq_release(&cur_thread->lock);
+        spinlock_release_irq(&new_thread->lock);
+        spinlock_release_irq(&cur_thread->lock);
     }
 }
 
@@ -213,16 +228,16 @@ void proc_thread_wake_one(proc_thread_t *thread) {
     kassert(thread != NULL);
 
     // FIXME Remove this thread from the event hash table and mark it runnable, call the scheduler
-    spinlock_irq_acquire(&thread->lock);
-    spinlock_irq_release(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 }
 
 kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t *context) {
     if (thread == NULL || context == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     arch_fast_move(&thread->context, context, sizeof(arch_thread_context_t));
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }
@@ -230,9 +245,9 @@ kresult_t proc_thread_set_context(proc_thread_t *thread, arch_thread_context_t *
 kresult_t proc_thread_get_context(proc_thread_t *thread, arch_thread_context_t *context) {
     if (thread == NULL || context == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     arch_fast_move(context, &thread->context, sizeof(arch_thread_context_t));
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }
@@ -240,9 +255,9 @@ kresult_t proc_thread_get_context(proc_thread_t *thread, arch_thread_context_t *
 kresult_t proc_thread_set_entry(proc_thread_t *thread, void *entry) {
     if (thread == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     arch_thread_set_entry(thread, entry);
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }
@@ -250,9 +265,9 @@ kresult_t proc_thread_set_entry(proc_thread_t *thread, void *entry) {
 kresult_t proc_thread_set_stack(proc_thread_t *thread, void *user_stack) {
     if (thread == NULL) return KRESULT_INVALID_ARGUMENT;
 
-    spinlock_irq_acquire(&thread->lock);
+    spinlock_acquire_irq(&thread->lock);
     arch_thread_set_stack(thread, user_stack);
-    spinlock_irq_release(&thread->lock);
+    spinlock_release_irq(&thread->lock);
 
     return KRESULT_OK;
 }

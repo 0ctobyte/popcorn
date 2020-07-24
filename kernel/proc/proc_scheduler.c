@@ -67,7 +67,7 @@ void proc_scheduler_add(struct proc_thread_s *thread) {
     kassert(thread != NULL);
 
     // Assumes the given thread has been locked previously
-    spinlock_irq_acquire(&proc_scheduler.lock);
+    spinlock_acquire_irq(&proc_scheduler.lock);
 
     proc_scheduler.num_threads++;
 
@@ -77,29 +77,29 @@ void proc_scheduler_add(struct proc_thread_s *thread) {
     thread->sched.vruntime = proc_scheduler.min_vruntime;
     kassert(rbtree_insert(&proc_scheduler.rb_threads, _proc_scheduler_compare, &thread->sched.rb_node));
 
-    spinlock_irq_release(&proc_scheduler.lock);
+    spinlock_release_irq(&proc_scheduler.lock);
 }
 
 void proc_scheduler_remove(struct proc_thread_s *thread) {
     kassert(thread != NULL);
 
     // Assumes the given thread has been locked previously
-    spinlock_irq_acquire(&proc_scheduler.lock);
+    spinlock_acquire_irq(&proc_scheduler.lock);
 
     proc_scheduler.num_threads--;
 
     thread->state = PROC_THREAD_STATE_SUSPENDED;
     kassert(rbtree_remove(&proc_scheduler.rb_threads, &thread->sched.rb_node));
 
-    spinlock_irq_release(&proc_scheduler.lock);
+    spinlock_release_irq(&proc_scheduler.lock);
 }
 
 void proc_scheduler_choose(void) {
     proc_thread_t *thread = NULL;
     proc_thread_t *current = proc_thread_current();
 
-    spinlock_irq_acquire(&proc_scheduler.lock);
-    spinlock_irq_acquire(&current->lock);
+    spinlock_acquire_irq(&proc_scheduler.lock);
+    spinlock_acquire_irq(&current->lock);
 
     // Update the vruntime for the currently running thread and put it back in the tree
     current->state = PROC_THREAD_STATE_RUNNABLE;
@@ -109,8 +109,8 @@ void proc_scheduler_choose(void) {
     // Get the next thread to run
     thread = _proc_scheduler_choose();
 
-    spinlock_irq_release(&current->lock);
-    spinlock_irq_release(&proc_scheduler.lock);
+    spinlock_release_irq(&current->lock);
+    spinlock_release_irq(&proc_scheduler.lock);
 
     // Check if we actually need to do a context switch
     if (thread != current) proc_thread_switch(thread);
@@ -120,8 +120,8 @@ void proc_scheduler_sleep(void) {
     proc_thread_t *thread = NULL;
     proc_thread_t *current = proc_thread_current();
 
-    spinlock_irq_acquire(&proc_scheduler.lock);
-    spinlock_irq_acquire(&current->lock);
+    spinlock_acquire_irq(&proc_scheduler.lock);
+    spinlock_acquire_irq(&current->lock);
 
     // We need to remove the thread from the tree since it is being put to sleep
     proc_scheduler.num_threads--;
@@ -133,8 +133,8 @@ void proc_scheduler_sleep(void) {
     // Get the next thread to run
     thread = _proc_scheduler_choose();
 
-    spinlock_irq_release(&current->lock);
-    spinlock_irq_release(&proc_scheduler.lock);
+    spinlock_release_irq(&current->lock);
+    spinlock_release_irq(&proc_scheduler.lock);
 
     proc_thread_switch(thread);
 }

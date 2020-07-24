@@ -12,6 +12,29 @@
 #define HASH_FNV_OFFSET_BASIS (0xcbf29ce484222325)
 #define HASH_FNV_PRIME        (0x100000001b3)
 
+static inline uint64_t hash64_fnv1a(uint64_t a) {
+    uint64_t hash = HASH_FNV_OFFSET_BASIS;
+
+    hash ^= (a & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 8) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 16) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 24) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 32) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 40) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 48) & 0xff);
+    hash *= HASH_FNV_PRIME;
+    hash ^= ((a >> 56) & 0xff);
+    hash *= HASH_FNV_PRIME;
+
+    return hash;
+}
+
 static inline uint64_t hash64_fnv1a_pair(uint64_t a, uint64_t b) {
     uint64_t hash = HASH_FNV_OFFSET_BASIS;
 
