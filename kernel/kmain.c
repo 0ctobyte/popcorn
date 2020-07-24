@@ -41,7 +41,7 @@ void thread_start(void) {
         unsigned long start = arch_timer_get_msecs();
         kprintf("%f s: thread id = %d\n", arch_timer_get_secs(), proc_thread_current()->tid);
         while ((arch_timer_get_msecs() - start) < delay) {
-            asm volatile ("dsb sy\nisb sy\nwfi\n");
+            asm volatile ("wfi\n");
         }
     }
 }
