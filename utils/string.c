@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2015 Sekhar Bhattacharya
  *
- * SPDS-License-Identifier: MIT
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

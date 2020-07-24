@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2020 Sekhar Bhattacharya
  *
- * SPDS-License-Identifier: MIT
+ * SPDX-License-Identifier: MIT
  */
 
 #ifndef _KMEM_SLAB_H_
