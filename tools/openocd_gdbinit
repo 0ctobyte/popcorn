@@ -1,5 +1,5 @@
 target extended-remote localhost:3333
-file ..//build/kernel.elf
+file ../build/kernel.elf
 layout src
 layout reg
 tui reg general
