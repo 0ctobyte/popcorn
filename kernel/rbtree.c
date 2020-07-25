@@ -221,7 +221,7 @@ bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t ch
         } else if (rbtree_is_black(parent)) {
             // Case 2: If the parent node is black, then do nothing since no violations are possible
             break;
-        } else if (uncle != NULL && rbtree_is_red(uncle)) {
+        } else if (rbtree_is_red(uncle)) {
             // Case 3: If the uncle node and parent node are both red then both of them must be repainted black
             // and the grandparent must be repainted red.
             rbtree_node_t *grandparent = rbtree_grandparent(node);
