@@ -40,4 +40,8 @@ void proc_scheduler_sleep(void);
 // True if t1 deserves time over t2, false otherwise
 #define proc_scheduler_deserve(t1, t2) ((t1)->sched.vruntime < (t2)->sched.vruntime)
 
+// This is only used after switching to new threads since new threads do not return back to proc_scheduler_choose
+// or proc_scheduler_sleep
+void proc_scheduler_unlock(void);
+
 #endif // _PROC_SCHEDULER_H_

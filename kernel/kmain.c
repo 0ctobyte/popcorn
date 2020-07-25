@@ -83,7 +83,7 @@ void kmain(void) {
     irq_init();
     kprintf("irq_init() - done!\n");
 
-#define NUM_THREADS (4)
+#define NUM_THREADS (32)
     proc_thread_t *threads[NUM_THREADS];
 
     for (int i = 0; i < NUM_THREADS; i++) {

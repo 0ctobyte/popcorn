@@ -6,6 +6,7 @@
 
 #include <kernel/proc/proc_task.h>
 #include <kernel/proc/proc_thread.h>
+#include <kernel/proc/proc_scheduler.h>
 #include <kernel/arch/arch_asm.h>
 #include <kernel/arch/pmap.h>
 #include <kernel/arch/arch_thread.h>
@@ -25,6 +26,9 @@ void _arch_thread_run(struct proc_thread_s *new_thread, struct proc_thread_s *ol
         spinlock_release_irq(&new_thread->lock);
         spinlock_release_irq(&old_thread->lock);
     }
+
+    // The scheduler is currently locked after switching to a new thread. We need to unlock it here
+    proc_scheduler_unlock();
 }
 
 void arch_thread_init(struct proc_thread_s *thread) {

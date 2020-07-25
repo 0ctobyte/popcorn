@@ -66,8 +66,8 @@ typedef void (*rbtree_walk_func_t)(rbtree_node_t*);
 #define rbtree_set_black(node)                         ((node)->parent = rbtree_make_black(node))
 #define rbtree_set_red(node)                           ((node)->parent = rbtree_make_red(node))
 #define rbtree_get_colour(node)                        ((uintptr_t)(node)->parent & RBTREE_NODE_RED)
-#define rbtree_is_black(node)                          (rbtree_get_colour(node) == RBTREE_NODE_BLACK)
-#define rbtree_is_red(node)                            (rbtree_get_colour(node) == RBTREE_NODE_RED)
+#define rbtree_is_black(node)                          (node == NULL || rbtree_get_colour(node) == RBTREE_NODE_BLACK)
+#define rbtree_is_red(node)                            (node != NULL && rbtree_get_colour(node) == RBTREE_NODE_RED)
 #define rbtree_make_parent(child, new_parent)          ((rbtree_node_t*)((uintptr_t)(new_parent) |\
     ((uintptr_t)(child)->parent & RBTREE_NODE_RED)))
 #define rbtree_set_parent(child, new_parent)           ((child)->parent = rbtree_make_parent(child, new_parent))

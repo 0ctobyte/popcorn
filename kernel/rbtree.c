@@ -300,190 +300,79 @@ bool rbtree_insert(rbtree_t *tree, rbtree_compare_func_t compare_func, rbtree_no
 bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
     if (node == NULL) return false;
 
-    rbtree_node_t *left = rbtree_left(node), *right = rbtree_right(node), *child = (left != NULL) ? left : right;
-    rbtree_node_t *parent = rbtree_parent(node), *parent_left = (parent != NULL) ? rbtree_left(parent) : NULL;
-    rbtree_child_t which_child = (parent_left == node) ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
+    // Normal binary tree delete: get the successor if one exists and swap places with the node to delete
+    // But only if the node has both non-null children
+    rbtree_node_t *successor = rbtree_left(node) == NULL || rbtree_right(node) == NULL ? node
+        : rbtree_node_successor(node);
 
-    // Check if this node is not part of a tree
-    if (rbtree_root(tree) != node && left == NULL && right == NULL && parent == NULL) return false;
+    rbtree_node_t nil = RBTREE_NODE_INITIALIZER;
+    rbtree_node_t *child = rbtree_left(successor) != NULL ? rbtree_left(successor) : (rbtree_right(successor) != NULL ?
+        rbtree_right(successor) : &nil);
+    rbtree_node_t *parent = rbtree_parent(successor);
 
-    if (left != NULL && right != NULL) {
-        // If the node has both children, find it's in order successor and replace it with the successor
-        rbtree_node_t *successor = rbtree_node_successor(node);
-        rbtree_node_t *successor_parent = rbtree_parent(successor), *successor_child = rbtree_right(successor);
-        unsigned long successor_colour = rbtree_get_colour(successor), colour = rbtree_get_colour(node);
+    // Replace the successor with it's child
+    rbtree_set_parent(child, parent);
 
-        // Cut all the links with node
-        _rbtree_emancipate(node);
-        _rbtree_emancipate(left);
-        _rbtree_emancipate(right);
-
-        // Cut all the links with successor
-        _rbtree_emancipate(successor);
-        if (successor_child != NULL) _rbtree_emancipate(successor_child);
-
-        // Swap places
-        if (parent != NULL) {
-            rbtree_this_child(parent, which_child) = successor;
-            rbtree_set_parent(successor, parent);
-        } else {
-            rbtree_root(tree) = successor;
-        }
-
-        if (successor != right) {
-            rbtree_right(successor) = right;
-            rbtree_set_parent(right, successor);
-        } else {
-            rbtree_right(successor) = node;
-            rbtree_set_parent(node, successor);
-        }
-
-        rbtree_left(successor) = left;
-        rbtree_set_parent(left, successor);
-
-        if (node != successor_parent) {
-            rbtree_left(successor_parent) = node;
-            rbtree_set_parent(node, successor_parent);
-        }
-
-        if (successor_child != NULL) {
-            rbtree_right(node) = successor_child;
-            rbtree_set_parent(successor_child, node);
-        }
-
-        rbtree_set_colour(successor, colour);
-        rbtree_set_colour(node, successor_colour);
-
-        // These variables need to be updated after the swap
-        left = rbtree_left(node);
-        right = rbtree_right(node);
-        child = (left != NULL) ? left : right;
-        parent = rbtree_parent(node);
-        parent_left = (parent != NULL) ? rbtree_left(parent) : NULL;
-        which_child = (parent_left == node) ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
+    if (parent == NULL) {
+        rbtree_root(tree) = child;
+    } else if (successor == rbtree_left(parent)) {
+        rbtree_left(parent) = child;
+    } else {
+        rbtree_right(parent) = child;
     }
 
-    // Rest of the conditions below handle the case where the deleted node has at most one non-null child
-    if (rbtree_is_red(node)) {
-        // If node is red, it must only have NULL children. Since we already checked for both children in the previous
-        // condition if the node is red (which means it must have two black/null children) and only one child is
-        // non-NULL then it violates the property that all paths to the NULL go through the same number of black nodes.
-        // We can safely remove the node
-        _rbtree_emancipate(node);
-        if (parent == NULL) rbtree_root(tree) = NULL;
-    } else if (rbtree_is_black(node) && (child != NULL && rbtree_is_red(child))) {
-        // If node is black and it's only child is red, then we can simply replace node with child and recolour it
-        // black to maintain the property that all paths through a node to it's NULL nodes goes through the same number
-        // of black nodes and the other property where all red nodes must have black children
-        _rbtree_emancipate(node);
+    // Replace the deleted node with the successor
+    rbtree_node_t tmp = *successor;
+    if (node != successor) *successor = *node;
+    rbtree_node_init(node);
+
+    // If the successor or single-child node was red then we're done since it's guaranteed that the node
+    // has no children
+    if (rbtree_is_red(&tmp)) {
         _rbtree_emancipate(child);
+        return true;
+    }
 
-        if (parent != NULL) {
-            rbtree_this_child(parent, which_child) = child;
-            rbtree_set_parent(child, parent);
-        } else {
-            rbtree_root(tree) = child;
-        }
-
-        rbtree_set_black(child);
-    } else {
-        bool node_is_left_child = (parent_left == node);
+    node = child;
+    while (node != rbtree_root(tree) && rbtree_is_black(node)) {
+        rbtree_node_t *parent = rbtree_parent(node);
         rbtree_node_t *sibling = rbtree_sibling(node);
+        rbtree_dir_t dir = rbtree_left(parent) == node ? RBTREE_DIR_LEFT : RBTREE_DIR_RIGHT;
 
-        // Node is black and it's only child is also black, start by replacing node with it's child
-        _rbtree_emancipate(node);
-        if (child != NULL) _rbtree_emancipate(child);
-        node = child;
-
-        if (parent != NULL) {
-            rbtree_this_child(parent, which_child) = child;
-            if (child != NULL) rbtree_set_parent(child, parent);
-        } else {
-            rbtree_root(tree) = child;
+        if (rbtree_is_red(sibling)) {
+            // If sibling is red, rotate sibling up and recolour. The new sibling is guaranteed to be black
+            rbtree_set_black(sibling);
+            rbtree_set_red(parent);
+            _rbtree_rotate(tree, parent, dir);
+            sibling = rbtree_sibling(node);
         }
 
-        // There are several cases to handle now
-        while (true) {
-            // We're done if child is the new root
-            if (parent == NULL) break;
+        if (sibling == NULL || (rbtree_is_black(rbtree_left(sibling)) && rbtree_is_black(rbtree_right(sibling)))) {
+            if (sibling != NULL) rbtree_set_red(sibling);
+            node = parent;
+        } else {
+            if (rbtree_is_black(rbtree_this_child(sibling, dir ^ 1))) {
+                rbtree_set_black(rbtree_this_child(sibling, dir));
+                rbtree_set_red(sibling);
 
-            if (rbtree_is_red(sibling)) {
-                // If new node's sibling is red (which must exist) then swap the colours of it's parent and sibling
-                rbtree_set_red(parent);
-                rbtree_set_black(sibling);
-
-                // And rotate. Left if node is the left child or right if it's the right child
-                rbtree_dir_t dir = node_is_left_child ? RBTREE_DIR_LEFT : RBTREE_DIR_RIGHT;
-                _rbtree_rotate(tree, parent, dir);
-
-                // Update sibling after the rotation which is now guaranteed to be black and must exist
-                // If it is NULL, just make a fake "NULL" node
-                sibling = rbtree_this_child(parent, dir ^ 1);
+                _rbtree_rotate(tree, sibling, dir ^ 1);
+                sibling = rbtree_sibling(node);
             }
 
-            // No need to do anything else if the sibling is NULL
-            if (sibling == NULL) break;
-
-            rbtree_node_t *sibling_left = rbtree_left(sibling), *sibling_right = rbtree_right(sibling);
-            bool sibling_left_is_black = sibling_left == NULL || rbtree_is_black(sibling_left);
-            bool sibling_right_is_black = sibling_right == NULL || rbtree_is_black(sibling_right);
-
-            if (sibling_left_is_black && sibling_right_is_black) {
-                if (rbtree_is_black(parent)) {
-                    // If the parent, sibling and both of the sibling's children are all black,
-                    // then recolour the sibling to red and re-run the loop to trigger the red sibling case
-                    rbtree_set_red(sibling);
-                    continue;
-                } else {
-                    // If the parent is red but the sibling and both it's children are black then we can just swap the
-                    // colours of the parent and sibling
-                    rbtree_set_black(parent);
-                    rbtree_set_red(sibling);
-                    break;
-                }
-            } else if (node_is_left_child) {
-                // We need to rotate right in order to get the red child to be the new parent of sibling
-                if (!sibling_left_is_black) {
-                    _rbtree_rotate(tree, sibling, RBTREE_DIR_RIGHT);
-
-                    // Swap colours and update the sibling pointers
-                    rbtree_set_red(sibling);
-                    rbtree_set_black(sibling_left);
-                    sibling = sibling_left;
-                    sibling_right = rbtree_right(sibling);
-                }
-
-                // Rotate left at the parent so that sibling is now the parent of the node's parent
-                _rbtree_rotate(tree, parent, RBTREE_DIR_LEFT);
-
-                // Update colour
-                rbtree_set_black(sibling_right);
-            } else {
-                // We need to rotate left in order to get the red child to be the new parent of sibling
-                if (!sibling_right_is_black) {
-                    _rbtree_rotate(tree, sibling, RBTREE_DIR_LEFT);
-
-                    // Swap colours and update the sibling pointers
-                    rbtree_set_red(sibling);
-                    rbtree_set_black(sibling_right);
-                    sibling = sibling_right;
-                    sibling_left = rbtree_left(sibling);
-                }
-
-                // Rotate right at the parent so that sibling is now the parent of the node's parent
-                _rbtree_rotate(tree, parent, RBTREE_DIR_RIGHT);
-
-                // Update colour
-                rbtree_set_black(sibling_left);
-            }
-
-            // After one of the above two rotations, set the sibling's colour as the node's parent's colour, and set
-            // the parent's colour to black
             rbtree_set_colour(sibling, rbtree_get_colour(parent));
             rbtree_set_black(parent);
-            break;
+
+            rbtree_set_black(rbtree_this_child(sibling, dir ^ 1));
+            _rbtree_rotate(tree, parent, dir);
+
+            node = rbtree_root(tree);
         }
+
+        rbtree_set_black(node);
     }
+
+    if (rbtree_root(tree) == &nil) rbtree_root(tree) = NULL;
+    _rbtree_emancipate(&nil);
 
     return true;
 }

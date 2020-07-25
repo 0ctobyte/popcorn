@@ -43,6 +43,8 @@ proc_thread_t* _proc_scheduler_choose(void) {
     // There should always be at least one runnable thread
     kassert(thread != NULL && thread->state == PROC_THREAD_STATE_RUNNABLE);
 
+    spinlock_acquire_irq(&thread->lock);
+
     // Remove it from the tree
     thread->state = PROC_THREAD_STATE_RUNNING;
     kassert(rbtree_remove(&proc_scheduler.rb_threads, &thread->sched.rb_node));
@@ -50,6 +52,8 @@ proc_thread_t* _proc_scheduler_choose(void) {
     // Update min_vruntime and start time of new thread execution
     proc_scheduler.min_vruntime = thread->sched.vruntime;
     proc_scheduler.exec_start = arch_timer_get_usecs();
+
+    spinlock_release_irq(&thread->lock);
 
     return thread;
 }
@@ -106,14 +110,15 @@ void proc_scheduler_choose(void) {
     current->sched.vruntime += arch_timer_get_usecs() - proc_scheduler.exec_start;
     kassert(rbtree_insert(&proc_scheduler.rb_threads, _proc_scheduler_compare, &current->sched.rb_node));
 
+    spinlock_release_irq(&current->lock);
+
     // Get the next thread to run
     thread = _proc_scheduler_choose();
 
-    spinlock_release_irq(&current->lock);
-    spinlock_release_irq(&proc_scheduler.lock);
-
     // Check if we actually need to do a context switch
     if (thread != current) proc_thread_switch(thread);
+
+    spinlock_release_irq(&proc_scheduler.lock);
 }
 
 void proc_scheduler_sleep(void) {
@@ -130,11 +135,16 @@ void proc_scheduler_sleep(void) {
     current->state = PROC_THREAD_STATE_SLEEPING;
     current->sched.vruntime += arch_timer_get_usecs() - proc_scheduler.exec_start;
 
+    spinlock_release_irq(&current->lock);
+
     // Get the next thread to run
     thread = _proc_scheduler_choose();
 
-    spinlock_release_irq(&current->lock);
-    spinlock_release_irq(&proc_scheduler.lock);
-
     proc_thread_switch(thread);
+
+    spinlock_release_irq(&proc_scheduler.lock);
+}
+
+void proc_scheduler_unlock(void) {
+    spinlock_release_irq(&proc_scheduler.lock);
 }
