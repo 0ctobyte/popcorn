@@ -200,76 +200,55 @@ bool rbtree_insert_here(rbtree_t *tree, rbtree_node_t *parent, rbtree_child_t ch
     // We can't have this condition, if parent is NULL then we are inserting in the root so root must be NULL
     if (parent == NULL && rbtree_root(tree) != NULL) return false;
 
+    rbtree_node_init(node);
+    rbtree_set_parent(node, parent);
+
     if (parent == NULL) {
         rbtree_root(tree) = node;
     } else {
         rbtree_this_child(parent, child) = node;
     }
 
-    rbtree_node_init(node);
-    rbtree_set_parent(node, parent);
-    rbtree_set_red(node);
-
-    // There are four cases when rebalancing a tree
     while (true) {
-        rbtree_node_t *uncle = rbtree_sibling(parent);
-
-        if (node == rbtree_root(tree)) {
-            // Case 1: If the node is the root node then just recolour it black and we're done
+        if (parent == NULL) {
             rbtree_set_black(node);
             break;
-        } else if (rbtree_is_black(parent)) {
-            // Case 2: If the parent node is black, then do nothing since no violations are possible
-            break;
-        } else if (rbtree_is_red(uncle)) {
-            // Case 3: If the uncle node and parent node are both red then both of them must be repainted black
-            // and the grandparent must be repainted red.
-            rbtree_node_t *grandparent = rbtree_grandparent(node);
+        }
 
-            // Repaint
+        if (rbtree_is_black(parent)) break;
+
+        rbtree_node_t *grandparent = rbtree_parent(parent);
+        if (grandparent == NULL) return false;
+
+        rbtree_node_t *uncle = rbtree_sibling(parent);
+        rbtree_dir_t dir = rbtree_left(grandparent) == parent ? RBTREE_DIR_LEFT : RBTREE_DIR_RIGHT;
+
+        // Uncle is red, swap colours and restart the loop at the grandparent
+        if (rbtree_is_red(uncle)) {
             rbtree_set_black(uncle);
             rbtree_set_black(parent);
             rbtree_set_red(grandparent);
-
-            // The grandparent might now violate a property of the tree so repeat the rebalance loop on the grandparent
             node = grandparent;
             parent = rbtree_parent(node);
             continue;
-        } else {
-            // Case 4: The parent is red but the uncle is black (or null)
-            rbtree_node_t *grandparent = rbtree_grandparent(node);
-
-            // Check if the node is on the "inside" tree. It's on the inside if it's on the right subtree of the parent
-            // which is in the left subtree of the grandparent. Or, if it's on the left subtree of the parent which is
-            // in the right subtree of the grandparent. For the first scenario, we need to perform a left rotation. in
-            // the second scenario we need to perform a right rotation
-            if (rbtree_right(parent) == node && rbtree_left(grandparent) == parent) {
-                _rbtree_rotate(tree, parent, RBTREE_DIR_LEFT);
-                rbtree_node_t *temp = node;
-                node = parent;
-                parent = temp;
-            } else if (rbtree_left(parent) == node && rbtree_right(grandparent) == parent) {
-                _rbtree_rotate(tree, parent, RBTREE_DIR_RIGHT);
-                rbtree_node_t *temp = node;
-                node = parent;
-                parent = temp;
-            }
-
-            // Now we need to rotate the grandparent depending on which branch the node is in
-            if (rbtree_right(parent) == node) {
-                _rbtree_rotate(tree, grandparent, RBTREE_DIR_LEFT);
-            } else {
-                _rbtree_rotate(tree, grandparent, RBTREE_DIR_RIGHT);
-            }
-
-            // Update the colours and we're done
-            rbtree_set_black(parent);
-            rbtree_set_red(grandparent);
-            break;
         }
+
+        // Node is on the inner tree of parent. Rotate it so it moves to parent's position
+        if (node == rbtree_this_child(parent, dir ^ 1)) {
+            _rbtree_rotate(tree, parent, dir);
+            rbtree_node_t *tmp = node;
+            node = parent;
+            parent = tmp;
+        }
+
+        // Node is on the outer tree of parent. Update colours and rotate it so it moves to parent's position
+        rbtree_set_black(parent);
+        rbtree_set_red(grandparent);
+        _rbtree_rotate(tree, grandparent, dir ^ 1);
+        break;
     }
 
-    return true;
+    return rbtree_is_black(rbtree_root(tree));
 }
 
 bool rbtree_insert_slot(rbtree_t *tree, rbtree_slot_t slot, rbtree_node_t *node) {
@@ -305,76 +284,90 @@ bool rbtree_remove(rbtree_t *tree, rbtree_node_t *node) {
     rbtree_node_t *successor = rbtree_left(node) == NULL || rbtree_right(node) == NULL ? node
         : rbtree_node_successor(node);
 
-    rbtree_node_t nil = RBTREE_NODE_INITIALIZER;
-    rbtree_node_t *child = rbtree_left(successor) != NULL ? rbtree_left(successor) : (rbtree_right(successor) != NULL ?
-        rbtree_right(successor) : &nil);
+    rbtree_node_t *child = rbtree_left(successor) != NULL ? rbtree_left(successor) : rbtree_right(successor);
     rbtree_node_t *parent = rbtree_parent(successor);
+    int colour = rbtree_get_colour(successor);
 
     // Replace the successor with it's child
-    rbtree_set_parent(child, parent);
+    if (child != NULL) rbtree_set_parent(child, parent);
 
     if (parent == NULL) {
         rbtree_root(tree) = child;
-    } else if (successor == rbtree_left(parent)) {
-        rbtree_left(parent) = child;
     } else {
-        rbtree_right(parent) = child;
+        rbtree_child_t which = successor == rbtree_left(parent) ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
+        rbtree_this_child(parent, which) = child;
     }
 
     // Replace the deleted node with the successor
-    rbtree_node_t tmp = *successor;
-    if (node != successor) *successor = *node;
-    rbtree_node_init(node);
+    if (node != successor) {
+        rbtree_node_t *p = rbtree_parent(node), *l = rbtree_left(node), *r = rbtree_right(node);
 
-    // If the successor or single-child node was red then we're done since it's guaranteed that the node
-    // has no children
-    if (rbtree_is_red(&tmp)) {
-        _rbtree_emancipate(child);
-        return true;
+        if (p == NULL) {
+            rbtree_root(tree) = successor;
+        } else {
+            rbtree_child_t which = rbtree_left(p) == node ? RBTREE_CHILD_LEFT : RBTREE_CHILD_RIGHT;
+            rbtree_this_child(p, which) = successor;
+        }
+
+        if (l != NULL) rbtree_set_parent(l, successor);
+        if (r != NULL) rbtree_set_parent(r, successor);
+
+
+        *successor = *node;
     }
 
-    node = child;
-    while (node != rbtree_root(tree) && rbtree_is_black(node)) {
-        rbtree_node_t *parent = rbtree_parent(node);
-        rbtree_node_t *sibling = rbtree_sibling(node);
-        rbtree_dir_t dir = rbtree_left(parent) == node ? RBTREE_DIR_LEFT : RBTREE_DIR_RIGHT;
+    rbtree_node_init(node);
 
+    if (colour == RBTREE_NODE_RED) return true;
+
+    if (node == parent) parent = successor;
+    node = child;
+
+    while (true) {
+        if (rbtree_is_red(node)) {
+            rbtree_set_black(node);
+            break;
+        }
+
+        if (parent == NULL) break;
+
+        rbtree_dir_t dir = rbtree_left(parent) == node ? RBTREE_DIR_LEFT : RBTREE_DIR_RIGHT;
+        rbtree_node_t *sibling = rbtree_this_child(parent, dir ^ 1);
+
+        // Sibling is red. Update colour and rotate at the parent so that sibling is black
         if (rbtree_is_red(sibling)) {
-            // If sibling is red, rotate sibling up and recolour. The new sibling is guaranteed to be black
             rbtree_set_black(sibling);
             rbtree_set_red(parent);
             _rbtree_rotate(tree, parent, dir);
-            sibling = rbtree_sibling(node);
+            sibling = rbtree_this_child(parent, dir ^ 1);
         }
 
-        if (sibling == NULL || (rbtree_is_black(rbtree_left(sibling)) && rbtree_is_black(rbtree_right(sibling)))) {
-            if (sibling != NULL) rbtree_set_red(sibling);
+        // Sibling only has black children. Update colours and rerun loop at parent
+        if (rbtree_is_black(rbtree_left(sibling)) && rbtree_is_black(rbtree_right(sibling))) {
+            rbtree_set_red(sibling);
             node = parent;
-        } else {
-            if (rbtree_is_black(rbtree_this_child(sibling, dir ^ 1))) {
-                rbtree_set_black(rbtree_this_child(sibling, dir));
-                rbtree_set_red(sibling);
-
-                _rbtree_rotate(tree, sibling, dir ^ 1);
-                sibling = rbtree_sibling(node);
-            }
-
-            rbtree_set_colour(sibling, rbtree_get_colour(parent));
-            rbtree_set_black(parent);
-
-            rbtree_set_black(rbtree_this_child(sibling, dir ^ 1));
-            _rbtree_rotate(tree, parent, dir);
-
-            node = rbtree_root(tree);
+            parent = rbtree_parent(node);
+            continue;
         }
 
-        rbtree_set_black(node);
+        // Sibling's outer child is black. Update colour and rotate that way to move red child to sibling's position
+        if (rbtree_is_black(rbtree_this_child(sibling, dir ^ 1))) {
+            rbtree_set_black(rbtree_this_child(sibling, dir));
+            rbtree_set_red(sibling);
+            _rbtree_rotate(tree, sibling, dir ^ 1);
+            sibling = rbtree_this_child(parent, dir ^ 1);
+        }
+
+        // Sibling's inner child is black. Swap sibling and parent colours, set the sibling's other child black
+        // and rotate so that the inner child is at sibling's position
+        rbtree_set_colour(sibling, rbtree_get_colour(parent));
+        rbtree_set_black(parent);
+        rbtree_set_black(rbtree_this_child(sibling, dir ^ 1));
+        _rbtree_rotate(tree, parent, dir);
+        break;
     }
 
-    if (rbtree_root(tree) == &nil) rbtree_root(tree) = NULL;
-    _rbtree_emancipate(&nil);
-
-    return true;
+    return rbtree_is_black(rbtree_root(tree));
 }
 
 void rbtree_clear(rbtree_t *tree, rbtree_delete_func_t delete_func) {
