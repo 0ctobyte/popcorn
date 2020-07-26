@@ -466,7 +466,7 @@ void rbtree_node_walk_inorder(rbtree_node_t *node, rbtree_walk_func_t walk) {
 }
 
 #if DEBUG
-extern void kprintf(const char *fmt, ...);
+extern int kprintf(const char *fmt, ...);
 
 typedef struct trunk_s
 {

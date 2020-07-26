@@ -9,7 +9,15 @@
 #include <string.h>
 #include <kernel/kresult.h>
 #include <kernel/console.h>
+#include <kernel/lock.h>
 #include <kernel/kstdio.h>
+
+typedef struct {
+    lock_t lock;
+    char buffer[1024];
+} kstdio_t;
+
+kstdio_t kstdio = { .lock = LOCK_INITIALIZER, .buffer = {0}};
 
 int kputs(const char *s) {
     size_t len = strlen(s), count = 0;
@@ -25,15 +33,18 @@ int kputs(const char *s) {
 }
 
 int kprintf(const char *fmt, ...) {
-    char __kprintf_buffer[1024];
     va_list args;
     int r = 0;
 
+    lock_acquire_exclusive(&kstdio.lock);
+
     va_start(args, fmt);
-    r = vsprintf(__kprintf_buffer, fmt, args);
+    r = vsprintf(kstdio.buffer, fmt, args);
     va_end(args);
 
-    kputs(__kprintf_buffer);
+    kputs(kstdio.buffer);
+
+    lock_release_exclusive(&kstdio.lock);
 
     return r;
 }

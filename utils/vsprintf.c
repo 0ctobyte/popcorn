@@ -52,6 +52,8 @@
         default: num = va_arg(args, unsigned int); break;\
     }\
 
+const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // Count the number of digits in the number represented in the string
 unsigned int num_digits(const char *s) {
@@ -87,9 +89,6 @@ long atoi(const char *s) {
 
 // Converts an long into a string
 char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
-    const char *lower = "0123456789abcdefghijklmnopqrstuvwxyz";
-    const char *upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
     char *buf = str;
     char tmp[sizeof(long long)+4];
 
@@ -110,7 +109,8 @@ char* itoa2(unsigned long long num, char *str, unsigned int base, bool upcase) {
     return(str);
 }
 
-char* number(char *dest, char *str_num, uint8_t flags, unsigned long width, long precision, bool negative, char specifier) {
+char* number(char *dest, char *str_num, uint8_t flags, unsigned long width, long precision, bool negative,
+    char specifier) {
     char *buf = dest;
     char sign = 0;
     if(flags & SPACE) sign = ' ';
@@ -194,7 +194,7 @@ char* number(char *dest, char *str_num, uint8_t flags, unsigned long width, long
 
 int vsprintf(char *s, const char *fmt, va_list args) {
     // Holds the formatted number
-    char fmt_num[1024];
+    char fmt_num[32];
 
     char *str;
     for(str = s; *fmt != '\0'; ++fmt) {

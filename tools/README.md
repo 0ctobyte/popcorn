@@ -6,13 +6,14 @@ Run the QEMU emulator:
 
 And then run GDB:
 
-`aarch64-none-elf-gdb -tui -command=qemu_gdbinit`
+`aarch64-none-elf-gdb -command=qemu_gdbinit`
 
 This should bring up a GDB prompt and should already be connected to QEMU. If not, run this command in the GDB prompt:
 
 `target remote localhost:1234`
 
-You can find more information on how to use the GDB text user interface [here](https://sourceware.org/gdb/onlinedocs/gdb/TUI.html).
+You can also pass the `--tui` option to GDB which will enable the text user interface mode.
+Find more information on how to use the GDB text user interface [here](https://sourceware.org/gdb/onlinedocs/gdb/TUI.html).
 
 # OpenOCD/GDB Raspberry Pi 3 Debugging
 
@@ -42,4 +43,4 @@ For Raspberry Pi 4:
 
 And then run GDB:
 
-`aarch64-none-elf-gdb -tui -command=openocd_gdbinit`
+`aarch64-none-elf-gdb -command=openocd_gdbinit`
