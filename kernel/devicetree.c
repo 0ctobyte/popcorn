@@ -45,6 +45,3 @@ bool devicetree_find_memory(unsigned long *base_addr, unsigned long *size) {
 
     return true;
 }
-
-bool devicetree_find_uart(void) {
-}
