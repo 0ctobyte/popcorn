@@ -7,8 +7,13 @@
 #ifndef _FDT_H_
 #define _FDT_H_
 
-// Flattened Device Tree parsing support
 #include <sys/types.h>
+
+/*
+ * fdt - Flattened device tree parsing support
+ * Supports iterating and searching for nodes and retrieving properties from nodes. It also allows iterating through
+ * property data and lists.
+ */
 
 typedef uint32_t fdt_token_t;
 

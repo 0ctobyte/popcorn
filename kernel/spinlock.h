@@ -9,6 +9,24 @@
 
 #include <sys/types.h>
 
+/*
+ * spinlock - A typical spinlock facility
+ * Spinlocks are basically busywait mutual exclusion locks. When a lock cannot be acquired, the thread will
+ * continuously attempt to gain the lock. Spinlocks should only be used if the lock will only be acquired for a small
+ * amount of time or if the thread can not be put to sleep while waiting for access to the critical section.
+ *
+ * This spinlock implementation allows for readers/writers locking. This means that threads that only intend on reading
+ * from a resource in memory may do so simultaneously while threads that intend on writing to the resource may only do
+ * so one at a time blocking all other threads from accessing the resource. Note: this implementation gives priority to
+ * reader threads which may cause writer threads to starve.
+ *
+ * The spinlock uses only one integer where certain bits are used for certain purposes. Bit 0 is used as the main lock.
+ * Bit 1 is used to hold the state of interrupts, if 1 then interrupts were previously enabled before the call to
+ * acquire_irq. Bit 2 is used as the "lightswitch" lock. This is only used when using acquire_read/acquire_release
+ * functions. It basically allows only one thread to modify the "count" (count of how many readers have acquired a
+ * lock) which starts from bit 3 in the lock variable.
+ */
+
 #define SPINLOCK_INITIALIZER (0)
 
 typedef long spinlock_t;

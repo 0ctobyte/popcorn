@@ -10,6 +10,16 @@
 #include <sys/types.h>
 #include <kernel/list.h>
 
+/*
+ * slab - Fast fixed-size allocator
+ * Slabs are a list of buffers of contiguous memory that is divided into fixed size blocks from which a block can be
+ * allocated in constant time. A portion of each buffer is typically used for metadata (i.e. slab_buf_t) for that
+ * buffer however this implementation allows the metadata to be located elsewhere. Slabs can be grown or shrunk
+ * by simply adding or removing slab buffers from the list. Although slabs are only useful for allocating data
+ * structures of a fixed-size or less (which wastes memory) their major benefit is providing allocation and freeing
+ * of fixed-size blocks in constant time.
+ */
+
 // Slabs must at least be this size
 #define SLAB_MIN_SIZE                     (sizeof(slab_buf_t)+sizeof(list_node_t))
 #define SLAB_BUF_SIZE(slab, slab_buf)     (((slab_buf)->capacity * (slab)->block_size) + (((void*)(slab_buf) ==\

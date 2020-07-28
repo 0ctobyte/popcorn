@@ -9,6 +9,13 @@
 
 #include <sys/types.h>
 
+/*
+ * rbtree - Red-black tree
+ * A generic implementation of a red-black tree that can be added to any data structure. The rbtree_entry macro can be
+ * used to retrieve the containing data structure from a rbtree node reference. The module implements all the basic
+ * operations on a red-black tree and some convenience operations like successor, predecessor and in-order walk.
+ */
+
 // Assuming nodes are at least 2-byte aligned. If they are, we can embed the colour information in the pointer
 #define RBTREE_NODE_BLACK (0)
 #define RBTREE_NODE_RED   (1)

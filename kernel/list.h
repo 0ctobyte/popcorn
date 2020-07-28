@@ -9,6 +9,13 @@
 
 #include <sys/types.h>
 
+/*
+ * list - Doubly linked list
+ * This module implements a generic list interface that can be added to any data structure. The list_entry macro is
+ * used to retrieve the reference to the containing data structure of the list node. Inserting, deleting, searching and
+ * iteration are implemented. Queues can be built on top of this module using the list_push and list_pop macros.
+ */
+
 typedef struct list_node_s {
     struct list_node_s *next;
     struct list_node_s *prev;

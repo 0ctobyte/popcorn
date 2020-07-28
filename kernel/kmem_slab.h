@@ -13,10 +13,10 @@
 
 /*
  * kmem_slab - General purpose slab allocator using the kernel virtual address space and protected by locks
- * kmem_slab is built on the notion that any kernel module that needs to dynamically allocate memory is responsible
- * for setting up their own slab of objects to allocate from. The modules will handle out of memory conditions
+ * kmem_slab is built on the premise that any kernel module that needs to dynamically allocate memory is responsible
+ * for setting up their own slab of objects to allocate from. The modules will handle out-of-memory conditions
  * themselves (typically by purging least recently used objects and freeing them). kmem_slab will grab free virtual
- * memory from the kernel for new slabs.
+ * memory from the kernel for new slabs. For the most part, kmem_slab is a convenience wrapper around the slabs module.
  */
 
 // kmem_slab is just a slab with mutex lock using the kernel VM address space
