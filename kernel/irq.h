@@ -30,7 +30,7 @@ void irq_end(irq_id_t id);
 kresult_t irq_done(irq_id_t id);
 kresult_t irq_clr(irq_id_t id);
 
-// Put's the thread sleep on the specified IRQ id
+// Puts the thread to sleep on the specified IRQ id
 kresult_t irq_thread_sleep(struct proc_thread_s *thread, irq_id_t id);
 
 // Generic IRQ handler, this will wake threads waiting on the interrupt that fired
