@@ -544,4 +544,5 @@ kresult_t vm_map_unwire(vm_map_t *vmap, vaddr_t start, vaddr_t end) {
 
 kresult_t vm_map_lookup(vm_map_t *vmap, vaddr_t vaddr, vm_prot_t fault_type, vm_object_t *object, vm_offset_t *offset,
     vm_prot_t *prot) {
+    return KRESULT_UNIMPLEMENTED;
 }

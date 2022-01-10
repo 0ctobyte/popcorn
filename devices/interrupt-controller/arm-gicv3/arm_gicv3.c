@@ -51,18 +51,18 @@ void arm_gicv3_init(void *data) {
     } while (G_GICR_WAKER_CHILDRENASLEEP(waker));
 
     // Enable system register access
-    icc_sre_el1_w(1);
+    icc_sre_el1_w(1UL);
     asm ("isb sy");
 
     // Set the priority mask and binary point registers. Allow any priority to preempt.
-    icc_pmr_el1_w(0xff);
-    icc_bpr1_el1_w(0x0);
+    icc_pmr_el1_w(0xffUL);
+    icc_bpr1_el1_w(0x0UL);
 
     // Enable split EOI mode
     icc_ctrl_el1_w(S_ICC_CTRL_EOIMODE);
 
     // Enable non-secure group 1 interrupts
-    icc_igrpen1_el1_w(1);
+    icc_igrpen1_el1_w(1UL);
     asm ("isb sy");
 }
 
@@ -130,11 +130,11 @@ irq_id_t arm_gicv3_ack_irq(void *data) {
 }
 
 void arm_gicv3_end_irq(void *data, irq_id_t id) {
-    icc_eoir1_el1_w(id);
+    icc_eoir1_el1_w((unsigned long)id);
 }
 
 void arm_gicv3_done_irq(void *data, irq_id_t id) {
-    icc_dir_el1_w(id);
+    icc_dir_el1_w((unsigned long)id);
 }
 
 void arm_gicv3_clr_irq(void *data, irq_id_t id) {

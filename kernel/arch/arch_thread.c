@@ -69,6 +69,9 @@ struct proc_thread_s* arch_thread_switch(struct proc_thread_s *new_thread, struc
     // lines earlier. Unless this thread is running for the first in which case it will start execution at
     // _arch_thread_run_stub
     arch_thread_load_context(&new_thread->context);
+
+    // Should never get here
+    return NULL;
 }
 
 void arch_thread_set_entry(struct proc_thread_s *thread, void *entry) {
@@ -88,5 +91,5 @@ void arch_thread_set_privilege(struct proc_thread_s *thread, arch_thread_privile
     user->spsr &= ~0x1f;
 
     // Kernel mode is spsr[4] = 0 (AARCH64) and spsr[3:0] = 5 (using kernel stack in EL1)
-    if (privilege = ARCH_THREAD_PRIVILEGE_KERNEL) user->spsr = 0x5;
+    if (privilege == ARCH_THREAD_PRIVILEGE_KERNEL) user->spsr = 0x5;
 }

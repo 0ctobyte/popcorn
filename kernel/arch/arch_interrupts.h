@@ -21,12 +21,12 @@
 // Checks if interrupts are enabled on the processor
 #define arch_interrupts_is_enabled()\
 ({\
-    bool result;\
+    unsigned long result;\
     asm ("mrs %0, DAIF\n"\
          "tst %0, #0xc0\n"\
          "csetm %0, eq\n"\
          : "+r" (result) :);\
-    result;\
+    (bool)result;\
 })
 
 #endif // _ARCH_INTERRUPTS_H_

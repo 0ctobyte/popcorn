@@ -341,7 +341,7 @@ void _pmap_update_pte(vaddr_t va, unsigned int asid, pte_t *old_pte, pte_t new_p
     arch_barrier_dsb();
 
     // 2. Invalidate the TLB entry by VA
-    arch_tlb_invalidate_va(va, asid);
+    arch_tlb_invalidate_va(va, (unsigned long)asid);
 
     // 3. Write new pte and issue DSB
     *old_pte = new_pte;
@@ -352,7 +352,7 @@ void _pmap_clear_pte(vaddr_t va, unsigned int asid, pte_t *old_pte) {
     *old_pte = 0;
     if (IS_PTE_VALID(*old_pte)) {
         arch_barrier_dsb();
-        arch_tlb_invalidate_va(va, asid);
+        arch_tlb_invalidate_va(va, (unsigned long)asid);
     }
 }
 

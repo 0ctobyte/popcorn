@@ -4,7 +4,7 @@
  * SPDS-License-Identifier: MIT
  */
 
-.section ".text.start"
+.section .text.start
 
 .global _start
 .align 2

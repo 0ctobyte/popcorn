@@ -6,8 +6,8 @@ target_sources(${target}
         ${CMAKE_CURRENT_SOURCE_DIR}/_start.s
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_asm.s
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_cache.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/arch_exceptions
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_exceptions.c
         ${CMAKE_CURRENT_SOURCE_DIR}/arch_mmu.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/arch_thread
-        ${CMAKE_CURRENT_SOURCE_DIR}/pmap
+        ${CMAKE_CURRENT_SOURCE_DIR}/arch_thread.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/pmap.c
 )

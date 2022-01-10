@@ -10,10 +10,10 @@
 #include "arm_gicv3_common.h"
 
 #define GICC_CTRL                                     (0x0000)
-#define S_GICC_CTRL_EOIMODENS                         (1 << 9)
-#define S_GICC_CTRL_IRQBYPDISGRP1                     (1 << 6)
-#define S_GICC_CTRL_FIQBYPDISGRP1                     (1 << 5)
-#define S_GICC_CTRL_ENABLEGRP1                        (1)
+#define S_GICC_CTRL_EOIMODENS                         (1UL << 9UL)
+#define S_GICC_CTRL_IRQBYPDISGRP1                     (1UL << 6UL)
+#define S_GICC_CTRL_FIQBYPDISGRP1                     (1UL << 5UL)
+#define S_GICC_CTRL_ENABLEGRP1                        (1UL)
 #define gicc_ctrl_read(b)                             (MMIO_READ_32(b, GICC_CTRL))
 #define gicc_ctrl_write(b, r)                         (MMIO_WRITE_32(b, GICC_CTRL, r))
 
@@ -26,12 +26,12 @@
 #define G_ICC_CTRL_PMHE(r)                            (((r) >> 6) & 1)
 #define G_ICC_CTRL_EOIMODE(r)                         (((r) >> 1) & 1)
 #define G_ICC_CTRL_CBPR(r)                            ((r) & 1)
-#define S_ICC_CTRL_PMHE                               (1 << 6)
-#define S_ICC_CTRL_EOIMODE                            (1 << 1)
-#define S_ICC_CTRL_CBPR                               (1)
+#define S_ICC_CTRL_PMHE                               (1UL << 6UL)
+#define S_ICC_CTRL_EOIMODE                            (1UL << 1UL)
+#define S_ICC_CTRL_CBPR                               (1UL)
 #define icc_ctrl_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_4" : "=r" (v));\
     v;\
 }}
@@ -44,7 +44,7 @@
 #define gicc_pmr_write(b, r)                          (MMIO_WRITE_32(b, GICC_PMR, r))
 #define icc_pmr_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C4_C6_0" : "=r" (v));\
     v;\
 })
@@ -57,14 +57,14 @@
 #define gicc_bpr_write(b, r)                          (MMIO_WRITE_32(b, GICC_BPR, r))
 #define icc_bpr0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_3" : "=r" (v));\
     v;\
 })
 #define icc_bpr0_el1_w(v)                             asm volatile ("msr S3_0_C12_C8_3, %0" :: "r" (v))
 #define icc_bpr1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_3" : "=r" (v));\
     v;\
 })
@@ -75,13 +75,13 @@
 #define gicc_iar_read(b)                              (MMIO_READ_32(b, GICC_IAR))
 #define icc_iar0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_0" : "=r" (v));\
     v;\
 })
 #define icc_iar1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_0" : "=r" (v));\
     v;\
 })
@@ -97,7 +97,7 @@
 #define gicc_rpr_read(b)                              (MMIO_READ_32(b, GICC_RPR))
 #define icc_rpr_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C11_3" : "=r" (v));\
     v;\
 })
@@ -107,13 +107,13 @@
 #define gicc_hppir_read(b)                            (MMIO_READ_32(b, GICC_HPPIR))
 #define icc_hppir0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_2" : "=r" (v));\
     v;\
 })
 #define icc_hppir1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_2" : "=r" (v));\
     v;\
 })
@@ -148,49 +148,49 @@
 #define gicc_apr_read(b, id)                          (MMIO_READ_32(b, GICC_APR(id / 32))
 #define icc_ap0r0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_4" : "=r" (v));\
     v;\
 })
 #define icc_ap0r1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_5" : "=r" (v));\
     v;\
 })
 #define icc_ap0r2_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_6" : "=r" (v));\
     v;\
 })
 #define icc_ap0r3_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C8_7" : "=r" (v));\
     v;\
 })
 #define icc_ap1r0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C9_0" : "=r" (v));\
     v;\
 })
 #define icc_ap1r1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C9_1" : "=r" (v));\
     v;\
 })
 #define icc_ap1r2_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C9_2" : "=r" (v));\
     v;\
 })
 #define icc_ap1r3_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C9_3" : "=r" (v));\
     v;\
 })
@@ -216,7 +216,7 @@
 
 #define icc_sre_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_5" : "=r" (v));\
     v;\
 })
@@ -224,14 +224,14 @@
 
 #define icc_igrpen0_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_6" : "=r" (v));\
     v;\
 })
 #define icc_igrpen0_el1_w(v)                          asm volatile ("msr S3_0_C12_C12_6, %0" :: "r" (v));
 #define icc_igrpen1_el1_r()\
 ({\
-    uint32_t v;\
+    unsigned long v;\
     asm ("mrs %0, S3_0_C12_C12_7" : "=r" (v));\
     v;\
 })

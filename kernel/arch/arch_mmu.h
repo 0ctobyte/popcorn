@@ -45,44 +45,44 @@
 // MMU feature support checkers
 #define arch_mmu_is_4kb_granule_supported()\
 ({\
-    bool result = false;\
+    unsigned long result = false;\
     asm ("mrs %0, ID_AA64MMFR0_EL1\n"\
          "ubfx %0, %0, #28, #4\n"\
          "cmp %0, #0\n"\
          "cset %0, eq\n"\
          : "+r" (result) :);\
-    result;\
+    (bool)result;\
 })
 #define arch_mmu_is_16kb_granule_supported()\
 ({\
-    bool result = false;\
+    unsigned long result = false;\
     asm ("mrs %0, ID_AA64MMFR0_EL1\n"\
          "ubfx %0, %0, #20, #4\n"\
          "cmp %0, #1\n"\
          "cset %0, eq\n"\
          : "+r" (result) :);\
-    result;\
+    (bool)result;\
 })
 #define arch_mmu_is_64kb_granule_supported()\
 ({\
-    bool result = false;\
+    unsigned long result = false;\
     asm ("mrs %0, ID_AA64MMFR0_EL1\n"\
          "ubfx %0, %0, #24, #4\n"\
          "cmp %0, #0\n"\
          "cset %0, eq\n"\
          : "+r" (result) :);\
-    result;\
+    (bool)result;\
 })
 
 // Check if the MMU is enabled
 #define arch_mmu_is_enabled()\
 ({\
-    bool result = false;\
+    unsigned long result = false;\
     asm ("mrs %0, SCTLR_EL1\n"\
          "tst %0, #1\n"\
          "csetm %0, ne\n"\
          : "+r" (result) :);\
-    result;\
+    (bool)result;\
 })
 
 // Emable or disable the MMu

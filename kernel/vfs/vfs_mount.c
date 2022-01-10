@@ -57,6 +57,8 @@ vfs_mount_t* vfs_mount_create(const char *fs_name, struct vfs_node_s *mounted_on
     lock_acquire(&vfs_mount_list.lock);
     kassert(list_insert_last(&vfs_mount_list.mounts, &mnt->ll_node));
     lock_release(&vfs_mount_list.lock);
+
+    return mnt;
 }
 
 void vfs_mount_destroy(vfs_mount_t *mnt) {

@@ -84,6 +84,8 @@ static inline uint64_t hash64_fnv1a_str(char *s, size_t len) {
         hash ^= byte;
         hash *= HASH_FNV_PRIME;
     }
+
+    return hash;
 }
 
 #endif // _HASH_H_

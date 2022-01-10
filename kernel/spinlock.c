@@ -12,11 +12,11 @@
 
 // Meaning of the bits in the spinlock's lock variable
 // Bit 0 is the lock value: 0 for unlocked, 1 for acquired
-#define SPINLOCK_ACQUIRED              (0x1)
+#define SPINLOCK_ACQUIRED              (0x1UL)
 // Bit 1 is the status of interrupts: 1 for enabled, 0 for disabled
-#define SPINLOCK_ENABLED               (0x2)
+#define SPINLOCK_ENABLED               (0x2UL)
 // Bit 2 is for the R/W value when using readacquire and writeacquire
-#define SPINLOCK_LIGHTSWITCH           (0x4)
+#define SPINLOCK_LIGHTSWITCH           (0x4UL)
 
 // The counter for the number of readers holding the lock is stored starting from bit 3 in the lock variable
 #define GET_READ_ACQUIRE_COUNT(B)      (*(B) >> 3)
