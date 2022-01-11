@@ -13,9 +13,9 @@
 #include <devices/interrupt-controller/arm-gicv2/arm_gicv2.h>
 #include <platform/platform.h>
 
-arm_pl011_t arm_pl011;
-bcm2835_aux_uart_t bcm2835_aux_uart;
-arm_gicv2_t arm_gicv2;
+static arm_pl011_t arm_pl011;
+static bcm2835_aux_uart_t bcm2835_aux_uart;
+static arm_gicv2_t arm_gicv2;
 
 typedef struct {
     uint64_t old_base;

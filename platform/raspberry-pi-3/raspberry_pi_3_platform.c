@@ -13,9 +13,9 @@
 #include <devices/interrupt-controller/bcm2836-l1-intc/bcm2836_l1_intc.h>
 #include <platform/platform.h>
 
-arm_pl011_t arm_pl011;
-bcm2835_aux_uart_t bcm2835_aux_uart;
-bcm2836_l1_intc_t bcm2836_l1_intc;
+static arm_pl011_t arm_pl011;
+static bcm2835_aux_uart_t bcm2835_aux_uart;
+static bcm2836_l1_intc_t bcm2836_l1_intc;
 
 typedef struct {
     int address_cells;

@@ -13,9 +13,9 @@
 #include <string.h>
 #include <platform/platform.h>
 
-arm_gicv2_t arm_gicv2;
-arm_gicv3_t arm_gicv3;
-arm_pl011_t arm_pl011;
+static arm_gicv2_t arm_gicv2;
+static arm_gicv3_t arm_gicv3;
+static arm_pl011_t arm_pl011;
 
 typedef struct {
     int address_cells;
