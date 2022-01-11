@@ -16,8 +16,7 @@ It's still a work in progress and is far from complete.
 
 ## Build
 You will need to have the aarch64-none-elf-gcc toolchain to build the code.
-Refer to GCC documention to build a gcc targetting aarch64-none-elf.
-For MacOS, you can install the toolchain from [here](https://github.com/SergioBenitez/homebrew-osxct) using homebrew.
+Refer to GCC documention to build a gcc targeting aarch64-none-elf.
 
 To compile:
 `mkdir build && cd build && cmake ../ && make`
